@@ -1,0 +1,164 @@
+;; The MIT License (MIT)
+;;
+;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;;
+;; Permission is hereby granted, free of charge, to any person 
+;; obtaining a copy of this software and associated documentation 
+;; files (the "Software"), to deal in the Software without restriction, 
+;; including without limitation the rights to use, copy, modify, merge,
+;; publish, distribute, sublicense, and/or sell copies of the Software,
+;; and to  permit persons to whom the Software is furnished to do so,
+;; subject to the following conditions:
+;;
+;; The above copyright notice and this permission notice shall be included
+;; in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+;; OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+;; THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+;; DEALINGS IN THE SOFTWARE.
+
+;; invokes all steps of the setup
+to setup-using-mrc-method
+  init-patch-variables
+  read-class-file
+  make-percolation-cluster
+  assign-habitat-patches-by-proportion get-connected-regions
+  assign-unassigned-to-habitat-patches
+  remove-singletons
+end
+
+;; initialize all patches to non-regions
+;; i.e. state -1
+to init-patch-variables
+  ask patches [
+    set tagged? false
+  ]
+end
+
+;; Colours patches by class
+to color-patches-by-class
+  ask patches [
+    set pcolor item state color-list
+  ]  
+end
+
+;; Retrieve the list of relative probabilities of 
+;; suitability classes from a file
+to read-class-file
+  carefully [
+    file-open class-file
+    set num-classes file-read ;; first item in file is the number of classes
+    set class-CFD (list 0) ;; initialise the CFD to 0
+    set class-FD [] ;; empty FD
+    while [ not file-at-end? ] [
+      ;; add next value to the last value in the cumulative freq list
+      let prev-n last class-CFD
+      let next-n file-read
+      set class-CFD lput (next-n + prev-n) class-CFD
+      ;; append value to the frequency list
+      set class-FD lput next-n class-FD
+    ]
+    set class-CFD but-first class-CFD ;; throw away the zero
+    let tot-rel-p last class-CFD ;; total freq is the last value in the cumulative list
+    ;; standardize both lists
+    set class-CFD map [ ? / tot-rel-p ] class-CFD
+    set class-FD map [ ? / tot-rel-p ] class-FD
+    file-close
+  ] [ file-close
+     print "Error reading input file"]
+end
+
+to make-percolation-cluster
+  ask patches [ 
+    if random-float 1 < p [ 
+      set pcolor white 
+    ]
+  ]
+end  
+
+to remove-singletons
+  if remove-singleton-patches? [
+    let singletons patches with [not any? neighbors4 with [state = [state] of myself]]
+    ask singletons [
+      set state [state] of one-of neighbors4
+    ]
+  ]
+end
+
+;; identifies and labels with a type sequentially 
+;; from 0 the connected regions in the percolation cluster
+to-report get-connected-regions
+  let regions []
+  let patches-to-label sort patches with [pcolor = white]
+  while [length patches-to-label > 0] [
+    let this-region (patch-set one-of patches-to-label)
+    let current-region patch-set nobody
+    ;; iteratively grow the patch-set that is this connected region
+    while [any? this-region] [ 
+      ;; mark as tagged
+      ask this-region [ 
+        set tagged? true
+      ]
+      set current-region (patch-set current-region this-region)
+      ;; get the next set from the neighbours 4 of the current set
+      set this-region (patch-set [neighbors4] of this-region) with [to-label?]
+    ]
+    set patches-to-label filter [[not tagged?] of ?] patches-to-label
+    ;; add the current region to the list of all regions
+    set regions lput current-region regions
+  ]
+  report sort-by [count ?1 > count ?2] regions
+end
+
+;; convenience test for need to label patch
+;; true if patch has not yet been tagged
+;; and the patch is white (i.e. in the percolation cluster)
+to-report to-label?
+  report not tagged? and pcolor = white
+end
+
+;; class-FD is a list of the required landscape proportion in each type
+;; cells in regions of the percolation cluster should be relabelled
+;; as 1, 2, 3... in the required proportions...
+to assign-habitat-patches-by-proportion [sorted-region-list]
+  ;; make a list of the target number of patches in each class
+  let num-patches-set count patches with [tagged?]
+  let target-counts map [ ? * num-patches-set ] class-FD
+  ;; iteratively assigning connected regions 
+  ;; to a class, always adding to the class farthest
+  ;; from its target count
+  foreach sorted-region-list [
+    let biggest-shortfall max target-counts
+    let biggest-shortfall-index position biggest-shortfall target-counts
+    ask ? [ 
+      set state biggest-shortfall-index
+    ]
+    ;; update target counts to reflect assignment just made
+    set target-counts replace-item biggest-shortfall-index target-counts (biggest-shortfall - count ?)
+  ]
+end
+
+;; patches so far not assigned to a class are
+;; now assigned based on the classes of neighbouring assigned patches 
+to assign-unassigned-to-habitat-patches
+  ask patches with [not tagged?] [ 
+    let N neighbors with [tagged?]
+    ifelse any? N
+    [ set state one-of modes [state] of N ]
+    [ let random-draw random-float 1
+      let i 0
+      let value-set? false
+      while [ i < num-classes and not value-set? ] [
+        if random-draw <= (item i class-CFD) [
+          set state i
+          set value-set? true
+        ]
+        set i i + 1
+      ]
+    ]
+  ]
+end

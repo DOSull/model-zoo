@@ -1,0 +1,21 @@
+;; Code to compute density /distribution functions for various distributions
+
+;; Gaussian densityreturn location + scale * tan(M_PI * unif_rand(rng)); (x = point of interest, mu = mean, sigma = SD)
+to-report d-gaussian [x mu sigma]
+  report (1 / (sqrt (2 * pi)  * sigma )) * exp (-((x - mu) ^ 2) / (2 * sigma ^ 2) )
+end
+
+;; Cauchy  density (x = point of interest, loc = location, scl = scale)
+to-report d-cauchy [x loc scl]
+  report (1 / pi) * ( scl / ((x - loc) ^ 2 + scl ^ 2 ) )
+end    
+
+;; Deviate from Cauchy distribution with location (loc) and scale (scl)
+;; From: Devroye, L. 1986. Non-Uniform Random Variate Generation, Springer, NY
+
+to-report r-cauchy [loc scl]
+  let X (pi * (random-float 1)) ;; Netlogo tan takes degrees not radians
+  report loc + scl * tan(X * (180 / pi))
+
+end
+

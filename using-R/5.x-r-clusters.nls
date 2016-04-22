@@ -1,0 +1,107 @@
+;; The MIT License (MIT)
+;;
+;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;;
+;; Permission is hereby granted, free of charge, to any person 
+;; obtaining a copy of this software and associated documentation 
+;; files (the "Software"), to deal in the Software without restriction, 
+;; including without limitation the rights to use, copy, modify, merge,
+;; publish, distribute, sublicense, and/or sell copies of the Software,
+;; and to  permit persons to whom the Software is furnished to do so,
+;; subject to the following conditions:
+;;
+;; The above copyright notice and this permission notice shall be included
+;; in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+;; OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+;; THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+;; DEALINGS IN THE SOFTWARE.
+;;
+
+;; Various routines to enable screen snaps to be exported into R for display
+;; including time-series of model conditions.
+;; require: r extension and matlab in R
+
+to cluster-to-r [grey-levels]
+  r:eval("library(matlab)")
+  
+  r:put "nr" world-height
+  r:put "nc" world-width
+  
+  r:put "z" map [[t-colonised] of ?] reverse sort patches
+  
+  r:put "n" grey-levels
+  
+  r:eval("grey.ramp <- grey((0:(n-1))/n)")
+  r:eval("z <- (matrix(z, nrow=nr, ncol=nc, byrow = TRUE))")
+  r:eval("z <- rot90(z)")
+
+  r:eval("z <- ifelse(z < 0, NA, z)")
+  
+  r:eval("image(z, col = grey.ramp, asp = 1, xaxt = 'n', yaxt = 'n')")
+end
+
+to cluster-to-r-bw
+  r:eval("library(matlab)")
+  
+  r:put "nr" world-height
+  r:put "nc" world-width
+  
+  r:put "z" map [[t-colonised] of ?] reverse sort patches
+  
+  r:eval("z <- (matrix(z, nrow=nr, ncol=nc, byrow = TRUE))")
+  r:eval("z <- rot90(z)")
+
+  r:eval("z <- ifelse(z < 0, 0, 1)")
+  
+  r:eval("image(z, col = c('white','black'), asp = 1, xaxt = 'n', yaxt = 'n')")
+end
+
+to cluster-ts-to-r
+  r:eval("library(matlab)")
+  
+  r:put "nr" world-height
+  r:put "nc" world-width
+  
+  r:put "z.raw" map [[t-colonised] of ?] reverse sort patches
+  ; r:put "max.z" max [occupied?] of patches
+  
+  r:eval("grey.ramp <- grey((0:7)/8)")
+  r:eval("z.raw <- (matrix(z.raw, nrow=nr, ncol=nc, byrow = TRUE))")
+  r:eval("z.raw <- rot90(z.raw)")
+  
+  let mf-cols ceiling (n-slices / 3)
+  if ticks < max-time-slice [set max-time-slice ticks]
+  
+  r:put "n.col" mf-cols 
+  r:eval("par(mfrow=c(3, n.col))")    
+  
+  let slices n-values n-slices [(? + 1) * floor(max-time-slice / n-slices)]
+  
+  foreach slices
+  [
+    r:put "t" ?
+    r:eval("z <- ifelse(z.raw < 0 | z.raw > t, NA, z.raw)")
+    r:eval("image(z, col = grey.ramp, asp = 1, xaxt = 'n', yaxt = 'n', main = paste('Time = ', t))")
+  ]
+end
+
+to edge-to-r
+  r:put "nr" world-height
+  r:put "nc" world-width
+  
+  r:put "z" map [[member? ? perimeter-set  ] of ?] reverse sort patches
+  r:eval("z <-matrix(z, nrow=nr, ncol=nc)")
+  
+  r:eval("image(z, col = c('white', 'black'), asp = 1, xaxt = 'n', yaxt = 'n')")
+end      
+
+to perimeter-ts-to-r
+  r:put "p" p-length-list
+  r:eval("plot(p, type = 'l', las = 1, bty = 'n', xlab = 'Time', ylab = 'Perimeter length', xlim = c(0,20000), ylim = c(0,1500))")
+end
+

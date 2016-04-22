@@ -1,0 +1,12 @@
+## WHAT IS IT?
+
+This model is an implementation of Conway's game of life.  See:
+
++    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway’s new solitaire game ‘life’. _Scientific American_ **223**, 120–123.
+
+This is an example model referenced in Chapter 1 of
+
++   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
+
+You should consult that book for more information and details of the model.
+
