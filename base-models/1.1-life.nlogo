@@ -2,9 +2,9 @@
 ;;
 ;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
 ;; including without limitation the rights to use, copy, modify, merge,
 ;; publish, distribute, sublicense, and/or sell copies of the Software,
 ;; and to  permit persons to whom the Software is furnished to do so,
@@ -39,7 +39,7 @@ to setup
   ;; r:setPlotDevice
 
   set gliders glider-patterns
-  
+
   if use-seed? [random-seed 0]
   ask patches [
     ifelse (random-float 1 < density)
@@ -51,7 +51,7 @@ to setup
 end
 
 ;; colour patches by their state
-to update-patches 
+to update-patches
   ask patches [
     ifelse state = 1
     [ set pcolor black ]
@@ -79,7 +79,7 @@ to update-states
       if n = 2 or n = 3 [ set next-state 1 ]
     ]
     [ ; patch is dead
-      ; comes alive with 3 live neighbours 
+      ; comes alive with 3 live neighbours
       if n = 3 [ set next-state 1 ]
     ]
   ]
@@ -90,10 +90,10 @@ to update-states
 end
 
 ;; flip the state at the current mouse location
-to flip-cell-states 
+to flip-cell-states
+  let x 0
+  let y 0
   if mouse-down? [
-    let x 0
-    let y 0
     while [mouse-down?] [
       set x mouse-xcor
       set y mouse-ycor
@@ -110,7 +110,7 @@ end
 to make-glider
   ;; find an empty spot
   ask one-of patches with [sum [state] of neighbors + state = 0] [
-    ;; pick a glider and set the states appropriately 
+    ;; pick a glider and set the states appropriately
     foreach one-of gliders [
       ask patch-at item 0 ? item 1 ? [
         set state 1
@@ -125,12 +125,12 @@ end
 ;; offset grid locations for gliders moving in each of
 ;; four possible directions (NE, NW, SW, SE)
 to-report glider-patterns
-  report (list 
+  report (list
     (list [-1 1] [0 1] [1 1]  ;; NE
                        [1 0]
                  [0 -1])
     (list [-1 1] [0 1] [1 1]  ;; NW
-          [-1 0] 
+          [-1 0]
                  [0 -1])
     (list        [0 1]        ;; SW
           [-1 0]
@@ -325,13 +325,13 @@ You should consult that book for more information and details of the model.
 
 Most of the interface is self-explanatory, so just give it a try!
 
-Of interest is the `make-glider` button which will randomly place a glider somewhere on the display.  To make best use of this, set the `density` to 0, then hit `setup` to clear the display.  Then use the `make-glider` button to create a glider and hit `go` to make it... uh... go!  Try making several gliders and colliding them to see what happens.  
+Of interest is the `make-glider` button which will randomly place a glider somewhere on the display.  To make best use of this, set the `density` to 0, then hit `setup` to clear the display.  Then use the `make-glider` button to create a glider and hit `go` to make it... uh... go!  Try making several gliders and colliding them to see what happens.
 
 ## THINGS TO NOTICE
 
-Although the Game of Life is conceptually very simple, there are some tricks involved in implementation.  
+Although the Game of Life is conceptually very simple, there are some tricks involved in implementation.
 
-Most importantly, because cell state update occurs simultaneously across all cells, it is necessary for the NetLogo patches to keep track of both their current and next state.  This is accomplished by the `state` and `next-state` patch variables. 
+Most importantly, because cell state update occurs simultaneously across all cells, it is necessary for the NetLogo patches to keep track of both their current and next state.  This is accomplished by the `state` and `next-state` patch variables.
 
 Also, cell states are stored as integer 0 ('dead') or 1 ('live') values.  This means it is easy to count live cells in neighbourhoods using the `sum` reporter.  It is also requires the `update-states` procedure to colur patches according to their current state.
 
@@ -339,10 +339,10 @@ The `make-glider` procedure makes use of a list of lists of coordinate offsets f
 
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
@@ -639,7 +639,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.5
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
