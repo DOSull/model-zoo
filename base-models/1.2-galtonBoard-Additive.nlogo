@@ -2,9 +2,9 @@
 ;;
 ;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
 ;; including without limitation the rights to use, copy, modify, merge,
 ;; publish, distribute, sublicense, and/or sell copies of the Software,
 ;; and to  permit persons to whom the Software is furnished to do so,
@@ -23,119 +23,140 @@
 
 ;;extensions [r]
 
-patches-own [ 
-  patches-below 
+breed [ balls ball ]
+breed [ pegs peg ]
+
+patches-own [
+  patches-below
 ]
 
 globals [
   column-heights ;; list of the height of each column
+  bottom-of-quincunx
 ]
 
+;; assume that the model settings are
+;; 0 to x wide, and y values from -2x to x vertically
 to setup
   clear-all
+  set bottom-of-quincunx 0 ;; at 0, which is 2/3 of the way up the model space
   draw-pegs
   set column-heights n-values world-width [0]
-  ;;r:setPlotDevice
+;;  r:setPlotDevice
   reset-ticks
 end
 
 to go
-  ifelse max column-heights >= world-height / 2
+  ifelse max column-heights >= bottom-of-quincunx - min-pycor
   [ stop ]
-  [ 
+  [
     drop-one
     tick
   ]
-end  
-  
+end
+
 to drop-one
-  create-turtles 1 [
-    set-starting-position     
+  create-balls 1 [
+    set shape "circle"
+    set color grey + 1
+    set-starting-position
     drop
     move-to-final-position
-  ] 
+  ]
 end
-   
+
 to set-starting-position
-  set shape "circle"
-  set size 2
-  set color blue
-  set xcor min-pxcor + world-width / 2
+  set xcor min-pxcor + world-width / 2 - 0.5
   set ycor max-pycor
   pen-down
-end  
+end
 
 ;; drop a ball
 to drop
-  ;; additive -> to build a normal distribution
-  while [ycor > min-pycor] [
+  ;; keep going until you hit the bottom
+  ;; of the array of pegs
+  while [ycor >= bottom-of-quincunx] [
     ;; go either right or left
-    let new-pxcor pxcor + one-of [1 -1]
-    ifelse new-pxcor > max-pxcor 
+    let new-xcor xcor + one-of [0.5 -0.5]
+    ifelse new-xcor > max-pxcor
     ;; can't plot turtles that disappear
-    ;; off the edge, so kill them! 
+    ;; off the edge, so kill them!
     [ die ]
-    ;; otherwise, move across and down one
-    [ setxy new-pxcor (pycor - 1) ]
+    ;; otherwise, move laterally and down one step
+    [ setxy new-xcor (ycor - 0.5) ]
   ]
-end    
+end
 
-;; move into location to build histogram         
+;; move into location to build histogram
+;; starting from the bottom of the screen
 to move-to-final-position
   ;; update the tally for this column and colour the patches appropriately
   let column floor xcor
+  ;; how many in that location so far?
   let height item column column-heights
-  setxy xcor (min-pycor + height * 2)
-  set size 2
-  set color white
+  ;; put ball on top of the last one in this column
+  setxy xcor (min-pycor + height)
+  ;; update the tally for column in question
   set column-heights replace-item column column-heights (height + 1)
+  set color white
 end
 
+;; draw array of pegs
 to draw-pegs
-  create-turtles 1 [
-    let y max-pycor
+  create-pegs 1 [
     set color red
-    set shape "circle"
-    set size 0.5
-    while [y >= min-pycor] [
-      setxy min-pxcor y
-      repeat floor (world-height / 2) [
-        stamp
+    set shape "dot"
+    set size 0.6
+    ;; start in the top-left corner
+    setxy min-pxcor max-pycor
+    ;; move across a row at a time
+    ;; zig-zagging
+    while [ycor >= bottom-of-quincunx] [
+      repeat world-width [
+        if in-triangle? [ hatch 1 [] ] ;;stamp ]
         set heading 135
-        fd sqrt 2
-        stamp
+        fd sqrt 0.5
+        if in-triangle? [ hatch 1 [] ] ;;stamp ]
         set heading 45
-        fd sqrt 2
+        fd sqrt 0.5
       ]
-      set y ycor - 1
+      ;; return to the left edge, one row down
+      setxy min-pxcor ycor - 1
     ]
     die
   ]
 end
- 
-;; R plotting code  
+
+;; reports true if the turtle is further from the top-edge
+;; than from the lateral centre-line
+to-report in-triangle?
+  let dist-from-top max-pycor + 0.5 - ycor
+  let dist-from-center abs (xcor - (min-pxcor + max-pxcor) / 2)
+  report dist-from-top >= dist-from-center
+end
+
+;; R plotting code
 ;;to plot-r-hist
-;;  r:put "x" [xcor] of turtles
+;;  r:put "x" [xcor] of balls
 ;;  r:eval("hist(x, xlab = 'X', ylab = 'Frequency', main = '', las = 1)")
-;;end  
+;;end
 ;;
 ;;to plot-r-density
-;;  r:put "x" [xcor] of turtles
+;;  r:put "x" [xcor] of balls
 ;;  r:put "max.x" max-pxcor
-;;  
 ;;  r:eval( "plot(density(x), las = 1, xlab = 'X', main = '')")
 ;;  r:eval( "d.exp <- dnorm(0:max.x, mean = mean(x), sd = sd(x)) ")
 ;;  r:eval("lines (x = 0:max.x, y = d.exp, col = 'blue')")
-;;end  
+;;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 86
 10
-496
-441
+483
+617
 -1
 -1
-5.0
+9.0
 1
 10
 1
@@ -146,9 +167,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-79
-0
-79
+42
+-42
+21
 0
 0
 1
@@ -178,7 +199,7 @@ MONITOR
 77
 182
 n
-count turtles
+count balls
 0
 1
 11
@@ -238,10 +259,10 @@ It is also worth noting that the horizontal position of balls as they drop trace
 
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
@@ -547,7 +568,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.5
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
