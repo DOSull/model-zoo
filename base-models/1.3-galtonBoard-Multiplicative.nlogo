@@ -2,9 +2,9 @@
 ;;
 ;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
 ;; including without limitation the rights to use, copy, modify, merge,
 ;; publish, distribute, sublicense, and/or sell copies of the Software,
 ;; and to  permit persons to whom the Software is furnished to do so,
@@ -23,79 +23,118 @@
 
 ;; extensions [r]
 
-turtles-own [ 
-  real-x ; keep track of the real x coordinate not the NetLogo 'world' xcor 
+breed [pegs peg]
+breed [balls ball]
+
+turtles-own [
+  real-x ; keep track of the real x coordinate not the NetLogo 'world' xcor
 ]
-  
+
 globals [
   column-heights
   off-the-edge
-]  
+  bottom-edge
+  x-start-position
+  x-coords
+]
 
 to setup
   clear-all
-  
+
   set column-heights n-values world-width [0]
   set off-the-edge 0
-  
-  create-turtles 1 [
-    set size 3
-    set shape "circle"
-    set color red
-    setxy (max-pxcor / start-position) (max-pycor - 1)
-    stamp
-    die
-  ]
+  set bottom-edge 40
+  set x-start-position max-pxcor / 10
+
+  draw-pegs
   ;; r:setPlotDevice
   reset-ticks
 end
 
+to draw-pegs
+  ;; common source location in x direction
+  let xs max-pxcor / 10
+  ;; y row starts from 1 goes to the bottom edge
+  let y-row n-values (max-pycor - bottom-edge + 1) [?]
+  set x-coords (list x-start-position)
+  foreach y-row [
+    let y ?
+    foreach x-coords [
+      create-pegs 1 [
+        set shape "dot"
+        set size 1.2
+        set color red
+        setxy ? (max-pycor - y)
+      ]
+    ]
+    set column-heights map [?] x-coords
+    ; each row starts a factor of c to the left
+    set x-coords map [? * c] x-coords
+    ; and extends one peg to the right
+    set x-coords lput (last x-coords / c / c) x-coords
+    ; throw away any x-coords off the edge of the screen
+    set x-coords filter [? < max-pxcor] x-coords
+  ]
+  set x-coords map [precision ? 4] column-heights
+  set column-heights map [0] column-heights
+end
+
 to go
   drop-one
-  if max column-heights >= world-height / 2 [
+  if max [ycor] of balls >= bottom-edge [
     stop
   ]
-end  
-  
+end
+
 to drop-one
-  create-turtles 1 [
-    set-starting-position 
+  create-balls 1 [
+    set-starting-position
     drop
     move-to-final-position
-  ] 
+  ]
   tick
 end
-          
+
 to set-starting-position
   set shape "circle"
-  set color blue
-  setxy (max-pxcor / start-position) (max-pycor - 1) 
-  set real-x xcor  
+  set color gray
+  setxy x-start-position (max-pycor)
+  set real-x xcor
   pen-down
-end  
-   
+end
+
 to drop
   ;; multiplicative -> to build a log-normalish distribution
-  while [pycor > min-pycor] [
-    ifelse random-float 1 <= 0.5
-    [ set real-x real-x * c ]
-    [ set real-x real-x / c ] 
+  while [pycor > bottom-edge] [
+    set real-x real-x * one-of (list c (1 / c))
     ;; this updates the column-heights list and colours them in as appropriate
     ifelse real-x <= max-pxcor
     [ setxy real-x (pycor - 1) ]
-    [ 
+    [ ;; ball falling off the right hand side
       set  off-the-edge off-the-edge + 1
-      die 
-    ]  
+      ;; turn it into a line so we can roughly show where it went
+      ;; face towards the next peg
+      let x-dist-to-next-peg xcor / c - xcor
+      set heading atan x-dist-to-next-peg -1
+      fd floor x-dist-to-next-peg
+      die
+    ]
   ]
-end    
+end
 
 to move-to-final-position
   ;; update the tally for this column and colour the patches appropriately
-  let column floor xcor
+  let column position (precision xcor 4) x-coords ; floor xcor
   let height item column column-heights
-  setxy floor xcor (min-pxcor + height * 2)
-  set size 2
+  ;; change the ball to a line scaled
+  ;; to reflect where it is located
+  ;; and spaced vertically by the inverse of that
+  ;; this makes an approximate histogram
+  let factor xcor / c - xcor * c
+  setxy xcor min-pxcor + (height / factor)
+  set shape "line"
+  set heading 90
+  set size factor
   set color white
   set column-heights replace-item column column-heights (height + 1)
 end
@@ -106,7 +145,7 @@ end
 ;;  r:put "max.x" max-pxcor
 ;;  r:eval("hist(x, xlab = 'X', ylab = 'Frequency', main = '', las = 1, breaks = seq(0,300,20))")
 ;;
-;;end  
+;;end
 ;;
 ;;to plot-r-density
 ;;  r:put "x" [xcor] of turtles
@@ -115,10 +154,10 @@ end
 ;;end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+209
 10
-1123
-347
+1122
+404
 -1
 -1
 3.0
@@ -134,11 +173,11 @@ GRAPHICS-WINDOW
 0
 300
 0
-101
+120
 0
 0
 1
-ticks
+Number of balls dropped
 100.0
 
 BUTTON
@@ -164,7 +203,7 @@ MONITOR
 133
 352
 No. in piles
-count turtles - 1
+count balls
 0
 1
 11
@@ -193,19 +232,19 @@ SLIDER
 135
 c
 c
-0.75
-1.0
-0.803
+0.86
+0.96
+0.92
 0.001
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-216
-351
-570
-435
+215
+413
+1103
+452
 Note that the lattice discretizes the log-normal distribution that emerges from the multiplicative process.  This produces funny results for the low values, where the grid resolution cannot track counts properly in this simple implementation. Plot the data in R to get a better sense of the process.
 12
 0.0
@@ -238,21 +277,6 @@ As c -> 0, the right-skew on the 'triangles' in the Galton board increases
 0.0
 1
 
-SLIDER
-25
-194
-197
-227
-start-position
-start-position
-2
-10
-8
-1
-1
-NIL
-HORIZONTAL
-
 MONITOR
 138
 307
@@ -264,14 +288,21 @@ off-the-edge
 1
 11
 
-TEXTBOX
-27
+BUTTON
+76
 229
-196
-304
-Balls are dropped at 1 /start-position of the length of the x-axis (so setting 2 will drop balls from the the mid-point)
-11
-0.0
+139
+262
+clear
+clear-drawing\nask balls [die]\nset column-heights map [0] column-heights
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
 1
 
 @#$#@#$#@
@@ -283,12 +314,22 @@ This model is an implementation of a multiplicative Galton board as discussed in
 
 You should consult that book for more information and details of the model.
 
+## THINGS TO TRY
+
+It is useful to slow this model down so that you can see how individual 'balls' arrive at their final locations.  Also, use the **drop-one** button to see how one ball drops through the peg board.
+
+## THINGS TO NOTICE
+
+This models is very similar to the previous model **1.2-galtonBoard-Additive.nlogo**, the sole difference being that at each downward step in the dropping of the balls, they are _multiplicatively_ shifted to the left or right, so that the resulting distribution is approximately _log-normal_.
+
+Set up of the peg board makes use of iteration over nested lists of `y-rows` from the top of the models space, and `x-coords`. The latter list begins with only one entry at the x coordinate starting location. Each iteration of the `y-rows` the items in the list are shifted a factor of `c` to the left, and a new item is added to the end of the list a factor `(1 / c ^ 2)` to the right. Since the list has already moved to the left, this right-most element in the list will be a factor of `(1 / c)` to the right of the last peg in the previous row.
+
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
@@ -594,7 +635,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.5
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
