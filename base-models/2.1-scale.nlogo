@@ -2,9 +2,9 @@
 ;;
 ;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
 ;; including without limitation the rights to use, copy, modify, merge,
 ;; publish, distribute, sublicense, and/or sell copies of the Software,
 ;; and to  permit persons to whom the Software is furnished to do so,
@@ -23,39 +23,50 @@
 
 ;; Simple program to demonstrate effects of rescaling lattices
 
+
 __includes["2.1-scale-mrc.nls"]
 
-globals [ 
-  color-list        ;; list of spectral colors
-  num-classes       ;; the number of suitability classes
-  class-FD          ;; freq distribution of classes requested
-  class-CFD         ;; cumulative freq dist of classes requested  
+
+globals [
+  num-classes   ;; the number of suitability classes
+  class-FD      ;; freq distribution of classes requested
+  class-CFD     ;; cumulative freq dist of classes requested
 ]
+
 
 patches-own [
   initial-state ;; initial state for reset function
   state         ;; state of the patch
-  centre?       ;; is patch a central patch in an aggregated block
+  centre?       ;; true if patch is central patch in an aggregated block
   tagged?       ;; flag to indicate patch has been tagged in the clustering process
   block-set     ;; ID of aggregated block of this patch
-]  
+]
+
 
 ;; Setup the lattice to extent lattice-L x lattice-L
 to setup
+  ;; resize to requested size
   resize-world 0 (lattice-L - 1) 0 (lattice-L - 1)
+  ;; set patches to an integer pixel size so that
+  ;; total extent is close to 500 x 500 pixels
   set-patch-size floor (500 / lattice-L)
-  ask patches [set centre? false]
-  
-  set color-list (list 16 26 46 66 86 96 106 116 126 136)
+  ;; initialize indicator patch variables
+  ask patches [
+    set centre? false
+    set tagged? false
+    set block-set patch-set nobody
+  ]
   ifelse method = "mrc" [
     ;; code for this in the .nls file
     setup-using-mrc-method
   ]
-  [ 
+  [
     ;; random initialization
-    ask patches [ 
+    ask patches [
       set state random n-types
     ]
+    ;; voter method initialization is described in detail
+    ;; in model 3.8
     if method = "voter" [
       repeat voter-iterations [
         ask patches [
@@ -63,42 +74,12 @@ to setup
         ]
       ]
     ]
-  ]  
+  ]
   ;; record the initial state
   ask patches [ set initial-state state ]
   color-patches
-end   
-
-to color-patches
-  ask patches [
-    set pcolor item state color-list
-  ]
 end
 
-;; rescale the grid using a modal filter in nhb of specified size
-to change-grain
-  ;; reset to the original 
-  reset-to-initial-state
-  
-  let n-blocks ceiling (world-width / new-grain)
-  let offset floor ((world-width - (n-blocks - 1) * new-grain) / 2)
-  let c-list n-values n-blocks [? * new-grain + offset]
-
-  ;; build the blocks around each centre and apply modal filter
-  ask patches with [member? pxcor c-list and member? pycor c-list ] [
-    build-blocks self
-    set centre? true
-    let modal-state one-of modes [state] of block-set
-    ask block-set [
-      set state modal-state
-    ]
-  ]   
-  color-patches
-  ;; colour nhb centres if desired
-  if show-block-centre? [
-    ask patches with [centre?] [ set pcolor white ]
-  ]  
-end      
 
 ;; reset lattice to original state
 to reset-to-initial-state
@@ -108,21 +89,68 @@ to reset-to-initial-state
     set state initial-state
   ]
   color-patches
-end  
+end
 
-;; build blocks around patches
-to build-blocks [focal-patch]
-  let offsets n-values new-grain [? - floor (new-grain / 2)] 
-  ask focal-patch [
-    set block-set (patch-set self)
-    foreach offsets [
-      let diff-x ?
-      foreach offsets [
-        set block-set (patch-set block-set patch-at diff-x ?)
-      ]
-    ]      
+
+;; we store state as a number
+;; this method colors patches
+;; accordingly
+to color-patches
+  ask patches [
+    set pcolor item state base-colors + 1
   ]
-end 
+end
+
+;; rescale the grid using a modal filter
+;; in neighbourhood of specified size
+to change-grain
+  ;; reset to the original
+  reset-to-initial-state
+
+  ;; number of blocks in each direction is maximum we can fit
+  let n-blocks ceiling (world-width / new-grain)
+  ;; edge offset is half the space required by a set of blocks one narrower
+  let offset floor ((world-width - (n-blocks - 1) * new-grain) / 2)
+  let center-coords n-values n-blocks [? * new-grain + offset]
+
+  ;; build the blocks around each centre and apply modal filter
+  foreach center-coords [
+    let cx ?
+    foreach center-coords [
+      ask patch cx ? [
+        build-blocks new-grain
+        set centre? true
+        let modal-state one-of modes [state] of block-set
+        ask block-set [
+          set state modal-state
+        ]
+      ]
+    ]
+  ]
+  color-patches
+  ;; colour nhb centres if desired
+  if show-block-centre? [
+    ask patches with [centre?] [ set pcolor white ]
+  ]
+end
+
+
+;; build block of width  around patches
+;; this is a patch procedure
+to build-blocks [width]
+  set block-set patch-set nobody
+  ;; make a list from -half the width to +half width
+  let offsets n-values width [? - floor (width / 2)]
+  ;; loop over offsets in both x and y directions
+  ;; adding patch at that offset to the block set
+  foreach offsets [
+    let offset-x ?
+    foreach offsets [
+      set block-set (patch-set block-set patch-at offset-x ?)
+    ]
+  ]
+end
+
 
 to trim-extent
   reset-to-initial-state
@@ -130,7 +158,7 @@ to trim-extent
   let trim (lattice-L - new-extent) / 2
   ask patches with [pxcor < trim or pxcor > lattice-L - trim or pycor < trim or pycor > lattice-L - trim] [
     set pcolor black
-  ]  
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -235,7 +263,7 @@ n-types
 n-types
 2
 10
-3
+8
 1
 1
 NIL
@@ -263,7 +291,7 @@ SWITCH
 374
 show-block-centre?
 show-block-centre?
-0
+1
 1
 -1000
 
@@ -307,7 +335,7 @@ CHOOSER
 method
 method
 "random" "mrc" "voter"
-2
+1
 
 INPUTBOX
 705
@@ -329,7 +357,7 @@ p
 p
 0
 .6
-0.47
+0.54
 .01
 1
 NIL
@@ -342,7 +370,7 @@ SWITCH
 252
 remove-singleton-patches?
 remove-singleton-patches?
-0
+1
 1
 -1000
 
@@ -400,12 +428,56 @@ This model is a simple demonstration of some of the effects on spatial pattern o
 
 You should consult that book for more information and details of the model.
 
+## THINGS TO TRY
+
+This model's overall size is set to a square with the number of patches specified by the `lattice-L` variable. Patch pixel size will adjust so that the overall world width is close to 500 pixels.
+
+The initial model state is set by one of three different methods selected from the `method` drop-down list:
+
++ `random` sets each patch to one of the specified number `n-types` of states completely at random
+
++ `mrc` uses the _modified random clustering_ process of Saura and Martínez-Milán (2000). This method is implemented in the [`2.1-scale-mrc.nls`](https://github.com/DOSull/model-zoo/blob/master/base-models/2.1-scale-mrc.nls) code file.
+
++ `voter` uses a simple voter model, as presented in more detail in [model 3.8](https://github.com/DOSull/model-zoo/blob/master/base-models/3.8-voter-model.nlogo).
+
+The **change-grain** button causes an array of square 'blocks' of the size specified to be created each with its state set to the _modal_ state of the patches included in the block, i.e., the state that is most numerous among the included patches.  If two or more states tie then one will be chosen at random.
+
+The **trim** button causes the study area to be limited to the specified extent.
+
+These two operations correspond with those discussed in Chapter 2 of the book.
+
+The **reset** button restores the world to the state when it was first initialized.
+
+## THINGS TO NOTICE
+
+The code here uses the `n-values` operation to create lists of coordinates for the aggregated block centres, in the `change-grain` procedure. The line
+
+    let center-coords n-values n-blocks [? * new-grain + offset]
+
+is an example. This is a useful NetLogo function worth getting to know. Here is makes a list with `n-blocks` elements, each of them a multiple (by a factor of `new-grain`) of its index postion in the list, with an `offset` added. For example, with `offset` 5 and `new-grain` set to 9, this would produce a list `[5 14 23 32 ...]` and so on, up to the requested number of elements. We then use nested `foreach` loops to step through this list and set patch centres for the aggregated blocks.
+
+This technique is more elegant than having nested loops such as the following
+
+    let x-coord offset
+    repeat n-blocks [
+      set x-coord x-coord + new-grain
+      let y-coord offset
+      repeat n-blocks [
+        set y-coord y-coord + new-grain
+        ## do stuff with x-coord y-coord
+      ]
+    ]
+
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+See also
+
++ Saura S and Martínez-Milán J 2000 [Landscape pattern simulation with a modified random clusters method](http://dx.doi.org/10.1023/A:1008107902848). _Landscape Ecology_ **15** 661–677.
 
 ## COPYRIGHT AND LICENSE
 
@@ -711,7 +783,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.5
+NetLogo 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

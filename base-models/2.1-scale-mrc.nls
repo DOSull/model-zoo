@@ -42,7 +42,7 @@ end
 ;; Colours patches by class
 to color-patches-by-class
   ask patches [
-    set pcolor item state color-list
+    set pcolor item state base-colors
   ]  
 end
 
