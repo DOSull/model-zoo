@@ -26,44 +26,80 @@ patches-own [ lambda ]
 
 to setup
   clear-all
-  set-patch-size  ( 100 / resolution ) * 4
+  ;; resize world so that it has a patch-grid at the
+  ;; required resolution and is approx 500 x 500 pixels
+  set-patch-size floor ( 500 / resolution )
   resize-world 0 (resolution - 1) 0 (resolution - 1)
   reset-ticks
 end
 
 to go
   setup
+  ;; turtles are point events
   create-turtles n [
+    ;; events are randomly located
+    ;; and do not interact with one another
     setxy random-xcor random-ycor
 
     set color white
     set shape "circle"
+
+    ;; note that because pixel size of patches changes
+    ;; with resolution the size of events does not appear
+    ;; to change much
     set size 1 * ( resolution / 100)
   ]
 end
 
+;; use smoothing of even count per patch as estimate
 to plot-intensity
- ask patches [ set lambda count turtles-here ]
- repeat smooth [ diffuse lambda 0.9 ]
- let max-lambda max [lambda] of patches
+ let bw bandwidth * resolution
+ ask patches [ set lambda 0 ]
 
- ask turtles [ set color black ]
- ask patches [
-   set pcolor scale-color red lambda (2 * max-lambda) 0
+ if density-method = "quartic-kernel" [
+   ask turtles [
+     let w-in-r []
+     foreach (sort patches in-radius bw) [
+       ask ? [
+         set w-in-r lput get-quartic bw distance myself w-in-r
+       ]
+     ]
+     let sum-w sum w-in-r
+     (foreach (sort patches in-radius bw) w-in-r [
+         ask ?1 [
+           set lambda lambda + ?2 / sum-w
+         ]
+     ])
+   ]
  ]
+ if density-method = "smoothing" [
+   ask patches [ set lambda count turtles-here ]
+   let steps ceiling (bw)
+   show steps
+   repeat steps [
+     diffuse lambda 0.95
+   ]
+ ]
+
+ let max-lambda max [lambda] of patches
+ ask turtles [ set color black ]
+ ask patches [ set pcolor scale-color red lambda (1.2 * max-lambda) 0 ]
 end
 
 
-
+to-report get-quartic [h r]
+  let u r / h
+  report 15 / 16 * (1 - u ^ 2) ^ 2
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-620
-441
+720
+541
 -1
 -1
-8.0
+5.0
 1
 10
 1
@@ -74,9 +110,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-49
+99
 0
-49
+99
 1
 1
 1
@@ -92,7 +128,7 @@ n
 n
 1
 1000
-1000
+500
 1
 1
 NIL
@@ -122,9 +158,9 @@ SLIDER
 151
 resolution
 resolution
-1
+10
 200
-50
+100
 1
 1
 NIL
@@ -157,21 +193,6 @@ NIL
 NIL
 1
 
-SLIDER
-18
-330
-190
-363
-smooth
-smooth
-1
-20
-10
-1
-1
-NIL
-HORIZONTAL
-
 BUTTON
 47
 269
@@ -187,6 +208,31 @@ NIL
 NIL
 NIL
 NIL
+1
+
+SLIDER
+18
+352
+190
+385
+bandwidth
+bandwidth
+0.01
+0.5
+0.25
+0.01
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+52
+389
+190
+434
+density-method
+density-method
+"smoothing" "quartic-kernel"
 1
 
 @#$#@#$#@
@@ -509,7 +555,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 5.3.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
