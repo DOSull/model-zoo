@@ -1,9 +1,10 @@
 ;; Code to compute density /distribution functions for various distributions
 
-;; Gaussian density
+;; Gaussian densityreturn location + scale * tan(M_PI * unif_rand(rng)); (x = point of interest, mu = mean, sigma = SD)
 to-report d-gaussian [x mu sigma]
   report (1 / (sqrt (2 * pi)  * sigma )) * exp (-((x - mu) ^ 2) / (2 * sigma ^ 2) )
 end
+
 
 ;; Cauchy  density (x = point of interest, loc = location, scl = scale)
 to-report d-cauchy [x loc scl]
@@ -18,4 +19,5 @@ to-report r-cauchy [loc scl]
   report loc + scl * tan(X * (180 / pi))
 
 end
+
 

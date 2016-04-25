@@ -1,0 +1,140 @@
+;; The MIT License (MIT)
+;; Copyright (c) 2011-13 David O'Sullivan and George L. W. Perry
+;; 
+;; Permission is hereby granted, free of charge, to any person obtaining a copy of 
+;; this software and associated documentation files (the "Software"), to deal in 
+;; the Software without restriction, including without limitation the rights to 
+;; use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+;; of the Software, and to permit persons to whom the Software is furnished to do 
+;; so, subject to the following conditions:
+;;
+;; The above copyright notice and this permission notice shall be included in all 
+;; copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+;; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+;; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+;; WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
+;; CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+;;
+
+to r-snapshot-tracks
+  ask one-of foragers [
+    ;; need to tile the forest in case there has been a wrapping move...
+    ;; determine the min and max tile offsets needed
+    let min-x min history-x
+    let max-x max history-x
+    let min-y min history-y
+    let max-y max history-y
+    
+    ;; note this will only work if 0,0 is bottom-left corner coordinate
+    let tile-min-x floor (min-x / world-width)
+    let tile-max-x ceiling (max-x / world-width)
+    let tile-min-y floor (min-y / world-height)
+    let tile-max-y ceiling (max-y / world-height)
+
+    ;; make lists of the tile x- and y- offsets required
+    let tiles-x n-values (tile-max-x - tile-min-x) [tile-min-x + ?]
+    let tiles-y n-values (tile-max-y - tile-min-y) [tile-min-y + ?]
+    
+    ;; make same-ordered lists of tree x, y, size 
+    let trees-x map [[xcor] of ?] sort trees
+    let trees-y map [[ycor] of ?] sort trees
+    let trees-size map [[size] of ?] sort trees
+    ;; make lists to accommodate all tree coords and sizes
+    let all-x []
+    let all-y []
+    let all-sizes [] 
+    foreach tiles-x [
+      let offset-x ? * world-width  ;; x-offset for this tile
+      foreach tiles-y [
+        let offset-y ? * world-height  ;; y-offset for this tile
+        ;; make lists of the x and y-coords for this tile
+        let these-x map [? + offset-x] trees-x 
+        let these-y map [? + offset-y] trees-y
+        ;; determine which ones are inside the 'bounding box' of the walk
+        let included (map [inside-box? ?1 ?2 min-x max-x min-y max-y] these-x these-y)
+        ;; filter the x, y, size lists so that only the trees inside the
+        ;; bounding box are added to the list to be plotted
+        set these-x filter-by-boolean-list these-x included
+        set these-y filter-by-boolean-list these-y included
+        let these-sizes filter-by-boolean-list trees-size included
+        set all-x sentence all-x these-x 
+        set all-y sentence all-y these-y 
+        set all-sizes sentence all-sizes these-sizes
+      ]
+    ]
+    ;; now get all this into R, first the plot bounds
+    r:put "xl" list min all-x max all-x
+    r:put "yl" list min all-y max all-y
+    ;; then the tree coordinates and sizes
+    r:put "x_trees" all-x
+    r:put "y_trees" all-y
+    r:put "size_trees" all-sizes
+    ;; plot the trees
+    r:eval("plot(x_trees, y_trees, xlim=xl, ylim=yl, asp=1, col='gray', cex=size_trees/2, xlab='', ylab='')")
+    r:put "x" history-x
+    r:put "y" history-y
+    ;; finally plot the walk
+    r:eval("lines(x, y, type='l', asp=1, add=T, lw=1.75)")
+  ]
+  r:eval("points(x[1], y[1])")
+  r:eval("points(x[length(x)], y[length(y)], pch=20)")
+end
+
+
+;; reports true if x y lie inside box defined by NSEW limits
+to-report inside-box? [x y west east south north]
+  report x >= west and x <= east and y >= south and y <= north
+end 
+
+
+;; reports 1 if true, 0 if false
+to-report boolean-as-int [x?]
+  ifelse x?
+  [ report 1 ]
+  [ report 0 ]
+end
+
+
+;; filters a NUMERIC list based on a supplied true-false list
+to-report filter-by-boolean-list [x fltr]
+  report filter [? != 0] (map [boolean-as-int ?1 * ?2] fltr x)
+end
+
+
+to r-hist-step-lengths
+  r:put "d" [link-length] of links
+  r:eval("hist(d)")
+end
+
+
+to r-rank-size-plot
+  r:put "d" [link-length] of links
+  r:put "s" yields
+  ; create a set of ranks for the yields
+  r:eval("r <- seq(length(s), 1, -1)")
+  ;; make space for the right axis and its label
+  r:eval("par(mar=c(5,4,4,5) + .1)")
+  
+  ;; plot rank-size of the tree yields
+  r:eval("plot(r / length(r) * 100, sort(s), axes=F, log='x', xlab='', ylab='', type='l', lty=1)")
+  r:eval("axis(2)")
+  r:eval("mtext('Tree yield', side=2, line=3)")
+  
+  r:eval("r <- seq(length(d), 1, -1)")
+  r:eval("par(new=TRUE)")
+  r:eval("plot(r / length(r) * 100, sort(d), axes=F, log='x', xlab='', ylab='', type='l', lty=2)")
+  
+  r:eval("axis(4)")
+  r:eval("mtext('Step length', side=4, line=3)")
+  
+  r:eval("axis(1, log='x')")
+  r:eval("mtext('Log percentile', side=1, line=3)")
+
+  r:eval("legend('bottomleft', lty=c(1,2), legend=c('Tree yield','Step length'), box.lty=0)")
+end
+
+
+

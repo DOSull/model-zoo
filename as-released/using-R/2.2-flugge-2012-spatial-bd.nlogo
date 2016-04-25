@@ -1,193 +1,232 @@
-;; The MIT License (MIT)
+; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Licensed under the Creative Commons 
+; Attribution-NonCommercial-ShareAlike 3.0 License 
+; See Info tab for full copyright and license information
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
-;;
-;; Permission is hereby granted, free of charge, to any person
-;; obtaining a copy of this software and associated documentation
-;; files (the "Software"), to deal in the Software without restriction,
-;; including without limitation the rights to use, copy, modify, merge,
-;; publish, distribute, sublicense, and/or sell copies of the Software,
-;; and to  permit persons to whom the Software is furnished to do so,
-;; subject to the following conditions:
-;;
-;; The above copyright notice and this permission notice shall be included
-;; in all copies or substantial portions of the Software.
-;;
-;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-;; OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-;; THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-;; DEALINGS IN THE SOFTWARE.
 
-
-__includes ["distributions.nls"]
+extensions [r]
 
 breed [trees tree]
 
 globals [
   ndf-at-tick
-  update-approx  ;; update interval for slow statistics
+  
+  update-approx
   dnorm-lookup
   grain
 ]
 
 trees-own [
-  nhbs
+  nhbs  
   n-nhbs
   comp-nhb
 ]
 
 to setup
   clear-all
-
-  set grain 0.05
+  set ndf-at-tick []
   set dnorm-lookup []
-  build-dnorm-lookup
-
+    
+  set grain 0.05
+  get-dnorm-lookup
   set update-approx 10
 
   create-trees n-trees [
     setxy random-xcor random-ycor
     set shape "circle"
+    set size 0.8
     set color green
   ]
+  
   ask trees [
-    setup-tree-neighbourhood
+    set nhbs get-nhbs
+    set n-nhbs count nhbs
+    set comp-nhb get-competition
   ]
-  set ndf-at-tick (list ndf-local)
+  
+  ask trees [
+    let m-comp max [comp-nhb] of trees
+    set comp-nhb comp-nhb / m-comp
+  ]
 
+  r:setPlotDevice
   reset-ticks
 end
 
-
-to setup-tree-neighbourhood
-  set nhbs get-nearby-trees
-  set n-nhbs count nhbs
-  set comp-nhb get-competition-index
-end
-
-
 ;; Control
-to go
+to go 
   if not any? trees [stop]
-  step
-  ;; after a step there may be no trees left
-  ifelse any? trees [
-    set ndf-at-tick lput ndf-local ndf-at-tick
-  ]
-  [ set ndf-at-tick lput 1 ndf-at-tick ]
+  one-generation
+  set ndf-at-tick lput ndf-local ndf-at-tick
   tick
 end
 
-
 ;; one generation consists of n-tree repetitions of the birth-death pair selection
-to step
+to one-generation
   let bd-events 0
-  let critical-ci 0
-  let dd? density-dependent? ;; set this so that tweaks to GUI don't cause errors
-
-  while [ bd-events < n-trees and any? trees ] [
-    if bd-events mod ceiling (count trees / update-approx) = 0 and dd? [
-      ask trees [
-        setup-tree-neighbourhood
-      ]
-      set critical-ci percentile ([comp-nhb] of trees) density-threshold
-    ]
-    ;; death? select tree at random or on basis of local density depending on whether density-dependence used
-    ifelse dd?
-    [ ask one-of trees with [comp-nhb >= critical-ci] [die] ]
-    [ ask one-of trees [die] ]
-
-    if any? trees [
-      ;; recruitment at a random exponential distance (rate = mean-dispersal-distance) and bearing from parent
-      ask one-of trees [ reproduce ]
-    ]
-    set bd-events bd-events + 1
+  let critical-ci 0  
+    
+  ;; Update nhbs at start of each generation
+  ask trees [
+    set nhbs get-nhbs
+    set n-nhbs count nhbs
+    if density-dependent? [set comp-nhb get-competition]
   ]
 
+  ;; threshold for dd mortality if required - only do this *once* per generation!
+  if density-dependent? and density-threshold > 0.0 [
+    set critical-ci list-percentile (sort [comp-nhb] of trees) density-threshold
+  ]
+  
+  repeat n-trees [
+    set bd-events bd-events + 1
+    ;; death? select tree at random or on basis of local density depending on whether density-dependence used
+    ifelse density-dependent? and density-threshold > 0.0 [
+      ;; at low abundance all the trees above the competition threshold may die so need to catch this
+      ;; to stop empty agentset errors
+      if critical-ci > max [comp-nhb] of trees [
+        set critical-ci max [comp-nhb] of trees
+      ]  
+      ask one-of trees with [comp-nhb >= critical-ci] [die] 
+    ]
+    [
+      ask one-of trees [die]
+    ]
+    ;; recruitment at a random exponential distance (rate = mean-dispersal-distance) and bearing from parent
+    ask one-of trees [
+      reproduce
+    ]
+    ;; updates the tree nhb and critical CI value periodically at a rate controlled by update-approx (the smaller the more often, but the slower)
+    if (bd-events mod n-trees / update-approx = 0) and (density-dependent? and density-threshold > 0.0) [
+      ask trees [
+        set nhbs get-nhbs
+        set n-nhbs count nhbs
+        set comp-nhb get-competition
+      ]
+      set critical-ci list-percentile (sort [comp-nhb] of trees) density-threshold
+    ]
+  ] 
+ 
   ;; If population is changing in size add or remove the necessary individuals each generation
   if popn-change? and ticks > start-change [
-    ;; population change is given by lamda
-    let delta (random-poisson abs (lambda - 1) * count trees)
+    ;; population is growing
     ifelse lambda > 1 [
-      repeat delta [ ask one-of trees [reproduce] ]
+      let delta ceiling ((lambda - 1) * (count trees))
+      repeat delta [ ask one-of trees [reproduce ] ]  
     ]
     [ ;; population is shrinking
-      ask n-of min (list delta count trees) trees [die]
-    ]
+      ask n-of ceiling ((1 - lambda) * count trees) trees [die] 
+    ]      
   ]
 end
 
 
 ;; 'hatch' a new tree at location xy with parent's properties
-;; and disperse it in a random direction a random distance
 to reproduce
   hatch 1 [
-    set size 1
-    set heading random-float 360
+    set heading random 360
     fd random-exponential mean-dispersal-distance
-    setup-tree-neighbourhood
+    set color green
+    
+    set nhbs get-nhbs
+    set n-nhbs count nhbs
+    set comp-nhb get-competition
   ]
 end
 
 
 ;; Report the local NDF (as per Condit et al. 2000)
 to-report ndf-local
-  let area world-width * world-height
-
+  let a world-width * world-height
+  let n 0
+  
   ;; get the total number of trees in neighbourhoods (!= n-trees)
-  let n sum [ n-nhbs ] of trees
-
-  let abundance count trees
-  let annulus-area pi * critical-d * critical-d  ;; GEORGE: this isn't an annulus, surely?
-
+  ask trees [ set n n + n-nhbs ]
+ 
+  let abund count trees
+  let annuli pi * critical-d * critical-d
+  
   ;; ndf is the relative density of trees in annuli around trees density normalised
-  let ndf (n / (abundance * annulus-area)) / (abundance / area)
+  let ndf (n / (abund * annuli)) / (abund / A)
   report ndf
-end
-
+end  
 
 ;; return other trees in the neighbourhood
-to-report get-nearby-trees
-  report other trees in-radius critical-d
-end
-
+to-report get-nhbs
+  report other trees in-radius critical-d 
+end 
 
 ;; get competition index
-;; sum of the normal distribution probability density values
-;; associated with the distance to each nearby tree and
-;; Norm(0, density-scalar)
-to-report get-competition-index
-  report sum [competition-at-distance distance myself] of nhbs
+to-report get-competition
+  let ci 0
+  ask nhbs [
+    let d distance myself
+    set ci ci + (competition-at-distance d)
+  ] 
+  report ci
 end
-
 
 ;; Competition intensity is the sum of the densities of the normal dsitrbution with sd = density-strength
 ;; Each nhb contributes dnorm(dij, 0, sd) to the index - so trees with lots of close nhbs have higher value especially
 ;; for sd close to zero
 to-report competition-at-distance [dist]
-  report item floor (dist / grain) dnorm-lookup
+  let idx ceiling (dist / grain) - 1
+  report item (dist / grain) dnorm-lookup
 end
 
 
 ;; Builds a lookup list of the normal density for x from 0 to critical-d by step grain
 ;; Used to compute the CI index much more quickly...
-to build-dnorm-lookup
+to get-dnorm-lookup
+  r:put "sd" density-scalar
   let d 0
+  
   while [d <= critical-d] [
-    set dnorm-lookup lput (d-gaussian d 0 density-scalar ) dnorm-lookup
+    (r:put "d" d)
+    set dnorm-lookup lput (r:get "dnorm(x = d, mean =  0, sd = sd)") dnorm-lookup
     set d d + grain
   ]
-end
-
+end  
 
 ;; This returns the limit-th percentile -> used for density-dependence
-;; The version which Uses th R quantile function is quicker
-to-report percentile [ values pc]
-  report item (density-threshold * length values) sort values
+;; USes R quantile function (for speed)
+to-report list-percentile [ valList limit]
+  (r:put "quant" limit) 
+  (r:put "valList" sort valList)
+  
+  report (r:get "quantile(valList, quant)") 
 end
+ 
+
+; export the point map to R 
+to map-to-r
+if (count trees = 0) [stop]
+  (r:putagent "agentlist" trees "who" "xcor" "ycor")
+  r:eval "plot(agentlist$xcor,agentlist$ycor, pch = 3, cex = 0.8, las = 1, asp = 1, xlab='x', ylab='y')"
+end
+
+;; export the NDF time series to R
+to ndf-trace-to-r
+  if (count trees = 0) [stop]
+  r:put "ndf.trace" ndf-at-tick
+  r:eval "m <- max(ndf.trace)"
+  r:eval "plot(ndf.trace, type = 'l', xlab = 'Time', ylab = expression(NDF~(Omega)), las = 1, ylim = c(0,m))"
+  r:eval "abline(h = 1, lty = 2)"
+end   
+
+to write-xy
+ file-open "xy-locations.txt"
+ file-print "xcor ycor"
+ ask trees [
+   file-write xcor file-write " " file-print ycor
+ ]  
+ file-close
+end
+ 
+ 
+
+   
+     
 @#$#@#$#@
 GRAPHICS-WINDOW
 276
@@ -253,8 +292,8 @@ BUTTON
 10
 206
 43
+NIL
 one-generation
-step
 NIL
 1
 T
@@ -310,11 +349,11 @@ NDF
 0.0
 2.0
 true
-true
+false
 "" ""
 PENS
-"NDF" 1.0 0 -16777216 true "" "plotxy ticks last ndf-at-tick"
-"NDF=1" 1.0 0 -7500403 true "" "plotxy ticks 1"
+"default" 1.0 0 -16777216 true "" "plotxy ticks ndf-local"
+"pen-1" 1.0 0 -7500403 true "" "plotxy ticks 1"
 
 SLIDER
 76
@@ -325,19 +364,19 @@ lambda
 lambda
 0.95
 1.05
-1
+0.99
 0.005
 1
 NIL
 HORIZONTAL
 
 MONITOR
-695
-284
-752
-329
+700
+334
+757
+379
 n
-count trees
+count turtles
 0
 1
 11
@@ -364,7 +403,7 @@ SWITCH
 354
 density-dependent?
 density-dependent?
-0
+1
 1
 -1000
 
@@ -383,11 +422,45 @@ density-scalar
 NIL
 HORIZONTAL
 
+BUTTON
+695
+288
+781
+321
+NIL
+map-to-r
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+793
+288
+905
+321
+NIL
+ndf-trace-to-r
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
 MONITOR
-761
-284
-862
-329
+766
+334
+867
+379
 NDF at critical-d
 ndf-local
 3
@@ -418,7 +491,7 @@ density-threshold
 density-threshold
 0
 1.0
-0.05
+0.25
 .01
 1
 NIL
@@ -431,7 +504,7 @@ SWITCH
 223
 popn-change?
 popn-change?
-1
+0
 1
 -1000
 
@@ -450,23 +523,21 @@ You should consult that book for more information and details of the model.
 
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
 
 +   Flügge AJ, Olhede SC and Murrell D 2012 The memory of spatial patterns – changes in local abundance and aggregation in a tropical forest. _Ecology_ *93*, 1540-1549
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
 
 ## COPYRIGHT AND LICENSE
 
-The MIT License (MIT)
+Copyright 2011-13 David O'Sullivan and George L. W. Perry
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+![CC BY-NC-SA 3.0](http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
+This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License.  To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/3.0/ or send a letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Commercial licenses are also available. To inquire about commercial licenses, please contact David O'Sullivan at d.osullivan@auckland.ac.nz, or George Perry at george.perry@auckland.ac.nz
 @#$#@#$#@
 default
 true
@@ -760,7 +831,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.3.1
+NetLogo 5.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -851,9 +922,9 @@ NetLogo 5.3.1
 @#$#@#$#@
 default
 0.0
--0.2 0 0.0 1.0
+-0.2 0 1.0 0.0
 0.0 1 1.0 0.0
-0.2 0 0.0 1.0
+0.2 0 1.0 0.0
 link direction
 true
 0

@@ -1,0 +1,87 @@
+to r-snapshot-tracks
+  r:put "xl" list (min-x - 1) (max-x + 1)
+  r:put "yl" list (min-y - 1) (max-y + 1)
+  ask one-of turtles [
+    r:put "x" history-x
+    r:put "y" history-y
+    r:eval("plot(x, y, type='l', asp=1, xlim=xl, ylim=yl, col='gray')")
+    ask other turtles [
+      r:put "x" history-x
+      r:put "y" history-y
+      r:eval("lines(x, y, col='gray')")
+    ]
+  ]
+  r:eval("points(0, 0)")
+  ask turtles [
+    r:put "x" history-x
+    r:put "y" history-y
+    r:eval("points(x[length(x)], y[length(y)], pch=19, cex=0.5)") 
+  ]
+end
+
+
+to r-snapshot-points
+  r:put "xl" list (min-x - 1) (max-x + 1)
+  r:put "yl" list (min-y - 1) (max-y + 1)
+  r:put "x" [xcor] of turtles
+  r:put "y" [ycor] of turtles
+  r:eval("plot(x, y, asp=1, xlim=xl, ylim=yl)")
+end
+
+
+to r-density-plot
+  r:eval("require(spatstat)")
+  r:put "xl" list (min-x - 1) (max-x + 1)
+  r:put "yl" list (min-y - 1) (max-y + 1)
+  r:put "x" [xcor] of turtles
+  r:put "y" [ycor] of turtles
+  r:eval("pp <- ppp(x, y, window=owin(xrange=xl, yrange=yl))")
+  r:eval("plot(density(pp), col=grey(50:100/100), main='')")
+  r:eval("plot(pp, pch=19, cex=0.5, add=T)")
+end
+
+
+to r-rms-d-plot
+  let tick-vals n-values (ticks + 1) [?] 
+  r:put "tickvals" tick-vals
+  r:eval("t <- tickvals")
+  ask one-of turtles [
+    r:put "x" history-x
+    r:put "y" history-y
+    ask other turtles [
+      r:put "xn" history-x
+      r:put "yn" history-y
+      r:eval("t <- c(t, tickvals)")
+      r:eval("x <- c(x, xn)")
+      r:eval("y <- c(y, yn)")
+    ]
+  ]
+  r:eval("df <- data.frame(t, d=sqrt(x^2 + y^2), d2=(x^2 + y^2))")
+  r:eval("plot(df$t, df$d, col='grey', pch=19, cex=0.4, xlab='t', ylab='Distance', bty='n')")
+  ; r:eval("lines(unique(df$t), tapply(df$d, df$t, mean))")
+  r:eval("lines(unique(df$t), sqrt(tapply(df$d2, df$t, mean)))")
+  r:eval("lines(unique(df$t), sqrt(unique(df$t)), lty='dashed')")
+end
+
+
+to r-rms-d-log-plot
+  let tick-vals but-first n-values (ticks + 1) [?] 
+  r:put "tickvals" tick-vals
+  r:put "dmax" max [sqrt (real_x ^ 2 + real_y ^ 2)] of turtles
+  r:eval("t <- tickvals")
+  ask one-of turtles [
+    r:put "x" but-first history-x
+    r:put "y" but-first history-y
+    r:eval("plot(tickvals, sqrt(x^2 + y^2), col='grey', type='l', ylim=c(1,dmax), xlab='t', ylab='Distance', bty='n', log='xy')")
+    ask other turtles [
+      r:put "xn" but-first history-x
+      r:put "yn" but-first history-y
+      r:eval("t <- c(t, tickvals)")
+      r:eval("x <- c(x, xn)")
+      r:eval("y <- c(y, yn)")
+      r:eval("lines(tickvals, sqrt(xn^2 + yn^2), col='grey', log='xy')")
+    ]
+  ]
+  r:eval("df <- data.frame(t, d=sqrt(x^2 + y^2), d2=(x^2 + y^2))")
+  r:eval("lines(unique(df$t), sqrt(tapply(df$d2, df$t, mean)))")
+end
