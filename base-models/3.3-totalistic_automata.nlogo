@@ -22,8 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 
-extensions [r]
-
 globals [
   ; list encoding of the rule in format
   ; [[0 0 0 1 0 0 0 0 0] [0 0 1 1 0 0 0 0 0]]
@@ -41,14 +39,12 @@ patches-own [
   state      ; integer 0 or 1
   next-state ; the next state of the patch
   nbhd       ; the neighbourhood used in the CA - not necessarily the same as the netlogo builtins
-  changed?
 ]
 
-; setup model so that a proportion of the patches
-; equal to the density are initially alive
+
+; setup model rule, patch neighbourhoods and patch states
 to setup
   clear-all
-  r:setPlotDevice
 
   setup-rule
   show-rule-details
@@ -92,12 +88,13 @@ end
 ;; note that there are cleaner ways of doing this using distance reporters
 ;; and patches with [distance-reporter] but they will are slower because they
 ;; have to calculate those distances repeatedly - because we know the offsets
-;; we want, we only calculate once this way
+;; we want, we only calculate once doing it this way
 to-report n-offset-coords
   ;; the possible x- and y-ranges are from -range to +range
   let x-range n-values (2 * (floor range) + 1) [? - floor range]
   let y-range n-values (2 * (floor range) + 1) [? - floor range]
   ;; make the full array of possible offsets within range in either x or y directions
+  ;; this is a list of two element lists, where the elements are x-offset, y-offset
   let array []
   foreach x-range [
     let x-o ?
@@ -111,9 +108,9 @@ to-report n-offset-coords
   if neighbourhood-style != "orth+diag" [
     ifelse neighbourhood-style = "orthogonal"
     ;; in this case use Manhattan distance, i.e. dx + dy
-    [ set array filter [manhattan-distance item 0 ? item 1 ? <= range] array ] ;; [((abs item 0 ?) + (abs item 1 ?)) <= range] array ]
+    [ set array filter [manhattan-distance item 0 ? item 1 ? <= range] array ]
     ;; otherwise use Euclidean distance
-    [ set array filter [euclidean-distance item 0 ? item 1 ? <= range] array ] ;; [(sqrt((item 0 ?) ^ 2 + (item 1 ?) ^ 2)) <= range] array ]
+    [ set array filter [euclidean-distance item 0 ? item 1 ? <= range] array ]
   ]
   report array
 end
@@ -132,9 +129,11 @@ to-report n-size
   report length n-offset-coords
 end
 
-;;
+
+;; patch state initialization - three different methods
 to initialise-states
   if use-seed? [random-seed seed-value]
+
   ;; simple random setup
   if init-method = "random" [
     ask patches [
@@ -143,11 +142,13 @@ to initialise-states
       [ set state 0 ]
     ]
   ]
+
   ;; single 'live' cell at centre
   if init-method = "single site at centre" [
     ask patches [ set state 0 ]
     ask patch 0 0 [ set state 1 ]
   ]
+
   ;; 9 x 9 region in the centre
   if init-method = "small central region" [
     ask patches [
@@ -156,10 +157,8 @@ to initialise-states
       [ set state 0 ]
     ]
   ]
-  ask patches [
-    set changed? true
-  ]
 end
+
 
 to update-patch-display
   ask patches [
@@ -169,12 +168,13 @@ to update-patch-display
   ]
 end
 
+
 to go
-  ;; if not any? patches with [changed?] [stop]
   update-patch-states
   update-patch-display
   tick
 end
+
 
 to update-patch-states
   ;; note that we determine all next-states first
@@ -183,13 +183,13 @@ to update-patch-states
     let n sum [state] of nbhd
     ;; now we take advantage of the rule format (see comment on the global variables)
     set next-state item n (item state rule)
-    set changed? (state != next-state)
   ]
   ;; then update all patches
   ask patches [
     set state next-state
   ]
 end
+
 
 ;; ============================================
 ;; Rule setup procedures
@@ -213,9 +213,12 @@ end
 ;; this reports a list of output states based on a min and max sum
 ;; and whether or not to invert the result
 to-report get-on-sums [min-sum max-sum invert?]
-  let zero-to-n n-values (n-size + 1) [?]
+  let zero-to-n n-values (n-size + 1) [?]  ;; [0 1 2 3... n]
+  ;; now convert so False for < min-sum or > max-sum, True otherwise
   let on-sums map [? >= min-sum and ? <= max-sum] zero-to-n
+  ;; invert if required
   if invert? [ set on-sums map [not ?] on-sums ]
+  ;; convert to integer 0/1
   report map [boolean-as-int ?] on-sums
 end
 
@@ -240,11 +243,14 @@ to setup-rule-from-code
     ]
   ]
   ;; convert evens and odds to the necessary lists for the rule
+  ;; even indices are the births (i.e state 0 -> state 1)
+  ;; odd indices are the survivals (i.e. state 1 -> state 1)
   let even-indices filter [? mod 2 = 0] n-values reqd-len [?]
   let odd-indices filter [? mod 2 = 1] n-values reqd-len [?]
   let births map [item ? binary-list] even-indices
   let survivals map [item ? binary-list] odd-indices
   set rule (list births survivals)
+  show-rule-details
 end
 
 ;; converts number x to a list of binary bits
@@ -264,22 +270,36 @@ end
 to show-rule-details
   set rule-desc "      State\nN-sum  0  1\n___________\n"
   foreach n-values (length (item 0 rule)) [?] [
-    let on-sum pack-string ? 2
-    set rule-desc (word rule-desc " " on-sum
-                             "    " (item ? (item 0 rule))
-                             "  " (item ? (item 1 rule))
-                             "\n")
+    let on-sum pack-string ? 3
+    set rule-desc (word rule-desc
+                        pack-string ? 3
+                        pack-string (item ? (item 0 rule)) 5
+                        pack-string (item ? (item 1 rule)) 3
+                        "\n")
   ]
-  set list-0 reduce [word ?1 ?2] (sentence "" item 0 rule)
-  set list-1 reduce [word ?1 ?2] (sentence "" item 1 rule)
+  set list-0 list-to-string item 0 rule
+  set list-1 list-to-string item 1 rule
   set-Wolfram-code-from-lists
 end
 
 to-report pack-string [s len]
-  ifelse length word "" s < len
-  [ report word " " s ]
-  [ report s ]
+  set s word "" s
+  while [length s < len] [
+    set s word " " s
+  ]
+  report s
 end
+
+
+;; can't resist throwing in one reduce function
+;; this is a good time to go to the Netlogo list and ask
+;; how reduce works!
+to-report list-to-string [L]
+  ;; put a "" in front of the list
+  ;; then run reduce to string the items together
+  report reduce [word ?1 ?2] (fput "" L)
+end
+
 
 ;; set the Wolfram code from the list inputs
 to set-Wolfram-code-from-lists
@@ -297,36 +317,29 @@ to set-Wolfram-code-from-lists
   set Wolfram-code wc
 end
 
+;; pack the supplied list to the required length
+;; or reduce it to the required length
 to-report force-list-length [L]
   if length L > n-size + 1 [
     report substring L 0 (n-size + 2)
   ]
   if length L < n-size + 1 [
     while [length L < n-size + 1] [
-      set L word L "0"
+      set L lput "0" L
     ]
     report L
   ]
   report L
 end
-
-
-to r-plot-world
-  r:put "s" map [[state] of ?] sort patches
-  r:put "nr" world-height
-  r:put "nc" world-width
-  r:eval("map <- matrix(s, ncol=nc, nrow=nr)")
-  r:eval("image(map, asp=1, col=c('white','black'), axes=F)")
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 134
 10
-548
-445
-50
-50
-4.0
+537
+434
+65
+65
+3.0
 1
 10
 1
@@ -336,10 +349,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--50
-50
--50
-50
+-65
+65
+-65
+65
 1
 1
 1
@@ -406,28 +419,11 @@ density
 density
 0
 1
-0.21
+0.5
 0.01
 1
 NIL
 HORIZONTAL
-
-BUTTON
-24
-401
-120
-434
-NIL
-r-plot-world
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
 
 SWITCH
 10
@@ -442,9 +438,9 @@ use-seed?
 
 SWITCH
 551
-134
+131
 659
-167
+164
 birth-invert?
 birth-invert?
 1
@@ -453,9 +449,9 @@ birth-invert?
 
 SLIDER
 565
-171
+168
 658
-204
+201
 birth-min
 birth-min
 0
@@ -468,9 +464,9 @@ HORIZONTAL
 
 SLIDER
 565
-207
+204
 658
-240
+237
 birth-max
 birth-max
 birth-min
@@ -519,9 +515,9 @@ n-size
 
 SWITCH
 661
-133
+130
 789
-166
+163
 survival-invert?
 survival-invert?
 1
@@ -530,9 +526,9 @@ survival-invert?
 
 SLIDER
 662
-171
+168
 760
-204
+201
 surv-min
 surv-min
 0
@@ -545,9 +541,9 @@ HORIZONTAL
 
 SLIDER
 662
-207
+204
 760
-240
+237
 surv-max
 surv-max
 surv-min
@@ -594,9 +590,9 @@ NIL
 
 INPUTBOX
 552
-364
+354
 666
-424
+414
 Wolfram-code
 224
 1
@@ -605,9 +601,9 @@ Number
 
 TEXTBOX
 768
-175
+172
 814
-257
+254
 Rule setup using ranges
 13
 0.0
@@ -615,9 +611,9 @@ Rule setup using ranges
 
 TEXTBOX
 557
-345
+335
 786
-364
+354
 Rule setup using Wolfram code number
 13
 0.0
@@ -672,9 +668,9 @@ You can't control n-size: it's what results from the neighbourhood settings
 
 TEXTBOX
 555
-427
+417
 678
-473
+463
 These IDs become useless for large neighbourhood sizes
 10
 0.0
@@ -714,9 +710,9 @@ HORIZONTAL
 
 BUTTON
 672
-420
-834
-453
+432
+835
+465
 random-Wolfram-code
 set Wolfram-code (2 * (random (2 ^ ((n-size * 2) + 1))))\nset setup-from-ranges? false\nsetup
 NIL
@@ -731,9 +727,9 @@ NIL
 
 INPUTBOX
 842
-334
+346
 980
-394
+406
 list-0
 000100000
 1
@@ -742,9 +738,9 @@ String
 
 INPUTBOX
 843
-401
+413
 980
-461
+473
 list-1
 001100000
 1
@@ -753,9 +749,9 @@ String
 
 BUTTON
 672
-381
+393
 836
-414
+426
 <-- set-Wolfram-code <--
 set-Wolfram-code-from-lists\nset setup-from-ranges? false\nsetup\n\n
 NIL
@@ -775,14 +771,31 @@ SWITCH
 326
 setup-from-ranges?
 setup-from-ranges?
-0
+1
 1
 -1000
+
+BUTTON
+672
+356
+835
+389
+--> setup-from-code -->
+setup-rule-from-code\nsetup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model allows you to simulate a wide variety of two-state _outer totalistic automata_, that is cellular automata whose rules refer only to the current state of each cell and to the number of neighbouring cells in each of the two available states.
+This model allows you to simulate a wide variety of two-state _outer totalistic automata_, that is cellular automata whose rules refer only to the current state of each cell and to the numbers of neighbouring cells in each of the two available states, i.e. not their arrangement.
 
 These are discussed in Chapter 3 of
 
@@ -802,22 +815,43 @@ Together the neighboourhood and birth / survival controls allow exploration of t
 
 Other totalistic automata will require use of the wolfram code setup.
 
-**Wolfram codes**
+###Wolfram codes
 Another way to setup the system is by entering a _Wolfram code_ in the appropriate input box with the `setup-from-ranges?` switch off.  The (accurate but rather concise) definition of Wolfram codes is presented in
 
 + Wolfram S 1984 Universality and Complexity in Cellular Automata. _Physica D: Nonlinear Phenomena_ __10__, 1–35
 
-More details are provided below.  When a model is setup using the min-max ranges method its Wolfram code will be output, a detailed transition table will be shown, and `list-0` and `list-1` will show lists of the next state for each input state.  By comparing the transition table and list outputs, you should be able to see how these are related.  You can also edit the list input boxes to make minor changes to a rule, and then hit the `<-- set-Wolfram-code <--` button to convert it to the appropriate code and set the model up that way.  This is tricky for larger neighbourhood sizes: the model will force the lists to be the appropriate length for the current neighbourhood size, by removing any extra entries, or packing the list with trailing 0s. If you want particular results for large neightbourhood sizes, you should probably write the lists in another program and paste them into the list input boxes.  You can also setup random rules with the `random-rule` button.
-
-Wolfram codes are decimal versions of binary numbers that encode the desired rule as follows:
+Here is a less concise, but hopefully more useful description. Wolfram codes are decimal versions of binary numbers that encode the desired rule from the state transition table as follows, where the entries in the table are the next state of each cell based on the current state of the focal cell and the number of neighbours in state 1 (i.e., the total of the the neighbourhood states).
 
 <table align=center>
-<tr><td></td><td colspan=10><i>Total of Nbhd states</i></td></tr>
-<tr><td align=center><i>State</i></td><td>&nbsp;0&nbsp;</td><td>&nbsp;1&nbsp;</td><td>&nbsp;2&nbsp;</td><td>&nbsp;3&nbsp;</td><td>&nbsp;4&nbsp;</td><td>&nbsp;5&nbsp;</td><td>&nbsp;6&nbsp;</td><td>&nbsp;7&nbsp;</td><td>&nbsp;8&nbsp;</td><td>...</td>
+<tr>
+<td></td>
+<td colspan=7><i>Total of Neighbourhood states</i></td>
 </tr>
-<tr><td>0</td><td>b<sub>0</sub></td><td>b<sub>2</sub></td><td>b<sub>4</sub></td><td>b<sub>6</sub></td><td>...</td>
+<tr>
+<td align=center><i>Focal state</i></td>
+<td>&nbsp;0&nbsp;</td>
+<td>&nbsp;1&nbsp;</td>
+<td>&nbsp;2&nbsp;</td>
+<td>&nbsp;3&nbsp;</td>
+<td>&nbsp;4&nbsp;</td>
+<td>&nbsp;5&nbsp;</td>
+<td>...</td>
 </tr>
-<tr><td>1</td><td>b<sub>1</sub></td><td>b<sub>3</sub></td><td>b<sub>5</sub></td><td>b<sub>7</sub></td><td>...</td>
+<tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</td>
+<td>b<sub>0</sub></td>
+<td>b<sub>2</sub></td>
+<td>b<sub>4</sub></td>
+<td>b<sub>6</sub></td>
+<td>...</td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1</td>
+<td>b<sub>1</sub></td>
+<td>b<sub>3</sub></td>
+<td>b<sub>5</sub></td>
+<td>b<sub>7</sub></td>
+<td>...</td>
 </tr>
 </table>
 
@@ -826,18 +860,60 @@ This gives a binary number b<sub>2n+1</sub>b<sub>2n</sub>...b<sub>3</sub>b<sub>2
 For example, Conway's life using this scheme is
 
 <table align=center>
-<tr><td></td><td colspan=9><i>Total of Nbhd states</i></td></tr>
-<tr><td align=center><i>State</i></td><td>&nbsp;0&nbsp;</td><td>&nbsp;1&nbsp;</td><td>&nbsp;2&nbsp;</td><td>&nbsp;3&nbsp;</td><td>&nbsp;4&nbsp;</td><td>&nbsp;5&nbsp;</td><td>&nbsp;6&nbsp;</td><td>&nbsp;7&nbsp;</td><td>&nbsp;8&nbsp;</td>
+<tr>
+<td></td>
+<td colspan=9><i>Total of Neighbourhood states</i></td>
 </tr>
-<tr><td>0</td><td>&nbsp;0</td><td>&nbsp;0</td><td>&nbsp;0</td><td>&nbsp;1</td><td>&nbsp;0<td>&nbsp;0</td><td>&nbsp;0</td><td>&nbsp;0</td><td>&nbsp;0</td>
+<tr>
+<td align=center><i>Focal state</i></td>
+<td>&nbsp;0&nbsp;</td>
+<td>&nbsp;1&nbsp;</td>
+<td>&nbsp;2&nbsp;</td>
+<td>&nbsp;3&nbsp;</td>
+<td>&nbsp;4&nbsp;</td>
+<td>&nbsp;5&nbsp;</td>
+<td>&nbsp;6&nbsp;</td>
+<td>&nbsp;7&nbsp;</td>
+<td>&nbsp;8&nbsp;</td>
 </tr>
-<tr><td>1</td><td>&nbsp;0</td><td>&nbsp;0</td><td>&nbsp;1</td><td>&nbsp;1</td><td>&nbsp;0<td>&nbsp;0</td><td>&nbsp;0</td><td>&nbsp;0</td><td>&nbsp;0</td>
+<tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;1</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+</tr>
+<tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;1</td>
+<td>&nbsp;1</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
+<td>&nbsp;0</td>
 </tr>
 </table>
 
 Giving the binary number 00 0000 0000 1110 0000, which is decimal 224.
 
-Some useful Wolfram codes (neighbourhood configurations must also be set appropriately) are set out below.
+When a model is setup using the min-max ranges method its Wolfram code will be output, a detailed transition table will be shown, and `list-0` and `list-1` will show lists of the next state for the 0 and 1 focal cell states respectively. By comparing the transition table and list outputs, you should be able to see how these are related.
+
+You can also edit the list input boxes to make minor changes to a rule, and then hit the `<-- set-Wolfram-code <--` button to convert it to the appropriate code and set the model up that way.  This is tricky for larger neighbourhood sizes: the model will force the lists to be the appropriate length for the current neighbourhood size, by removing any extra entries, or packing the list with trailing 0s. If you want particular results for large neightbourhood sizes, you should probably write the lists in another program and paste them into the list input boxes.
+
+If you can work out the Wolfram code you want then you can use the `--> setup-from-code -->` button to set the model up directly.  See below for some useful codes.
+
+You can also setup random rules with the `random-rule` button.
+
+###Some useful Wolfram codes
+Neighbourhood configurations must also be set appropriately for these to work.
 
 **Conway's Life** (orthogonal + diagonal 8 neighbours)
 
