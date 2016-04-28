@@ -22,6 +22,9 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 
+extensions [ r ]
+
+
 patches-own [
   z ; the attribute value that is locally averaged by the model
 ]
@@ -29,6 +32,7 @@ patches-own [
 
 to setup
   clear-all
+  r:setPlotDevice
 
   if use-seed? [ ; initialize the RNG seed to guarantee repeatability
     random-seed seed-value
@@ -42,7 +46,6 @@ to setup
   colour-patches
   reset-ticks
 end
-
 
 to go
   diffuse z weight-w
@@ -72,6 +75,57 @@ end
 to colour-patches
   ask patches [
     set pcolor scale-color black z 1 0
+  ]
+end
+
+
+;;; R plotting code
+to r-plot-world
+  ;; make a list of patches in x-y order
+  r:put "z" map [[z] of ?] sort patches
+  ;; world width and height required to setup matrix
+  r:put "nr" world-height
+  r:put "nc" world-width
+  ;; make matrix of the z values
+  r:eval("z <-matrix(z, nrow=nr, ncol=nc)")
+  ;; plot as an image
+  r:eval("image(z, asp=1, axes=F, col=gray(1-41:61/100))")
+end
+
+;; as for r-plot-world, but with addition of contours
+to r-plot-contours
+  r-plot-world
+  r:eval("contour(z, add=T, asp=1, axes=F, levels=seq(0,1,0.05))")
+end
+
+
+;; makes three sequences of box plots showing the
+;; distribution of z-values over time, as the
+;; weight parameter is varied
+to r-plot-fig-5.1
+  ;; need to NOT rescale values to demonstrate the effect
+  set rescale-values? false
+  r:eval("par(mfrow=c(1,3))")
+  ;; the series of weights
+  let w [ 0.05 0.1 0.5 ]
+  ;; the time steps of interest
+  let t-plot [ 0 10 20 30 40 50 ]
+  foreach w [
+    setup
+    set weight-w ?
+    let t [] ;; store all the ticks of interest
+    let x []
+    while [ticks <= last t-plot] [
+      if member? ticks t-plot [
+        set t (sentence t (n-values count patches [ticks]))
+        set x (sentence x ([z] of patches))
+      ]
+      go
+    ]
+    r:put "x" x
+    r:put "t" t
+    r:put "label" (word "w = " weight-w)
+    r:eval("boxplot(x~t, ylim=c(0,1), xlab='Time', ylab='Grid values', main=label, las=1)")
   ]
 end
 @#$#@#$#@
@@ -238,6 +292,57 @@ rescale-values?
 1
 1
 -1000
+
+BUTTON
+68
+307
+199
+340
+NIL
+r-plot-world
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+67
+347
+199
+380
+r-plot-contours
+r-plot-contours
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+67
+386
+198
+419
+NIL
+r-plot-fig-5.1
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
