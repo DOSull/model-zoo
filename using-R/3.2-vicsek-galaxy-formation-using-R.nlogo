@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 
+extensions [ r ]
+
 globals [
   random-choices ;; +1 or -1 for convenience
 ]
@@ -35,6 +37,7 @@ patches-own [
 
 to setup
   clear-all
+  r:setPlotDevice
 
   ;; this is a neat way to do the random assignment
   set random-choices [1 -1]
@@ -83,6 +86,23 @@ to update-display
       [ set pcolor white ]
     ]
   ]
+end
+
+;; R plotting code
+to r-plot-world
+  let z map [[get-value] of ?] sort patches
+  r:put "z" z
+  r:put "nc" world-width
+  r:put "nr" world-height
+  r:eval("map <- matrix(z, nrow=nr, ncol=nc)")
+  r:eval("image(map, col=c('white','black'), asp=1, axes=F)")
+end
+
+;; for use by the R plotting
+to-report get-value
+  ifelse settled?
+  [ report 1 ]
+  [ report 0 ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -214,6 +234,23 @@ w-random
 1
 NIL
 HORIZONTAL
+
+BUTTON
+38
+399
+148
+432
+NIL
+r-plot-world
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
