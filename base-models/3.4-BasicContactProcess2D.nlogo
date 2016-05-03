@@ -22,34 +22,28 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;;extensions [r]
-
 globals [
   N  ;; the number of patches in the model
-  ; ---
-  ; used by R plots
-  ; p-occ
-  : ---
 ]
 
 to setup
   clear-all
-  ;;r:SetPlotDevice
+  r:SetPlotDevice
   set N count patches
   ask patches [
-    ifelse random N < initial-pop
+    ifelse random-float 1 < initial-proportion
     [ set pcolor black ]
     [ set pcolor white ]
   ]
-  ; ---
-  ; used by R plots
-  ; set p-occ (list get-p-occupied-sites)
-  ; ---
   reset-ticks
 end
 
+
 to go
+  ;; if all sites are dead, then end
   if not any? patches with [pcolor = black] [ stop ]
+  ;; otherwise run a 'generation' here equal to a number
+  ;; of events equal to the number of sites
   repeat N [
     ask one-of patches [
       ifelse pcolor = black
@@ -58,10 +52,6 @@ to go
     ]
   ]
   tick
-  ; ---
-  ; used by R plots
-  ; set p-occ lput get-p-occupied-sites p-occ
-  ; ---
 end
 
 ;; death occurs with the specified probability
@@ -78,33 +68,10 @@ to birth-event
   set pcolor [pcolor] of one-of neighbors4
 end
 
-;;; R code to make plots if r extension is enabled
-;;to r-plot-world
-;;  r:put "z" map [[get-value] of ?] (sort patches)
-;;  let n-states length remove-duplicates [get-value] of patches
-;;  r:put "nr" world-height
-;;  r:put "nc" world-width
-;;  r:eval("map <- matrix(z, ncol=nc, nrow=nr)")
-;;  r:eval("image(map, col=c('white','black'), asp=1, axes=F)")
-;;end
-;;
-;;
-;;to r-plot-history
-;;  r:put "p" p-occ
-;;  r:put "t_max" length p-occ - 1
-;;  r:eval("plot(0:t_max, p, type='l', xlab='Time, 10000s events', ylab='Proportion occupied', xlim=c(0,500), ylim=c(0,1))")
-;;end
-;;
-;;to-report get-p-occupied-sites
-;;  report sum [get-value] of patches / N
-;;end
-;;
-;;
-;;to-report get-value
-;;  ifelse pcolor = black
-;;  [ report 1 ]
-;;  [ report 0 ]
-;;end
+
+to-report get-p-occupied-sites
+  report count patches with [pcolor = black] / N
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 299
@@ -127,8 +94,8 @@ GRAPHICS-WINDOW
 49
 -50
 49
-1
-1
+0
+0
 1
 generations
 100.0
@@ -136,14 +103,14 @@ generations
 SLIDER
 120
 105
-292
+293
 138
-initial-pop
-initial-pop
+initial-proportion
+initial-proportion
 0
-10000
-7200
-100
+1
+0.72
+0.001
 1
 NIL
 HORIZONTAL
@@ -230,7 +197,17 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks (count patches with [pcolor = black]) / N"
+"default" 1.0 0 -16777216 true "" "plotxy ticks get-p-occupied-sites"
+
+TEXTBOX
+27
+150
+115
+178
+p-death ~ 0.607 is critical value
+11
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -247,7 +224,7 @@ You should consult that book for more information and details of the model.
 
 ## THINGS TO NOTICE
 
-The most important feature of this model is that although the 'atomic' event in a particle system is selection of a single particle (i.e. patch) at random followed by execution of some update rule on that particle, implementation of a `go` procedure in the obvious manner
+The most important feature of this model is that although the 'atomic' event in an interacting particle system (IPS) is the random selection of a single particle (i.e., a NetLogo patch) followed by execution of some update rule on that particle, implementation of a `go` procedure in the obvious manner
 
     to go
       ask one-of patches [
@@ -256,7 +233,7 @@ The most important feature of this model is that although the 'atomic' event in 
       tick
     end
 
-would lead to very slow model updating.  Therefore, in this model (and all the other particle system models in the model zoo, we allow a whole 'generation' of particle updates between NetLogo ticks:
+leads to very slow model updating, because every single event would lead to a redraw, even though only one location in the system had changed state.  Therefore, in this model (and all the other particle system models in the model zoo) we allow a whole 'generation' of particle updates between NetLogo ticks:
 
     to go
       repeat N [ ;; the number of patches
@@ -267,7 +244,7 @@ would lead to very slow model updating.  Therefore, in this model (and all the o
       tick
     end
 
-This means that a whole generation of updates occurs between display updates, so that the model runs more efficiently.
+This means that a whole generation of updates, which we consider to be a number of events equal to the number of particles in the system, occurs between display updates, so that the model runs more smoothly.
 
 Unlike the previous models in 3.1 to 3.3, it is also worth noting that this update sequence means that every time a patch updates the effect is immediate, so that there may be effects on neighbouring patches right away.  This type of updating is referred to as _asynchronous_ and is discussed in detail in Chapter 6.
 
