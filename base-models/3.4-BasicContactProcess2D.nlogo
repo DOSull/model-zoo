@@ -28,7 +28,6 @@ globals [
 
 to setup
   clear-all
-  r:SetPlotDevice
   set N count patches
   ask patches [
     ifelse random-float 1 < initial-proportion

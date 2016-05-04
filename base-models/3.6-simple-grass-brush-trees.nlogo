@@ -22,13 +22,12 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;;extensions[ r ]
 
 globals [
   N        ;; size of the world, stored for convenience
   pcolors  ;; list of the particle type colours
-  norm-b-1 ;; normalized birth-rate type 1
-  norm-b-2 ;; normalized birth-rate type 2
+  norm-b-1 ;; normalized birth-rate type 1 (bushes)
+  norm-b-2 ;; normalized birth-rate type 2 (trees)
   norm-d   ;; normalized death-rate
 ]
 
@@ -38,14 +37,14 @@ patches-own [
 
 to setup
   clear-all
-  ;;r:SetPlotDevice
+
   set pcolors (list (lime + 2) (green - 1) (green - 3))
   set N count patches
 
   ask patches [
     set particle-type random 3
-    set pcolor item particle-type pcolors
   ]
+  color-patches
   reset-ticks
 end
 
@@ -58,33 +57,34 @@ to go
     set norm-b-1 birth-rate-1 / max-rate
     set norm-b-2 birth-rate-2 / max-rate
     ask one-of patches [
+      ;; flip a coin for death or birth
       ifelse random 2 = 1
       [ death-event ]
       [ birth-event ]
     ]
   ]
+  color-patches
   tick
 end
 
-;; particle 'dies' and is replaced by grass
+;; particle 'dies' with some probability and is replaced by grass
 to death-event
   if random-float 1 < norm-d [
     set particle-type 0
-    set pcolor item particle-type pcolors
   ]
 end
 
 to birth-event
-  ;; if grass nothing happens...
+  ;; if grass nothing happens... only continue if particle-type > 0
   if particle-type > 0 [
     ;; otherwise if bushes, then succession
     ;; into neighbouring grassland may occur
+    ;; with probability given by birth-rate
     ifelse particle-type = 1 [
       if random-float 1 < norm-b-1 [
         ask one-of neighbors4 [
           if particle-type = 0 [
             set particle-type 1
-            set pcolor item particle-type pcolors
           ]
         ]
       ]
@@ -96,7 +96,6 @@ to birth-event
         ask one-of neighbors4 [
           if particle-type < 2 [
             set particle-type 2
-            set pcolor item particle-type pcolors
           ]
         ]
       ]
@@ -104,15 +103,13 @@ to birth-event
   ]
 end
 
-;;; R plotting code for possible use
-;;to r-plot-world
-;;  r:put "z" map [[particle-type] of ?] (sort patches)
-;;  r:put "nr" world-height
-;;  r:put "nc" world-width
-;;  r:eval("map <- matrix(z, ncol=nc, nrow=nr)")
-;;  r:eval("image(map, col=c('grey','white','black'), asp=1, axes=F)")
-;;end
-;;
+
+;; color patches using particle-type as index into the list of colors
+to color-patches
+  ask patches [
+    set pcolor item particle-type pcolors
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 353
@@ -138,7 +135,7 @@ GRAPHICS-WINDOW
 1
 1
 1
-ticks
+generations
 100.0
 
 SLIDER
@@ -242,6 +239,43 @@ PENS
 "bushes" 1.0 0 -12087248 true "" "plot count patches with [particle-type = 1] / N"
 "trees" 1.0 0 -14333415 true "" "plot count patches with [particle-type = 2] / N"
 
+TEXTBOX
+120
+108
+163
+126
+Bushes
+12
+0.0
+1
+
+TEXTBOX
+126
+142
+163
+160
+Trees
+12
+0.0
+1
+
+BUTTON
+16
+130
+104
+163
+reset-defaults
+set birth-rate-1 6.0\nset birth-rate-2 2.0
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -272,7 +306,24 @@ If you've followed the previous models, then there is only really one new thing 
     set norm-b-1 birth-rate-1 / max-rate
     set norm-b-2 birth-rate-2 / max-rate
 
-This means that although there are three particle types in the system (only two really, but the vacant state here is considered to be 'grass') there are only two independent parameters defining the model behaviour.  This is useful in the analysis which Durrett and Swindle describe in more detail, which is also discussed in the book.
+The first line uses a temporary list to chose the larger of the two birth rates and set a `max-rate` equal to it. Equivalent code would be
+
+    let max-rate 0
+    ifelse birth-rate-1 > birth-rate-2
+    [ set max-rate birth-rate-1 ]
+    [ set max-rate birth-rate-2 ]
+
+but the list construction is more elegant, and would also be easier to extend to more than two rates to be relativized.
+
+The relativization of these rate parameters means that although there are three particle types in the system (only two really, but the vacant state here is considered to be 'grass') there are only two _independent_ parameters defining the model behaviour.  This is useful in the analysis which Durrett and Swindle (1991) describe in more detail, which is also discussed in the book.
+
+This approach means that the higher birth rate events will occur with probability 1 (i.e., certainty), while the slower birth rate events will occur with probabilities reduced accordingly, and that death will occur with probability that is the reciprocal of the higher birth rate.
+
+Note that births are also dependent on neighbouring sites of the appropriate particle type being selected. Bushes may only invade grass, and trees can only invade grass or bushes. This means that large contiguous areas of any one type are self-limiting and that birth (_succession_) is only possible around the edges of such areas.
+
+## THINGS TO TRY
+
+The default initial values of `birth-rate-1` set to 6.0 and `birth-rate-2` set to 2.0 given long term stability with roughly equal amounts of the three types. It is worthwhile experimenting with changes to these settings, to see how robust this out come is. It is best to stop the model, make the adjustments then start it running again, because updating occurs quickly enough that you will actually be seeing the effect of settings intermediate between the current setting and the setting you are switching to if you do not stop the model while making adjustments.
 
 ## COPYRIGHT AND LICENSE
 

@@ -44,8 +44,8 @@ to setup
     [ set particle-type random 2 + 1 ]
     ;; the dead 0 type
     [ set particle-type random 0 ]
-    set pcolor item particle-type pcolors
   ]
+  color-patches
   reset-ticks
 end
 
@@ -60,6 +60,7 @@ to go
       ]
     ]
   ]
+  color-patches
   tick
 end
 
@@ -69,13 +70,11 @@ to death-event
   ifelse particle-type = 1 [
     if random-float 1 < p-death-1 [
       set particle-type 0
-      set pcolor item particle-type pcolors
     ]
   ]
   [
     if random-float 1 < p-death-2 [
       set particle-type 0
-      set pcolor item particle-type pcolors
     ]
   ]
 end
@@ -89,7 +88,6 @@ to birth-event
     ask one-of neighbors4 [
       if particle-type = 0 [
         set particle-type 1
-        set pcolor item particle-type pcolors
       ]
     ]
   ]
@@ -110,9 +108,16 @@ to birth-event
     ask target [
       if particle-type = 0 [
         set particle-type 2
-        set pcolor item particle-type pcolors
       ]
     ]
+  ]
+end
+
+
+;; color patches using particle-type as index into the list of colors
+to color-patches
+  ask patches [
+    set pcolor item particle-type pcolors
   ]
 end
 @#$#@#$#@
