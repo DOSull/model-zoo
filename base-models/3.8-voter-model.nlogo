@@ -22,8 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;;extensions[ r ]
-
 globals [
   N
   pcolors ;; a list of colours
@@ -32,11 +30,13 @@ globals [
 
 to setup
   clear-all
-  ;;r:SetPlotDevice
+
   set N count patches
   let sixteen-colours [grey white red yellow green orange blue pink
                         black lime brown turquoise cyan sky violet magenta ]
-  set pcolors sublist sixteen-colours 0 initial-n-states
+  ;; get the needed number of colours selected at random from the 16 available
+  set pcolors sublist (shuffle sixteen-colours) 0 initial-n-states
+
   set queue sort patches ;; that is from left to right, top to bottom
   ask patches [
     set pcolor one-of pcolors
@@ -44,16 +44,21 @@ to setup
   reset-ticks
 end
 
+
 to go
   ;; check if the whole world is one colour, if so then stop
-  if length remove-duplicates [pcolor] of patches = 1 [ stop ]
+  if number-of-states-present = 1 [ stop ]
+
   ifelse sequential-update? [
+    ;; sequential update uses the queue and a list iteration
     foreach queue [
       ask ? [ update-state ]
     ]
   ]
   [
-    repeat count patches [
+    ;; random order update uses ask
+    ;; and the repeat N method of other IPS models
+    repeat N [
       ask one-of patches [ update-state ]
     ]
   ]
@@ -64,25 +69,11 @@ to update-state
   set pcolor [pcolor] of one-of neighbors4
 end
 
-;; ---
-;; used by commented out R code below
-;; to-report get-value
-;;  report position pcolor pcolors
-;; end
-;; ---
 
-;;; plot world in R
-;;to r-plot-world
-;;  let z map [[get-value] of ?] (sort patches)
-;;  r:put "z" z
-;;  let n-states length remove-duplicates [get-value] of patches
-;;  r:put "nr" world-height
-;;  r:put "nc" world-width
-;;  r:put "n_states" n-states
-;;  r:eval("map <- matrix(z, ncol=nc, nrow=nr)")
-;;  r:eval("image(map, col=grey(seq(n_states,0,-1)/n_states), asp=1, axes=F)")
-;;end
-
+;; reports how many unique states are present in the model
+to-report number-of-states-present
+  report length remove-duplicates [pcolor] of patches
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 156
@@ -91,7 +82,7 @@ GRAPHICS-WINDOW
 441
 -1
 -1
-4.0
+2.0
 1
 10
 1
@@ -102,13 +93,13 @@ GRAPHICS-WINDOW
 1
 1
 0
-99
+199
 0
-99
+199
 1
 1
 1
-ticks
+generations
 100.0
 
 BUTTON
@@ -203,21 +194,29 @@ You should consult Chapter 3 of that book for more information and details of th
 
 Like the rock-scissors-paper model this one uses patch `pcolor` to represent the state or particle type at each site.
 
-The main coding point of interest here is the use `queue` to implement an alternative sequential updating sequence.  `queue` is a list of the patches in left-to-right, top-to-bottom order (note the NetLogo quirk here, this order is not what you would expect based on patch coordinates, which run left-to-right, bottom-to-top), and
+The main coding point of interest here is the use of `queue` to implement an alternative sequential updating sequence.  `queue` is a list of the patches in left-to-right, top-to-bottom order (note the NetLogo quirk here, this order is not what you would expect based on patch coordinates, which run left-to-right, bottom-to-top), and
 
     foreach queue [
       ask ? [ update-state ]
     ]
 
-is used when sequential updating is enabled, instead of the more 'usual' `repeat n [ ask one-of patches [...] ]` method.
+is used when sequential updating is enabled, instead of the more 'usual' `repeat N [ ask one-of patches [...] ]` method from other IPS models.
 
-Note how `update-state` has been made into a procedure even though it is only a single line of code.  This means we could change this procedure and not risk accidentally making the sequential and random order updating modes diverge from one another.
+The sequential update approach is faster because there is no overhead of randomly selecting a site to update each time. This is true even if a not strictly correct approach such as
 
-Finally, the stopping condition
+    ask patches [ update-state ]
 
-    if length remove-duplicates [pcolor] of patches = 1 [ stop ]
+is adopted, because this method also has to shuffle the patches into random order before iterating.
 
-is worth noting if you've ever wondered how to check that all turtles or patches in a model have reached an identical state.
+Notice also how `update-state` has been made into a procedure even though it is only a single line of code.  This means we could change this procedure and not risk accidentally having the sequential and random order updating modes diverge from one another.
+
+Finally, the stopping condition for the model is when there is only one state present in the model, i.e., all patches are the same color.  This condition is determined using a reporter:
+
+    to-report number-of-states-present
+      report length remove-duplicates [pcolor] of patches
+    end
+
+which is worth noting if you've ever wondered how to check that all turtles or patches in a model have reached an identical state.
 
 ## EXTENDING THE CODE
 
@@ -225,7 +224,7 @@ Try allowing more initial states in the model.  At least one practical issue mak
 
 ## THINGS TO TRY
 
-**Hard!** Try setting up a NetLogo experiment (use the behaviour space) to estimate how long the model takes to converge on a single state depending on the size of the world.
+**Hard!** Try setting up a NetLogo experiment (use behaviour space) to estimate how long the model takes to converge on a single state depending on the size of the world.
 
 ## HOW TO CITE
 
