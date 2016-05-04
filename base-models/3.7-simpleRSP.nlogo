@@ -22,29 +22,24 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;;extensions[ r ]
 
 globals [
   N
   pcolors
-  ;; props ;; used to store each type's proportion for export to R
 ]
+
 
 to setup
   clear-all
-  ;;r:SetPlotDevice
+
   set N count patches
   set pcolors [red yellow blue]
   ask patches [
     set pcolor one-of pcolors
   ]
-  ;; ---
-  ;; not needed unless using R plotting
-  ;; set props []
-  ;; update-counts
-  ;; ---
   reset-ticks
 end
+
 
 to go
   repeat N [
@@ -64,35 +59,29 @@ to go
       ]
     ]
   ]
-  ;; ---
-  ;; only needed by R code
-  ;; update-counts
-  ;; ---
   tick
 end
 
+
 ;; the succession relations are described here
 ;; in terms of colours red > yellow > blue > red
-to-report beats? [p]
+to-report beats? [target-patch]
   if pcolor = red [
     ;; red beats yellow
-    report ([pcolor] of p = yellow)
+    report ([pcolor] of target-patch = yellow)
   ]
   if pcolor = yellow [
     ;; yellow beats blue
-    report ([pcolor] of p = blue)
+    report ([pcolor] of target-patch = blue)
   ]
   ;; blue beats red
-  report ([pcolor] of p = red)
+  report ([pcolor] of target-patch = red)
 end
 
-;; updates list of the three proportions
-;; for use by (commented out) R plotting code
-;; to update-counts
-;;  set props lput (map [? / 10000] map [count patches with [pcolor = ?]] colors) props
-;; end
 
-;;; R plotting code
+;; Retaining this snippet in comments as plotting this
+;; to R is less obvious than some other examples
+;; R plotting code
 ;;to r-plot-world
 ;;  r:put "z" map [[position pcolor colors] of ?] (sort patches)
 ;;  r:put "nr" world-height
@@ -101,20 +90,6 @@ end
 ;;  r:eval("image(map, col=c('grey','white','black'), asp=1, axes=F)")
 ;;end
 ;;
-;;to r-plot-history
-;;  r:put "t" n-values length props [?]
-;;  let all-p reduce [sentence ?1 ?2] props
-;;  let min-p min all-p
-;;  let max-p max all-p
-;;  r:put "max_p" max-p
-;;  r:put "min_p" min-p
-;;  r:put "p1" map [item 0 ?] props
-;;  r:put "p2" map [item 1 ?] props
-;;  r:put "p3" map [item 2 ?] props
-;;  r:eval("plot(t,p1,type='l',ylim=c(min_p,max_p))")
-;;  r:eval("lines(t,p2)")
-;;  r:eval("lines(t,p3)")
-;;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 81
@@ -123,7 +98,7 @@ GRAPHICS-WINDOW
 441
 -1
 -1
-4.0
+2.0
 1
 10
 1
@@ -134,14 +109,14 @@ GRAPHICS-WINDOW
 1
 1
 0
-99
+199
 0
-99
+199
 1
 1
 1
-ticks
-60.0
+generations
+100.0
 
 BUTTON
 11
@@ -204,8 +179,8 @@ Generations
 Proportion
 0.0
 10.0
-0.15
-0.5
+0.2
+0.45
 true
 false
 "" ""
@@ -221,7 +196,7 @@ This model is an implementation of a simple rock-scissors-paper model with cycli
 
 +    Frean MR and Abraham E 2001 Rock-scissors-paper and the survival of the weakest. _Proceedings of the Royal Society. Series B_ **268**, 1323–1328.
 
-This is an example model referenced in Chapter 1 of
+This is an example model referenced in
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
@@ -229,13 +204,34 @@ You should consult Chapter 3 of that book for more information and details of th
 
 ## THINGS TO NOTICE
 
-This model reverts from using the `particle-type` patch variable to using patch `pcolor` to store the current 'state'.  This is combined with the `beats?` reporter to express the red > yellow > blue > red succession rule in a nice 'Netlogo-esque' way.
+This model does not use the `particle-type` patch variable approach of the previous three interacting particle system models [basic contact process](https://github.com/DOSull/model-zoo/blob/master/base-models/3.4-BasicContactProcess2D.nlogo), [competing contact process](https://github.com/DOSull/model-zoo/blob/master/base-models/3.5-CompetingContactProcess2D.nlogo), and [grass-bushes-trees succession](https://github.com/DOSull/model-zoo/blob/master/base-models/3.6-simple-grass-brush-trees.nlogo).
+
+Instead, we use the patch `pcolor` to store the current particle type. This is accompanied with a `beats?` reporter to express the `red` > `yellow` > `blue` > `red` succession rule in a nice 'Netlogo-esque':
+
+    to-report beats? [target-patch]
+      if pcolor = red [
+        ;; red beats yellow
+        report ([pcolor] of target-patch = yellow)
+      ]
+      if pcolor = yellow [
+        ;; yellow beats blue
+        report ([pcolor] of target-patch = blue)
+      ]
+      ;; blue beats red
+      report ([pcolor] of target-patch = red)
+    end
+
+This reporter returns `true` if the calling patch has a `pcolor` that 'beats' the `pcolor` of the 'target-patch'.  This enables it to be used in the main `go` code:
+
+    ifelse beats? neighbor
+    [ ;; I win, and neighbor changes to my colour ]
+    [ ;; neighbor wins and I change to their colour ]
+
+See the code itself for the details!
 
 ## EXTENDING THE MODEL
 
-Try reactivating the R plotting code.
-
-Try rewriting using the `particle-type` approach adopted in earlier interacting particle systems models.
+Try rewriting using the `particle-type` approach adopted in earlier interacting particle systems models.  This is a simple exercise in reorganizing NetLogo code.
 
 Try implementing probabilities associated with the succession rules.  This is a variation on the rock-scissors-paper model often reported in the literature, and discussed in a broader context in
 
