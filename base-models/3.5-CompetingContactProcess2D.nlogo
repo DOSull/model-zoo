@@ -22,7 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;;extensions [r]
 
 globals [
   N       ;; total number of sites (i.e. patches)
@@ -36,11 +35,11 @@ patches-own [
 
 to setup
   clear-all
-  ;;r:SetPlotDevice
+
   set pcolors (list (grey + 2) red black)
   set N count patches
   ask patches [
-    ifelse random N < initial-pop
+    ifelse random-float 1 < initial-proportion
     ;; one of the live types, with equal probability
     [ set particle-type random 2 + 1 ]
     ;; the dead 0 type
@@ -81,7 +80,8 @@ to death-event
   ]
 end
 
-;; birth is the same for each state, being a loca
+
+;; birth is the same for each state, being a local
 ;; propagation to a randomly selected adjacent site, but state 2 may
 ;; optionally propagate to a non-neighboring sites
 to birth-event
@@ -95,12 +95,18 @@ to birth-event
   ]
   [ ;; for type 2 since long-range propagation is possible
     ;; we first select the target depending on the parameter setting
-    let target nobody
+    let target self
     ifelse long-range-2?
-    ;; target site may be anywhere in the system
-    [ set target one-of patches ]
-    ;; else it is a neighbouring site
-    [ set target one-of neighbors4 ]
+    [ ;; target site may be anywhere in the system
+      ;; except 'self'. Could use 'one-of other patches' but
+      ;; it is relatively slow. This 'with' clause is quicker
+      set target one-of (patches with [self != myself])
+      ;; this code is slower:
+      ;; set target one-of other patches
+    ]
+    [ ;; else it is a neighbouring site
+      set target one-of neighbors4
+    ]
     ask target [
       if particle-type = 0 [
         set particle-type 2
@@ -109,16 +115,6 @@ to birth-event
     ]
   ]
 end
-
-;;; code to plot world state in R if required
-;;to r-plot-world
-;;  r:put "z" map [[state] of ?] (sort patches)
-;;  r:put "nr" world-height
-;;  r:put "nc" world-width
-;;  r:eval("map <- matrix(z, ncol=nc, nrow=nr)")
-;;  r:eval("image(map, col=c('grey','white','black'), asp=1, axes=F)")
-;;end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 293
@@ -150,14 +146,14 @@ generations
 SLIDER
 114
 130
-286
+287
 163
-initial-pop
-initial-pop
+initial-proportion
+initial-proportion
 0
-10000
-6600
-100
+1
+0.66
+0.001
 1
 NIL
 HORIZONTAL
@@ -171,7 +167,7 @@ p-death-1
 p-death-1
 0
 1
-0.325
+0.32
 0.001
 1
 NIL
@@ -237,7 +233,7 @@ p-death-2
 p-death-2
 0
 1
-0.325
+0.32
 0.001
 1
 NIL
@@ -306,6 +302,18 @@ This model uses the 'generation' style
 mode of updating introduced in model 3.3.
 
 Because there are more than two possible site states (vacant and two different particle types) in this model we use an integer variable `particle-type` to store site states, and an indexed list of colours `pcolors` to render sites in different colours for visualization.
+
+When long range movement is enabled for state 2 particles, selection of the `target` site uses the following
+
+    set target one-of (patches with [self != myself])
+
+to avoid the current patch being selected as the destination site. In the `with` clause `self` is the selected patch being tested and `myself` is the current patch which is doing the selecting. Requiring that they not be equal prevents the current location being selected as the target location.
+
+'Nicer' code would be
+
+    set target one-of other patches
+
+but this turns out to be noticeably slower (at least in the current version of NetLogo).
 
 ## THINGS TO TRY
 
