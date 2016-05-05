@@ -22,7 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;;extensions [ r ]
 
 breed [
   states state ;; use these to store model states and associated colours
@@ -30,7 +29,6 @@ breed [
 
 globals [
   N
-  p-values ;; list of probabilities to allow weighted probability selection of option
   all-states-ever
 ]
 
@@ -38,9 +36,10 @@ patches-own [
   my-state ;; a reference to a state turtle
 ]
 
+
 to setup
   clear-all
-  ;; r:SetPlotDevice
+
   set N count patches
   ;; create a set of initial possible states
   create-states initial-n-states [
@@ -54,25 +53,12 @@ to setup
     set my-state one-of states
     set pcolor [color] of my-state
   ]
-  ;; initialize probability list
-  set p-values probability-list
   reset-ticks
 end
 
-;; makes a list of random patches of the specified length
-;; patches may repeat in the list
-to-report n-random-patches [x]
-  report n-values x [one-of patches]
-end
-
-;; list of the cumulative probabilities of
-;; simple propagation, non-local propagation, mutation
-to-report probability-list
-  report (list 0 (1 - p-mutate - p-global) (1 - p-mutate))
-end
 
 to go
-  if length remove-duplicates [my-state] of patches = 1 [ stop ]
+  if count states = 1 [ stop ]
   repeat N [
     ask one-of patches [
       update-state
@@ -80,9 +66,9 @@ to go
     ]
   ]
   reorganise-states
-  set p-values probability-list
   tick
 end
+
 
 ;; tidy up the current set of states
 ;; to reflect disappearance of some from the system
@@ -92,7 +78,10 @@ to reorganise-states
       die
     ]
   ]
+  clear-output
+  output-print reduce [(word ?1 "\n" ?2)] lput "" sort [who] of states
 end
+
 
 ;; the main code
 to update-state
@@ -102,46 +91,39 @@ to update-state
     stop ;; don't waste time testing for other choices
   ]
   if choice = 2 [ ;; non-local update
-    ;; ---
-    ;; obvious but inefficient approach
-    ;; set my-state [my-state] of one-of other patches
-    ;; ---
-    set my-state [my-state] of random-other-patch self
+    set my-state [my-state] of random-other-patch
     stop
   ]
   if choice = 3 [ ;; mutation
     ;; make a new state
-    let new-state nobody
     sprout-states 1 [
       set hidden? true
       set color random 140
-      set new-state self
+      set my-state self
     ]
-    set my-state new-state
     set all-states-ever all-states-ever + 1
   ]
 end
 
-;; use the p-values list to pick a weighted random number 1, 2, or 3
+
 to-report get-weighted-choice
   let x random-float 1
-  ;; filter p-values list using the random number
-  ;; and then report the length of what's left
-  ;; most of the time the list will be something like [0 0.99 0.9999]
-  ;; so the list will get filtered to length 1 99% of the time
-  ;; to length 2 99.99% of the time, and length 3 rarely
-  report length filter [x > ?] p-values
+  if x < (1 - p-mutate - p-global-dispersal) [ report 1]
+  if x < (1 - p-mutate) [report 2]
+  report 3
 end
+
 
 ;; report a random patch other than the specified one
 ;; for some reason, this is quicker than one-of other patches
-to-report random-other-patch [not-p]
-  let p one-of patches
-  while [p = not-p] [ ;; try again
+to-report random-other-patch
+  let p self
+  while [p = self] [ ;; try again
     set p one-of patches
   ]
   report p
 end
+
 
 ;; plotting code if needed
 ;to r-plot-world
@@ -180,7 +162,7 @@ GRAPHICS-WINDOW
 1
 1
 1
-ticks
+generations
 100.0
 
 BUTTON
@@ -252,13 +234,13 @@ NIL
 SLIDER
 11
 142
-149
+152
 175
-p-global
-p-global
+p-global-dispersal
+p-global-dispersal
 0
 0.2
-0
+0.002
 0.001
 1
 NIL
@@ -273,7 +255,7 @@ p-mutate
 p-mutate
 0
 0.001
-5.0E-5
+2.0E-5
 0.00001
 1
 NIL
@@ -296,10 +278,39 @@ MONITOR
 132
 330
 current-states
-length remove-duplicates [my-state] of patches
+count states
 0
 1
 11
+
+PLOT
+576
+10
+927
+441
+Numbers of each state
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 2 -16777216 false "" "if enable-plot? [\nforeach sort turtles [\nset-plot-pen-color [color] of ?\nplotxy ticks count patches with [my-state = ?]\n]\n]"
+
+SWITCH
+575
+447
+709
+480
+enable-plot?
+enable-plot?
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -314,11 +325,11 @@ You should consult that book for more information and details of the model.
 
 ## THINGS TO NOTICE
 
-This model uses some more 'advanced' NetLogo techniques.
+This model uses some novel NetLogo techniques.
 
-First, dummy turtles are used to store the states in the model.  This has the advantage of making it easy to manage colours for the states, since each state turtle has an associated colour.  It would also be possible to maintain a list of colours for the states present in the system, but managing two lists (one of states and one of colours) gets fiddly.  Since we don't need turtles as 'agents' in the model, we can use them for this instead, and have each patch maintain a reference (`my-state`) to the state turtle it is associated with.
+First, 'dummy' `state` turtles are used to store the states in the model. This has the advantage of making it easy to manage colours for the states, since each state turtle has an associated colour. It would also be possible to maintain a list of colours for the states present in the system, but managing two lists (one of states and one of colours) gets fiddly especially when states disappear. Since we don't need turtles as 'agents', we can use them for this instead, and have each patch maintain a reference (`my-state`) to the `state` turtle it is associated with.
 
-If we knew that the total number of states ever in the system would not get large, we could even use this 'trick' to make keeping track of the count of all states that ever existed in the system simple (it would be given by `count states`).  Because the number of states can get large it is better to kill off unused states, which is done in the `reorganise-states` procedure, and maintain a global count variable `all-states-ever`.
+If we knew that the total number of states ever in the system would not get large, we could use this 'trick' to make keeping track of the count of all states that ever existed in the system simple (it would be given by `count states`).  Because the number of states can get large it is better to kill off unused states, which is done in the `reorganise-states` procedure, and we maintain a global count variable `all-states-ever`.
 
 Second, for non-local updates, the obvious approach would be to use
 
@@ -326,17 +337,15 @@ Second, for non-local updates, the obvious approach would be to use
 
 in the `update-state` procedure, but this turns out to be slow, presumably due to the internal implementation of patch-sets in NetLogo.  Instead, we provide our own reporter
 
-    to-report random-other-patch [not-p]
-      let p one-of patches
-      while [p = not-p] [ ;; try again
+    to-report random-other-patch
+      let p self
+      while [p = self] [ ;; try again
         set p one-of patches
       ]
       report p
     end
 
-which avoids the `other patches` problem.  Occasionally, it will have to 'try again' to pick a patch if the first pick `p` is the same as the specified `not-p` but compared to the overhead of using `one-of other patches` every time there is a big improvement in speed.
-
-Finally, to generate a random 1, 2, 3 outcome according to the probabilities specified for `p-global` and `p-mutation` we make use of a list `p-values` in the reporter `get-weighted-choice`.  Understanding how this works can be a very useful technique, so take a look: it's really not that complicated!
+which avoids the `other patches` problem.  Occasionally, it will have to 'try again' to pick a patch if the first pick `p` is the same as `self` but compared to the overhead of using `one-of other patches` every time there is a big improvement in speed.
 
 ## THINGS TO TRY
 
