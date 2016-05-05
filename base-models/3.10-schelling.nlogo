@@ -2,9 +2,9 @@
 ;;
 ;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
 ;; including without limitation the rights to use, copy, modify, merge,
 ;; publish, distribute, sublicense, and/or sell copies of the Software,
 ;; and to  permit persons to whom the Software is furnished to do so,
@@ -21,47 +21,49 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
 
-;; extensions [ r ]
 
 globals [
   n-unhappy       ;; the number of unhappy turtles
   none-moved?     ;; a flag to indicate if anyone moved this tick and stop the model
   vacancies       ;; a patch-set of vacant locations (for implementation efficiency)
+  color-1
+  color-2
 ]
-  
+
 patches-own [
-  white-neighbours ;; a count of neighbouring patches with white occupants
-  black-neighbours ;; a count of neighbouring patches with black occupants
+  color-1-neighbours ;; a count of neighbouring patches with color-1 occupants
+  color-2-neighbours ;; a count of neighbouring patches with color-2 occupants
 ]
 
 to setup
   clear-all
-  
-  ;; r:setPlotDevice
-  
-  set-default-shape turtles "circle"
-  
-  ask patches [ 
+
+  set color-1 yellow
+  set color-2 sky
+
+  ask patches [
     set pcolor grey + 1
-    set white-neighbours 0
-    set black-neighbours 0 
+    set color-1-neighbours 0
+    set color-2-neighbours 0
   ]
-  
+
   if use-seeds? [ random-seed setup-seed ]
-  
-  ;; create a number of turtles dictated by honouring the vacancy rate setting 
+
+  set-default-shape turtles "circle"
+
+  ;; create a number of turtles dictated by honouring the vacancy rate setting
   ask n-of ((1 - vacancy-rate) * count patches) patches [
     sprout 1 [
-      set size 0.8
-      ;; make them either white or black depending on the slider setting
-      ifelse random-float 1 < proportion-white
-      [ 
-        set color white 
-        ask neighbors [ set white-neighbours white-neighbours + 1 ]
+      set size 0.85
+      ;; make them either color-1 or color-2 depending on the slider setting
+      ifelse random-float 1 < proportion-color-1
+      [
+        set color color-1
+        ask neighbors [ set color-1-neighbours color-1-neighbours + 1 ]
       ]
-      [ 
-        set color black 
-        ask neighbors [ set black-neighbours black-neighbours + 1 ]
+      [
+        set color color-2
+        ask neighbors [ set color-2-neighbours color-2-neighbours + 1 ]
       ]
     ]
   ]
@@ -72,6 +74,7 @@ to setup
   reset-ticks
 end
 
+
 to go
   ;; check if we have hit the specified time limit
   ;; 0 is 'no limit'
@@ -79,7 +82,7 @@ to go
     if ticks = time-limit [ stop ]
   ]
   ;; stop if nobody moved last tick
-  ifelse (not any? turtles with [unhappy?]) or none-moved? [
+  ifelse none-moved? [
     set none-moved? false ;; this will allow model to start again if conditions are changed
     stop
   ]
@@ -91,7 +94,7 @@ to go
         let acceptable-sites get-acceptable-sites self
         ;; move to the first of these -- this will be either random
         ;; or the nearest, depending on 'consider-distance?' setting
-        if length acceptable-sites > 0 [ 
+        if length acceptable-sites > 0 [
           relocate-to first acceptable-sites
         ]
       ]
@@ -105,6 +108,7 @@ to go
   tick
 end
 
+
 to relocate-to [t]
   update-neighbourhood-counts color true
   set vacancies (patch-set vacancies patch-here)
@@ -115,23 +119,24 @@ to relocate-to [t]
   set none-moved? false
 end
 
+
 ;; update patch counts
 ;; leaving? true indicates turtle of color col is leaving this patch
 ;; leaving? false indicates turtle of color col is arriving at this patch
 to update-neighbourhood-counts [col leaving?]
-  ifelse col = white [
+  ifelse col = color-1 [
     ifelse leaving?
-    ;; reduce neighbouring white-neighbours counts
-    [ ask neighbors [ set white-neighbours white-neighbours - 1 ] ]
+    ;; reduce neighbouring color-1-neighbours counts
+    [ ask neighbors [ set color-1-neighbours color-1-neighbours - 1 ] ]
     ;; else increase it
-    [ ask neighbors [ set white-neighbours white-neighbours + 1 ] ]
+    [ ask neighbors [ set color-1-neighbours color-1-neighbours + 1 ] ]
   ]
-  [ ;; black turtle
+  [ ;; color-2 turtle
     ifelse leaving?
-    ;; reduce neighbouring black-neighbours counts
-    [ ask neighbors [ set black-neighbours black-neighbours - 1 ] ]
+    ;; reduce neighbouring color-2-neighbours counts
+    [ ask neighbors [ set color-2-neighbours color-2-neighbours - 1 ] ]
     ;; else increase it
-    [ ask neighbors [ set black-neighbours black-neighbours + 1 ] ]
+    [ ask neighbors [ set color-2-neighbours color-2-neighbours + 1 ] ]
   ]
 end
 
@@ -139,6 +144,7 @@ end
 to-report unhappy?
   report proportion-like-me patch-here self < required-like-me
 end
+
 
 ;; implements a variety of options for searching for possible relocation sites
 to-report get-acceptable-sites [ttl]
@@ -161,45 +167,46 @@ to-report get-acceptable-sites [ttl]
       set ok-sites vacancies
     ]
   ]
-  ;; if we are paying attention to distance, then sites should be sorted by 
-  ;; distance to the current location (i.e. distanct ttl)
-  ;; otherwise shuffle the list to ensure random order
+  ;; if we are paying attention to distance, then sites should be sorted by
+  ;; distance to the current location (i.e. distance ttl)
+  ;; otherwise shuffle the list to ensure random order and make it into a list
   ifelse consider-distance?
   [ report sort-on [distance ttl] ok-sites ]
   [ report shuffle sort ok-sites ]
-end  
-
-;; for the patch p and turtle t determine the proportion
-;; of same coloured neighbours.  Note that t need not be 
-;; currently on p, so this can be used to 'look ahead'
-to-report proportion-like-me [p t]
-  let n white-neighbours + black-neighbours
-  if n = 0 [ report 0 ]
-  ifelse [color] of t = white
-  [ report white-neighbours / n ] 
-  [ report black-neighbours / n ] 
 end
 
-;; R plotting code
-;;to snapshot-R 
-;;  r:put "wx" map [[pxcor] of ?] sort turtles with [color = white]
-;;  r:put "wy" map [[pycor] of ?] sort turtles with [color = white]
-;;  r:put "bx" map [[pxcor] of ?] sort turtles with [color = black]
-;;  r:put "by" map [[pycor] of ?] sort turtles with [color = black]
-;;  
+
+;; for the patch p and turtle t determine the proportion
+;; of same coloured neighbours.  Note that t need not be
+;; currently on p, so this can be used to 'look ahead'
+to-report proportion-like-me [p t]
+  let n color-1-neighbours + color-2-neighbours
+  if n = 0 [ report 0 ]
+  ifelse [color] of t = color-1
+  [ report color-1-neighbours / n ]
+  [ report color-2-neighbours / n ]
+end
+
+
+;; R plotting code - a little different so retained for ease of implementation
+;;to snapshot-R
+;;  r:put "wx" map [[pxcor] of ?] sort turtles with [color = color-1]
+;;  r:put "wy" map [[pycor] of ?] sort turtles with [color = color-1]
+;;  r:put "bx" map [[pxcor] of ?] sort turtles with [color = color-2]
+;;  r:put "by" map [[pycor] of ?] sort turtles with [color = color-2]
+;;
 ;;  r:eval("plot(wx,wy,asp=1,pch=1,axes=F,xlab='',ylab='')")
 ;;  r:eval("points(bx,by,pch=19)")
 ;;end
-    
 @#$#@#$#@
 GRAPHICS-WINDOW
 185
 10
-685
-531
+675
+521
 -1
 -1
-7.0
+8.0
 1
 10
 1
@@ -210,14 +217,14 @@ GRAPHICS-WINDOW
 1
 1
 0
-69
+59
 0
-69
+59
 0
 0
 1
 ticks
-100.0
+30.0
 
 SLIDER
 31
@@ -235,12 +242,12 @@ NIL
 HORIZONTAL
 
 SLIDER
-31
+9
 160
 176
 193
-proportion-white
-proportion-white
+proportion-color-1
+proportion-color-1
 0
 1
 0.5
@@ -309,7 +316,7 @@ required-like-me
 required-like-me
 0
 1
-0.5
+0.3
 0.01
 1
 NIL
@@ -324,7 +331,7 @@ setup-seed
 setup-seed
 0
 1000
-500
+501
 1
 1
 NIL
@@ -375,7 +382,7 @@ CHOOSER
 choice-mode
 choice-mode
 "best-available" "better-than-current" "better-than-required" "any"
-1
+2
 
 MONITOR
 718
@@ -432,13 +439,13 @@ consider-distance?
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model is a possible implementation of a 'Schelling-style' segregation model, as described variously in 
+This model is a possible implementation of a 'Schelling-style' segregation model, as described variously in
 
 +   Schelling TC 1969 Models of segregation. _American Economic Review_ **59** 488–493.
 +   Schelling TC 1971 Dynamic models of segregation. _Journal of Mathematical Sociology_ **1** 143–186.
 +   Schelling TC 1978 _Micromotives and Macrobehavior_. Norton, New York.
 
-and discussed in Chapter 3 of 
+and discussed in Chapter 3 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
@@ -446,40 +453,61 @@ You should consult that book for more information and details of the model.
 
 ## THINGS TO NOTICE
 
-Schelling models are surprisingly hard to implement, considering how frequently they are reported as being among the simplest of agent models.  Part of the problem is that there is no canonical version of the model.   This implementation therefore provides a few options.  
+Schelling models are surprisingly hard to implement, considering how frequently they are reported as being among the simplest of agent models.  Part of the problem is that there is no canonical version of the model.   This implementation therefore provides a few options.
 
-The other difficulty is that households must 'look ahead' to check potential new locations so as to be able to compare them to their existing location, and the calculations must be updated every time a household moves.  Optimizing model implementation in the face of this is fiddly, and involves some coding complications that seem unnecessary, but which can strongly affect model efficiency.  
+The other difficulty is that households must 'look ahead' to check potential new locations so as to be able to compare them to their existing location, and the calculations must be updated every time a household moves.  Optimizing model implementation in the face of this is fiddly, and involves some coding complications that seem unnecessary, but which can strongly affect model efficiency.
 
-In this model, the major optimization is that each patch maintains counts of its `white-neighbours` and `black-neighbours`.  These counts are appropriately updated when a household moves as part of the `relocate-to` procedure.  All this effort is expended so that the `proportion-like-me` reporter for a patch only needs to perform the calculation 
+In this model, the major optimization is that each patch maintains counts of its `white-neighbours` and `black-neighbours`.  These counts are appropriately updated when a household moves as part of the `relocate-to` procedure.  All this effort is expended so that the `proportion-like-me` reporter for a patch only needs to perform the calculation
 
     white-neighbours / (white-neighbours + black-neighbours)
 
-or its equivalent.  This is much faster than repeatedly invoking a 
+or its equivalent.  This is much faster than repeatedly invoking a
 
     count turtles-on neighbours with [color = white]
 
-reporter.  
+reporter.
 
-Another way the model is designed to run efficiently is by maintaining a patch-set `vacancies` of those sites with no household present.  Without this feature of the implementation there would be repeated need to invoke
+Another way the model is designed to run efficiently is by maintaining a patch-set `vacancies` of those sites with no household present.  Without this feature there would be repeated need to invoke
 
     ask patches with [not any? turtles-here]
 
 which would slow things down considerably.
 
-Finally it is worth noting the use of the `proportion-like-me` _patch_ _turtle_ reporter.  Implementing things in this way, allows households to look ahead when they are considering a relocation.
+Finally it is worth noting the use of the `proportion-like-me` _patch_ _turtle_ reporter. This allows households to look ahead when they are considering a relocation. To determine the local proportion like, we have
+
+    let proportion-here proportion-like-me patch-here self
+
+and to check out some other patch we have
+
+    let proportion-there proportion-like-me some-patch self
+
+This reporter is used in several places in the model code.
+
+Another minor point of note is that we implement a `get-acceptable-sites` reporter. This means that the main `go` procedure has access to all the possible sites to which a household might move, arranged in a list, either from nearest to farthest, or in random order. The relocation occurs to the first site in the list. Reporting the whole list makes of acceptable sites makes it easy to add alternative selection methods for the final choice of relocation destination. **Try it!**
 
 ## THINGS TO TRY
 
 As noted in the book, while qualitative outcomes in Schelling models are very stable, exact outcomes can be surprisingly sensitive to details of how households make decisions about their preferred locations.
 
-A good experiment is to investigate how the final `mean-prop-like` statistic is affected by the various `choice-mode` option settings.
+A good experiment is to investigate how the final `mean-prop-like` statistic is affected by the various `choice-mode` option settings. For completeness, the choice modes are
+
++ `best-available` one vacancy with the highest `proportion-like-me` will be selected
++ `better-than-current` a vacancy must have a higher `proportion-like-me` than the current location to be selected
++ `better-than-required` a vacancy must have a higher `proportion-like-me` than the `required-like-me` parameter setting
++ `any` allows households to move to any available vacancy
+
+Think about which of these settings might be expected to produce the strongest segregation most quickly, and run experiments to test your ideas.
+
+It is instructive to see what levels of segregation result when the `any` setting is selected, because in this situation, the driver of segregation is solely moves out of unacceptable sites (households can even move to 'worse' locations, although they won't stay in them). A large component of the Schelling model's operation depends on this 'negative' driver of change, rather than 'positive choices' to move into locations with locally high proportions of like neighbours.
+
+Finally, it is also instructive to experiment with the effect of introducing switching the `consider-distance?` setting. With this setting true, households move to the nearest acceptable site
 
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 You should also cite appropriate examples of the Schelling model, although it is hard to be specific about which as there are numerous versions.
 
@@ -787,7 +815,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0.5
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
