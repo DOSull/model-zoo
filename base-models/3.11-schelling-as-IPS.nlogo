@@ -22,78 +22,94 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;; extensions [ r ]
-
 globals [
   unique-colours
   p-like
+  N
 ]
+
+patches-own [
+  particle-type
+]
+
 
 to setup
   clear-all
-  ;; r:setPlotDevice
-  set unique-colours [grey red blue]
+
+  set N count patches
+  set unique-colours [white green orange]
   ask patches [
-    ifelse random-float 1 < p-vacant [
-      set pcolor grey
-    ]
-    [
-      ifelse random-float 1 < p-red
-      [ set pcolor red ]
-      [ set pcolor blue ]
+    set particle-type 0
+    if random-float 1 >= p-vacant [
+      ifelse random-float 1 < p-type-1
+      [ set particle-type 1 ]
+      [ set particle-type 2 ]
     ]
   ]
+  color-patches
   reset-ticks
 end
 
+
+to color-patches
+  ask patches [
+    set pcolor item particle-type unique-colours
+  ]
+end
+
+
 to go
-  set p-like mean [neighbours-coloured pcolor] of patches / 8
-  repeat count patches [
-    ask one-of patches with [pcolor != grey] [
-      let target one-of patches with [pcolor = grey]
-      ;; move there if it has same or fewer 'other colour' neighbours than here
-      let others-there [neighbours-coloured [other-colour] of myself] of target
-      let others-here neighbours-coloured other-colour
-      if others-there <= others-here [
-        let temp-color pcolor
+  set p-like mean [neighbours-with-particle-type particle-type] of patches / 8
+  repeat N [ ;; run for a generation
+    ;; pick an occupied site
+    ask one-of patches with [particle-type != 0] [
+      ;; pick a vacant site
+      let target one-of patches with [particle-type = 0]
+      if is-preferable? target [
+        let temp-particle-type particle-type
         ask target [
-          set pcolor temp-color
+          set particle-type temp-particle-type
         ]
-        set pcolor grey
+        set particle-type 0
       ]
     ]
   ]
+  color-patches
   tick
 end
 
+
+;; determines if the specified patch p is
+;; preferable to the calling patch, depending
+;; on which mode of behavior is in effect
+to-report is-preferable? [p]
+  if mode = "avoid-other" [
+    let there [neighbours-with-particle-type [other-particle-type] of myself] of p
+    let here neighbours-with-particle-type other-particle-type
+    report there < here
+  ]
+  if mode = "seek-like" [
+    let there [neighbours-with-particle-type [particle-type] of myself] of p
+    let here neighbours-with-particle-type particle-type
+    report there > here
+  ]
+  report false
+end
+
+
 ;; convenience patch reporter which returns
-;; number of Moore neighbours with the specified pcolor
-to-report neighbours-coloured [c]
-  report count neighbors with [pcolor = c]
+;; number of Moore neighbours with the specified particle-type
+to-report neighbours-with-particle-type [s]
+  report count neighbors with [particle-type = s]
 end
 
-;; reports the 'opposite' colour to that supplied
-;; list implementation makes it general
-to-report other-colour
-  report item (3 - get-value) unique-colours
-end
 
-;; reports list position of pcolor of the calling patch
-to-report get-value
-  report position pcolor unique-colours
+;; this is a patch reporter
+;; reports the 'opposite' particle-type to current particle-type here
+;; since 1 <-> 2, the subtraction 3 - particle-type does the trick
+to-report other-particle-type
+  report 3 - particle-type
 end
-
-;; R plotting code
-;;to r-plot-world
-;;  let z map [[get-value] of ?] (sort patches)
-;;  r:put "z" z
-;;  let n-states length remove-duplicates [get-value] of patches
-;;  r:put "nr" world-height
-;;  r:put "nc" world-width
-;;  r:put "n_states" length remove-duplicates [pcolor] of patches
-;;  r:eval("map <- matrix(z, ncol=nc, nrow=nr)")
-;;  r:eval("image(map, col=grey(seq(n_states,0,-1)/n_states), asp=1, axes=F)")
-;;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 156
@@ -116,8 +132,8 @@ GRAPHICS-WINDOW
 99
 0
 99
-1
-1
+0
+0
 1
 generations
 100.0
@@ -193,7 +209,7 @@ p-vacant
 p-vacant
 0
 0.5
-0.05
+0.149
 0.001
 1
 NIL
@@ -204,8 +220,8 @@ SLIDER
 332
 144
 365
-p-red
-p-red
+p-type-1
+p-type-1
 0
 0.5
 0.5
@@ -213,6 +229,16 @@ p-red
 1
 NIL
 HORIZONTAL
+
+CHOOSER
+11
+383
+149
+428
+mode
+mode
+"avoid-other" "seek-like"
+0
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -235,20 +261,42 @@ and the discussion in Chapter 3 of
 
 You should consult the latter book for more information.
 
+While this model is intended to be instructive in showing how a conceptual model can be implemented in very different ways, it is important to recognize that much recent work on Schelling models uses exactly this 'particle' approach, which raises even more questions about the extent to which such models adequately represent complex social processes in housing markets. See, for example
+
++   Zhang, J., 2011. Tipping and residential segregation: a unified Schelling model. _Journal of Regional Science_ **51**, 167–193.
+
 ## THINGS TO NOTICE
 
-The line of code that reports how many neighbours of the 'other colour' are present at the potential `target` patch uses the `myself` keyword, which is often confusing for NetLogo users to learn.
+This model returns to an implementation similar to the interacting particle system models [3.4 basic contact process](https://github.com/DOSull/model-zoo/blob/master/base-models/3.4-BasicContactProcess2D.nlogo),  [3.5 competing contact process](https://github.com/DOSull/model-zoo/blob/master/base-models/3.5-CompetingContactProcess2D.nlogo), and  [3.6 succession](https://github.com/DOSull/model-zoo/blob/master/base-models/3.6-simple-grass-brush-trees.nlogo). Here, as in those cases, the main code structure is
 
-    let others-there [neighbours-coloured [other-colour] of myself] of target
+    repeat N [
+      ask one-of patches [
+        ;; perform update by selecting a 'target' and interacting
+      ]
+    ]
+
+Here the interaction is for an occupied site (`state` 1 or 2) to change places with a randomly selected vacant site (`state` 0). The _exclusion_ feature of the model is that the particle moves from its current site to the new site, and the total population of different particle types does not change.
+
+Whether or not the exchange occurs depends on the target site being preferable to the current site of the particle, based on either the number of similar neighbouring particles (**"seek-like"** mode) or the number of different neighbouring particles (**"avoid-other"** mode). If the target is preferable, then the exchange occurs. Other decision rules could be used. Note that the choice of modes is not discussed in the book, where only the **"avoid-other"** mode is presented.
+
+The code that determines how many neighbours of the 'other' type are present at the potential `target` patch uses the `myself` keyword, which is often confusing for NetLogo users to learn.
+
+    let others-there [neighbours-with-state [other-state] of myself] of target
 
 Why `myself` and not simply `self`?  The reason is that the patch invoking this code (the current location) is the one for which the `other-colour` reporter must be run, and inside the `[] of` block, which refers to the `target` patch, `self` would refer to the `target` patch, which is not what we want.  The `myself` keyword allows us to refer back to the patch that is asking the `target` patch to report this result.
 
 It would probably be clearer to do it like this
 
-    let the-other-colour other-colour
-    let others-there [neighbours-coloured the-other-colour] of target
+    let the-other-state other-state
+    let others-there [neighbours-with-state the-other-state] of target
 
 but we decided to leave it as it is to illustrate how `myself` works.
+
+## THINGS TO TRY
+
+The number of vacant sites has interesting effects on the eventual pattern that emerges in this model. The mode for determining preference also has dramatic effects on the pattern. Experiment with these options and see if you can understand them.
+
+This implementation uses none of the efficiency tricks of the more traditional [3.10 Schelling](https://github.com/DOSull/model-zoo/blob/master/base-models/3.10-schelling.nlogo) implementation, where a list of vacant sites is maintained, and the neighbourhood counts of different states are updated as relocations occur. It would be a good coding exercise to try adding these features to this implementation.
 
 ## HOW TO CITE
 
