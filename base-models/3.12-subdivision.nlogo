@@ -1,144 +1,228 @@
 ; Copyright (c) 2011-13 David O'Sullivan and George Perry
-; Licensed under the Creative Commons 
-; Attribution-NonCommercial-ShareAlike 3.0 License 
+; Licensed under the Creative Commons
+; Attribution-NonCommercial-ShareAlike 3.0 License
 ; See Info tab for full copyright and license information
 ;;
 
-;; extensions [r]
-
+;; a breed of turtles one of which is
+;; associated with each subdivision
 breed [nodes node]
 
 nodes-own [
-  my-patches
-  children
-  width
-  height
-  parent
-  depth
+  domain ;; patches in the subdivision
+  state      ;; integer 0 or 1
+  width      ;; width and height of subdivision
+  height     ;; in patches
+  depth      ;; limits how far subdivision can go
 ]
 
 globals [
-  max-depth
-  colours
+  max-depth  ;; maximum number of times we can subdivide
+  colours    ;; list of the two patch colours
+  contrast-colors  ;; list of corresponding contrast colors for nodes
 ]
 
 patches-own [
-  my-node
+  my-node    ;; each patch has node (and is one of the domain of that node)
 ]
 
 to setup
   clear-all
-  ;; r:setPlotDevice
-  set max-depth round (ln world-width / ln 2) * 2
-  set colours [black white]
+
+  let x max (list world-width world-height)
+  set x 2 ^ ceiling (ln x / ln 2)
+  resize-world 0 (x - 1) 0 (x - 1)
+  set-patch-size ceiling (512 / world-width)
+
+  ;; max depth is limited by world size power of two
+  set max-depth floor (ln count patches / ln 2)
+
+  ;; set up the colours
+  set colours [grey green]
+  set contrast-colors map [contrast-color ?] colours
+
+  ;; make the starting node, which is associated with all patches
   create-nodes 1 [
-    setxy 63.5 63.5
-    set my-patches patches
-    set children (turtle-set nobody)
+    ;; put it in the center of the world
+    setxy (min-pxcor + world-width / 2) - 0.5 (min-pycor + world-height / 2) - 0.5
+    ;; and all the world is associated with it
+    set domain patches
     set width world-width
     set height world-height
-    set parent nobody
-    set shape "circle"
-    set size 1
-    set depth 1
-    set color black
-    set hidden? true
+    ;; housekeeping
+    set heading 0 ;; this is important for the positioning of new nodes heading 0 = North
+    set shape "dot"
+    set depth 0
+    set state random 2
+    set color item 0 contrast-colors
   ]
+  ;; all patches are associated with node 0
   ask patches [
-    set pcolor grey
     set my-node node 0
+    set pcolor item ([state] of my-node) colours
   ]
   reset-ticks
 end
 
+
 to go
-  if count nodes >= n-subdivisions [stop] 
+  if count nodes > n-subdivisions [ stop ]
+  ;; pick a node to subdivide
   ask node-to-divide [
-    ask my-node [
-      make-children
-      locate-children
-      allocate-patches-to-children
-    ]
+    ;; make 'children' of this node
+    let children subdivide
+    ;; position them and allocate patches to them
+    locate children
+    allocate-patches-to children
+    ;; and then parent node disappears
     die
   ]
   tick
 end
 
+
+;; reports a color contrasting with the supplied color
+;; uses RGB colours to do this
+to-report contrast-color [c]
+  let rgb-color extract-rgb c
+  ;; make the RGB components either 0 or 255 in
+  ;; opposition to the RGB components of the supplied color
+  report map [255 - round (? / 255) * 255] rgb-color
+end
+
+
+;; pick a node to subdivide
 to-report node-to-divide
   let to-divide nobody
   if select-for-subdivision-by = "area" [
-    ask one-of patches with [[depth] of my-node < max-depth] [ 
+    ;; area-based so pick a patch whose my-node is non-terminal
+    ;; choosing based on patches is equivalent to area-weighting
+    ;; the random selection
+    ask one-of patches with [[depth] of my-node < max-depth] [
       set to-divide my-node
     ]
   ]
   if select-for-subdivision-by = "equal-probability" [
+    ;; just pick a non-terminal node
     set to-divide one-of nodes with [depth < max-depth]
   ]
   report to-divide
 end
 
-to make-children
+
+;; hatch two 'children' and set their state
+;; according to the rules specified
+to-report subdivide
+  ;; we will return a turtle-set
+  let new-nodes turtle-set nobody
   hatch-nodes 2 [
-    set parent myself
-    set children (turtle-set nobody)
-    set heading 0
-    set my-patches (patch-set nobody)
+    ;; empty domain set to start
+    set domain (patch-set nobody)
+    ;; one level 'deeper' in the subdivision
     set depth depth + 1
-    ifelse inherit-colour? [
-      if random-float 1 < p-colour-change [
-        set color other-colour [color] of parent
+    ;; set state based on inheritance, or at random
+    ifelse inherit-state? [
+      ;; still a chance for non-inheritance
+      if random-float 1 < p-state-change [
+        set state 1 - ([state] of myself) ;; the opposite state
       ]
     ]
-    [
-      set color one-of colours
-    ]
+    ;; otherwise just pick a random state
+    [ set state random 2 ]
+    ;; now set color and add to the new-nodes
+    set color item state contrast-colors
+    set new-nodes (turtle-set self new-nodes)
   ]
-  set children max-n-of 2 nodes [who]
+  report new-nodes
 end
 
-to locate-children
+
+;; procedure to 'deploy' the new-nodes supplied
+;; in square domain, heading of the nodes is arbitrary
+;; in a rectangular domain, they must turn 90 degrees
+to locate [c]
   ifelse width = height [
-    if random 2 = 0 [
-      ask children [ rt 90 ]
+    ;; parent domain is square, flip coin to turn 90
+    let coin random 2
+    ask c [ if coin = 0 [ rt 90 ] ]
+  ]
+  [ ;; rectangle, so must turn 90 degrees
+    ask c [ rt 90 ]
+  ]
+  ;; now make one of them face the other way
+  ask one-of c [ rt 180 ]
+  ;; now they each move 1/4 of distance across
+  ;; current domain away from its center
+  let d max (list width height) / 4
+  ask c [ jump d ]
+end
+
+
+;; procedure to split the parent domain between the
+;; new nodes
+to allocate-patches-to [c]
+  ;; note that this awkward formulation is required because
+  ;; 'ask domain' encounters the 'only observer can ask all patches'
+  ;; error at depth 0
+  ask patches with [my-node = myself] [
+    set my-node min-one-of c [distance myself]
+  ]
+  let dom domain
+  ask c [
+    set domain dom with [my-node = myself]
+    set width max [pxcor] of domain - min [pxcor] of domain + 1
+    set height max [pycor] of domain - min [pycor] of domain + 1
+    ask domain [
+      set pcolor item ([state] of myself) colours
     ]
   ]
-  [
-    if width >= height [
-      ask children [
-        rt 90
+end
+
+
+to draw-borders
+  let boundaries patches with [any? neighbors4 with [my-node != [my-node] of myself]]
+  ask boundaries [
+    let source self
+    ask neighbors4 [
+      if my-node != [my-node] of source [
+        draw-line-between self myself
       ]
     ]
   ]
-  ask one-of children [ rt 180 ]
-  ask children [
-    let d max (list width height)
-    jump d / 4
-  ]
 end
 
-to allocate-patches-to-children
-  ask patches with [my-node = myself] [
-    set my-node min-one-of [children] of my-node [distance myself]
-  ]
-  ask children [
-    set my-patches ([my-patches] of parent) with [my-node = myself]
-    set width max [pxcor] of my-patches - min [pxcor] of my-patches + 1
-    set height max [pycor] of my-patches - min [pycor] of my-patches + 1
-    ask my-patches [
-      set pcolor [color] of myself
+
+to draw-line-between [p1 p2]
+  let pen-color item 0 contrast-colors
+  ask p1 [
+    sprout 1 [
+      set color pen-color
+      face p2
+      jump 0.5
+      rt 90
+      jump 0.5
+      rt 180
+      pd
+      jump 1
+      die
     ]
   ]
 end
 
-to-report other-colour [c]
-  ifelse c = black
-  [ report white ]
-  [ report black ]
+
+to color-by-depth
+  ask nodes [
+    let n depth
+    ask domain [
+      set pcolor scale-color red n max-depth 0
+    ]
+  ]
 end
+
 
 ;; R plotting code
 ;;to r-plot-world
-;;  r:put "s" map [[ifelse-value (pcolor = black) [1] [0]] of ?] sort patches
+;;  r:put "s" map [position ([pcolor] of ?) colours] sort patches
 ;;  r:put "nr" world-height
 ;;  r:put "nc" world-width
 ;;  r:eval("map <- matrix(s, ncol=nc, nrow=nr)")
@@ -148,11 +232,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-655
-476
+732
+553
 -1
 -1
-3.4
+2.0
 1
 10
 1
@@ -163,9 +247,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-127
+255
 0
-127
+255
 0
 0
 1
@@ -224,78 +308,198 @@ NIL
 1
 
 SLIDER
-15
-228
-187
-261
+26
+378
+198
+411
 n-subdivisions
 n-subdivisions
 100
-4096
-2370
-10
+count patches / 4
+6634
+1
 1
 NIL
 HORIZONTAL
 
 CHOOSER
-27
-269
-206
-314
+19
+417
+198
+462
 select-for-subdivision-by
 select-for-subdivision-by
 "area" "equal-probability"
 1
 
 SLIDER
-22
-402
-194
-435
-p-colour-change
-p-colour-change
+27
+511
+199
+544
+p-state-change
+p-state-change
 0
 1
-0.1
+1
 0.01
 1
 NIL
 HORIZONTAL
 
 SWITCH
-39
-366
-185
-399
-inherit-colour?
-inherit-colour?
+53
+473
+199
+506
+inherit-state?
+inherit-state?
 0
 1
 -1000
 
+BUTTON
+122
+123
+201
+156
+go-100
+repeat 100 [go]\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+83
+175
+199
+208
+toggle-nodes
+ask nodes [\nset hidden? not hidden?\n]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+82
+213
+200
+246
+NIL
+draw-borders
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+83
+250
+201
+283
+clear-borders
+clear-drawing
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+82
+297
+200
+330
+NIL
+color-by-depth
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+82
+334
+200
+367
+restore-colors
+ask patches [ \nset pcolor item ([state] of my-node) colours\n]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model demonstrates an iterative process which sequentially subdivides a region into halves in either a vertical or horizontal direction.  The resulting subdivided landscape is coloured black or white at random to help visualize the structure that emerges, although this colouring is entirely arbitrary and regions could in principle be assigned to many different classes.
+This model demonstrates an iterative process which sequentially subdivides a region into halves in either a vertical or horizontal direction.  The resulting subdivided landscape is coloured two different colours to help visualize the structure that emerges, although this colouring is entirely arbitrary and regions could in principle be assigned to many different classes. Options are provided to allow the boundaries between subdivisions to be drawn to assist in visualization
 
 The concept underlying this model is a _binary space partition_ or _binary tree_ and is loosely based on ideas in
 
 +   Morgan FJ 2011 _Residential Property Developers in Urban Agent-Based Models: Competition, Behaviour and the Resulting Spatial Landscape_ Unpublished Ph.D. thesis University of Auckland, New Zealand.
 
-This model is discussed in Chapter 3 of 
+This model is discussed in Chapter 3 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
 
+## THINGS TO NOTICE
+
+This model uses NetLogo turtles as placeholders that store information about the subdivision structure, and also as a mechanism to operate the subdivision. Each `node` turtles has a `domain` attribute which is a `patch-set` of all its 'member' patches.  Patches correspondinly store a `my-node` attribute which is the node turtles whose domain they are in. A `node` can act on its domain by invoking
+
+    ask domain [
+      ;; do stuff
+    ]
+
+and a patch can act on the domain of which it is a part by doing
+
+    ask [domain] of my-node [
+      ;; do stuff
+    ]
+
+Initially `node 0` has as its domain the set of all `patches`. When the time to subdivide comes, the `subdivide` reporter creates two 'child' nodes of the selected node turtle, which are then moved orthogonally away from the current location halfway towards the edge of the domain in opposite directions.  The domain is then split between the two based on which patches are nearer to each.
+
+The state of each node changes relative to its parent depending on how the `inherit-state?` flag is set.
+
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   Morgan FJ 2011 _Residential Property Developers in Urban Agent-Based Models: Competition, Behaviour and the Resulting Spatial Landscape_ Unpublished Ph.D. thesis University of Auckland, New Zealand.
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
@@ -601,7 +805,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -609,9 +813,9 @@ NetLogo 5.0
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0
