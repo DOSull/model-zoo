@@ -159,7 +159,7 @@ end
 
 
 ;; procedure to split the parent domain between the
-;; new nodes
+;; new nodes depending on closeness to the new nodes
 to allocate-patches-to [c]
   ;; note that this awkward formulation is required because
   ;; 'ask domain' encounters the 'only observer can ask all patches'
@@ -179,12 +179,14 @@ to allocate-patches-to [c]
 end
 
 
+;; draw boundaries between domains
 to draw-borders
+  ;; boundary patches are those with any neighbors4 that have a different my-node
   let boundaries patches with [any? neighbors4 with [my-node != [my-node] of myself]]
   ask boundaries [
-    let source self
     ask neighbors4 [
-      if my-node != [my-node] of source [
+      ;; only those with different my-node need to draw a line
+      if my-node != [my-node] of myself [
         draw-line-between self myself
       ]
     ]
@@ -192,24 +194,34 @@ to draw-borders
 end
 
 
+;; draw line between two patches
+;; by sprouting a turtle and having it move
+;; to halfway point and draw the edge
 to draw-line-between [p1 p2]
+  ;; set a visible colour
   let pen-color item 0 contrast-colors
   ask p1 [
+    ;; make a turtle to do the drawing
     sprout 1 [
       set color pen-color
+      ;; move to the boundary
       face p2
       jump 0.5
+      ;; face the corner and move there
       rt 90
       jump 0.5
+      ;; turn around and draw the edge
       rt 180
       pd
       jump 1
+      ;; and die...
       die
     ]
   ]
 end
 
 
+;; colours the patches by the depth of their my-node
 to color-by-depth
   ask nodes [
     let n depth
