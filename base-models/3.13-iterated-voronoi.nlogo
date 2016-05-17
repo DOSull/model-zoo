@@ -25,6 +25,8 @@
 patches-own [ my-turtle ]
 turtles-own [ my-patches ]
 
+;; associate patches with their nearest turtle
+;; two-way association via the my-turtle and my-patches attributes
 to assign-patches
   ask patches [
     set my-turtle min-one-of turtles [distance myself]
@@ -34,24 +36,21 @@ to assign-patches
   ]
 end
 
-to move-to-centroid
-  let x mean [pxcor] of my-patches
-  let y mean [pycor] of my-patches
-  setxy x y
-end
 
 to setup
   clear-all
   create-turtles 100 [
     setxy random-xcor random-ycor
-    set color color + random 5 - 2
+    set color one-of base-colors + random 5 - 2
     set shape "circle 2"
+    set size 1.5
   ]
   assign-patches
   update-colours
   reset-ticks
 end
 
+;; patches get their color from their 'generator' turtle
 to update-colours
   ask patches [
     set pcolor [color] of my-turtle
@@ -62,6 +61,27 @@ to go
   ask turtles [ move-to-centroid ]
   assign-patches
   update-colours
+  tick
+end
+
+
+;; this method of determining the centroid
+;; works even in a toroidally-wrapped world
+to move-to-centroid
+  let offsets map [diff-xy ?] sort my-patches
+  ;; get the x and y offsets as separate lists
+  let diff-x map [item 0 ?] offsets
+  let diff-y map [item 1 ?] offsets
+  ;; move the respective mean offsets
+  setxy xcor + mean diff-x ycor + mean diff-y
+end
+
+
+;; turtle reporter to return the x and y offset to the patch
+to-report diff-xy [target-patch]
+  face target-patch
+  let d distance target-patch
+  report (list (d * dx) (d * dy))
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -78,8 +98,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-0
-0
+1
+1
 1
 0
 99
@@ -145,7 +165,7 @@ NIL
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model demonstrates an iterated Voronoi process which produces a _centroidal Voronoi tessellation- (CVT).  These are discuused in some detail in
+This model demonstrates an iterated Voronoi process which produces a _centroidal Voronoi tessellation_ (CVT).  These are discuused in some detail in
 
 +   Du Q, Faber V and Gunzburger M 1999 Centroidal Voronoi tessellations: applications and algorithms. _SIAM Review_ **41** 637–676.
 
@@ -161,6 +181,50 @@ If you mention this model in a publication, please include these citations for t
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 +   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+## THINGS TO NOTICE
+
+This model again uses this 'pattern'
+
+    patches-own [ my-turtle ]
+    turtles-own [ my-patches ]
+
+which associates each patch with the location (reprented by a turtle) which in turn is the 'generator' of the polygon defined by the region of space nearer to it that to any of the other generator turtles. The polygon is defined by the `my-patches` set of patches associated with the generator turtle. This arrangement enables the core of this model to be written as
+
+    to assign-patches
+      ask patches [
+        set my-turtle min-one-of turtles [distance myself]
+      ]
+      ask turtles [
+        set my-patches patches with [my-turtle = myself]
+      ]
+    end
+
+The first clause finds for each patch its nearest turtle and sets that turtle to its `my-turtle`. With this done, turtles collect together all the patches associated with them.
+
+The `move-to-centroid` method is worth close attention. A more obvious approach might be
+
+    to move-to-centroid
+      let x mean [pxcor] of my-patches
+      let y mean [pycor] of my-patches
+      setxy x y
+    end
+
+This is fine in a world that is not toroidally wrapped, but will behave in strange ways in a wrapped world (edit the code in the `move-to-centroid` procedure as above, and give it a try, to convince yourself).
+
+To avoid this behaviour, the model instead determines x and y offsets to each of the turtle's `my-patches` and determines the mean of these offsets to make its move. Importantly it determines the offsets in a 'turtle-centric' way in the `diff-xy` reporter, using the `face` and `dx` and `dy` built-in reporters:
+
+    to-report diff-xy [target-patch]
+      face target-patch
+      let d distance target-patch
+      report (list (d * dx) (d * dy))
+    end
+
+Doing it this way ensures that the code handles a toroidally wrapped world correctly. This is an example of using NetLogo's unique features to avoid doing trigonometric calculations (no one wants to do trigonometry if they can avoid it...).
+
+## THINGS TO TRY
+
+It is interesting to get the turtles to draw their path from their starting location to the final stable location.
 
 ## COPYRIGHT AND LICENSE
 
@@ -238,8 +302,7 @@ Circle -7500403 true true 0 0 300
 circle 2
 false
 0
-Circle -7500403 true true 0 0 300
-Circle -16777216 true false 30 30 240
+Circle -16777216 false false 12 12 277
 
 cow
 false
