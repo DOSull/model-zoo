@@ -22,7 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-; extensions [r]
 
 globals [
   colours
@@ -38,15 +37,15 @@ patches-own [
 
 to setup
   clear-all
-  ; r:setPlotDevice
 
-  set colours [blue yellow green red] ;; [CC CD DC DD]
+  set colours [sky yellow green red] ;; [CC CD DC DD]
   ask patches [
     set locale (patch-set self neighbors)
     set previous 0
     ifelse random-float 1 < p-cooperators
     [ set current 0 ]
     [ set current 1 ]
+    set previous random 2
   ]
   update-colours
   reset-ticks
@@ -54,22 +53,17 @@ end
 
 to go
   ask patches [
-    set pay-off sum [play-PD myself] of locale
-  ]
-  ask patches [
+    set pay-off sum [play-hawk-dove myself] of locale
     set previous current
   ]
-  ask patches [
-    set next [current] of max-one-of locale [pay-off]
-  ]
-  ask patches [
-    set current next
-  ]
+  ask patches [ set next [current] of max-one-of locale [pay-off] ]
+  ask patches [ set current next ]
   update-colours
   tick
 end
 
-to-report play-PD [p]
+
+to-report play-hawk-dove [p]
   let your-play current
   let my-play [current] of p
   ifelse my-play = 0 [ ;; C
@@ -82,22 +76,14 @@ to-report play-PD [p]
     [ report b ] ;; D-C -> b
     [ report 0 ] ;; D-D -> 0
   ]
- end
+end
+
 
 to update-colours
   ask patches [
     set pcolor item (2 * previous + current) colours
   ]
 end
-
-;; R plotting code
-;to r-plot-world
-;  r:put "s" map [[ifelse-value (current = 0) [0] [ifelse-value (previous = 1) [2] [1]]] of ?] sort patches
-;  r:put "nr" world-height
-;  r:put "nc" world-width
-;  r:eval("map <- matrix(s, ncol=nc, nrow=nr)")
-;  r:eval("image(map, asp=1, col=gray((2-0:2)/2), axes=F)")
-;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -106,7 +92,7 @@ GRAPHICS-WINDOW
 441
 -1
 -1
-4.0
+2.0
 1
 10
 1
@@ -117,14 +103,14 @@ GRAPHICS-WINDOW
 1
 1
 0
-99
+199
 0
-99
-0
-0
+199
+1
+1
 1
 ticks
-30.0
+100.0
 
 SLIDER
 32
@@ -133,10 +119,10 @@ SLIDER
 106
 b
 b
-1.1
-2.5
-1.751
-0.001
+1.0
+2.1
+1.54
+0.01
 1
 NIL
 HORIZONTAL
@@ -150,7 +136,7 @@ p-cooperators
 p-cooperators
 0
 1
-0.9
+0.5
 0.01
 1
 NIL
@@ -212,7 +198,8 @@ NIL
 
 This is an implementation of the model described in
 
-+   Nowak MA and May RM 1992 Evolutionary games and spatial chaos. _Nature_ **359** 826-829.
++   Nowak, M.A., May, R.M., 1992. Evolutionary games and spatial chaos. _Nature_ **359**, 826–829.
++   Nowak, M.A., May, R.M., 1993. The spatial dilemmas of evolution. _International Journal of Bifurcation and Chaos_ **3**, 35–78.
 
 and is discussed in Chapter 3 of
 
@@ -220,11 +207,46 @@ and is discussed in Chapter 3 of
 
 You should consult that book for more information and details of the model.
 
+There is some confusion about the naming of this model. In their 1992 paper, Nowak and May refer to it as spatial prisoners' dilemma (an error we repeat in our book), but in the more complete description provided in the 1993 paper it is apparent that it is a spatial version of the hawk-dove game.
+
+In any case, each site in the lattice is occupied by either a _cooperator_ (C) or a _defector (D). Each round, the sites participate in a round of the hawks vs doves game where payoffs are as shown in the table below
+
+<table style="text-align:center;">
+  <tr><td></td><td><b>C</b></td><td><b>D</b></td></tr>
+  <tr><td><b>C</b></td><td>1</td><td>0</td></tr>
+  <tr><td><b>D</b></td><td><i>b</i></td><td>0</td></tr>
+</table>
+
+Sites play this game against all eight of their neighbors and also against themselves, accumulating a total payoff (or 'score'). Then sites switch to the state of the other site among their eight neighbors (and themselves) which had the highest payoff. The interest lies in how different regions of the space are stable or not when occupied by cooperators or defectors. The relative advantage for defection over cooperation depends on the single parameter _b_.
+
+## THINGS TO NOTICE
+
+Patches have a `locale` variable, which is the eight neighbors plus the site itself. These are set up at the outset of the model to speed things up, using the line
+
+    set locale (patch-set self neighbors)
+
+The `play-hawk-dove` reporter allows a patch to run the hawk vs dove game with another patch. Notice that because this is invoked by a focal patch asking its `locale` to play the game in the code
+
+    set pay-off sum [play-hawk-dove myself] of locale
+
+that the result is the inverse of what might be expected. This is because the patch running the code is the 'opponent' who is determining the result for them of playing the game against the patch asking (who is therefore `myself` in this line of code).
+
+Finally, notice the careful ordering of patch procedures in the `go` procedure. It is important that all patches determine the `next` state to which they will change, before any of them update their `current` state.  This is similar to the updating of states in the Game of Life model.
+
+## THINGS TO TRY
+
+How would the system behavior change if the comparison neighborhood used by patches was smaller or larger than the immediate Moore neighborhood? Try implementing changes to explore this question.
+
+What about if the neighborhood with which the game was played differed from that used for making a decision about changing strategy?
+
+This versions follows the original published papers in its choice of colors for the sites. Most likely this choice was a result of limitations of computer graphical displays in the early 1990s (or perhaps associated with contemporary excite about psychedelic Mandelbrot Set visuals).  Arguably, better color schemes could be devised, perhaps showing a range of recent behavior from solid cooperation to solid defection in a two color diverging scheme. See if you can implement this change.
+
 ## HOW TO CITE
 
 If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
-+   Nowak MA and May RM 1992 Evolutionary games and spatial chaos. _Nature_ **359** 826-829.
++   Nowak, M.A., May, R.M., 1992. Evolutionary games and spatial chaos. _Nature_ **359**, 826–829.
++   Nowak, M.A., May, R.M., 1993. The spatial dilemmas of evolution. _International Journal of Bifurcation and Chaos_ **3**, 35–78.
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 +   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 

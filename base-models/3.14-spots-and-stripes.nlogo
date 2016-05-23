@@ -22,31 +22,37 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;; extensions [ r ]
-
 globals [
-  rnd-choices
+  colors
 ]
 
 patches-own [
-  next-colour
+  state
   activators
   inhibitors
 ]
 
 to setup
   clear-all
-  ;; r:setPlotDevice
-  set rnd-choices [white black]
+  set colors [white black]
 
   ask patches [
-    set pcolor one-of rnd-choices
+    set state random 2
+    set pcolor item state colors
+  ]
+  setup-neighborhoods
+  reset-ticks
+end
+
+
+to setup-neighborhoods
+  ask patches [
     set activators in-ellipse activation-range-x activation-range-y
     set inhibitors (in-ellipse inhibition-range-x inhibition-range-y)
                        with [not member? self [activators] of myself]
   ]
-  reset-ticks
 end
+
 
 ;;; procedure for defining elliptical neighborhoods
 ;;; These procedures and reports from the Netlogo model library
@@ -75,40 +81,31 @@ to-report ydistance [other-patch]  ;; patch procedure
 end
 
 to go
-  repeat count patches [
-    ask one-of patches [
-      let active-n count activators with [pcolor = black]
-      let inhibit-n count inhibitors with [pcolor = black]
-      ifelse pcolor = white [
-        if (active-n - (inhibition-w * inhibit-n) > 0) [
-          set pcolor black
-        ]
+  ask patches [
+    let active-n sum [state] of activators
+    let inhibit-n sum [state] of inhibitors
+    ifelse state = 0 [
+      if (active-n - (inhibition-w * inhibit-n) > 0) [
+        set state 1
       ]
-      [
-        if (active-n - (inhibition-w * inhibit-n) < 0) [
-          set pcolor white
-        ]
+    ]
+    [
+      if (active-n - (inhibition-w * inhibit-n) < 0) [
+        set state 0
       ]
     ]
   ]
+  recolor-patches
   tick
 end
 
-;; R plotting code
-;;to-report get-value
-;;  ifelse pcolor = black
-;;  [ report 1 ]
-;;  [ report 0 ]
-;;end
-;;
-;;to r-plot-world
-;;  let v map [[get-value] of ?] sort patches
-;;  r:put "z" v
-;;  r:put "nr" world-width
-;;  r:put "nc" world-height
-;;  r:eval("map <- matrix(z, nrow=nr, ncol=nc)")
-;;  r:eval("image(map, col=c('white','black'), asp=1, axes=F)")
-;;end
+
+to recolor-patches
+  ask patches [
+    set pcolor item state colors
+  ]
+end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 231
@@ -197,7 +194,7 @@ inhibition-w
 inhibition-w
 0
 1
-0.2
+0.24
 0.01
 1
 NIL
@@ -205,14 +202,14 @@ HORIZONTAL
 
 SLIDER
 21
-228
+247
 193
-261
+280
 activation-range-x
 activation-range-x
 1
 10
-2.3
+2.9
 0.1
 1
 NIL
@@ -220,14 +217,14 @@ HORIZONTAL
 
 SLIDER
 21
-268
+287
 192
-301
+320
 activation-range-y
 activation-range-y
 1
 10
-2.3
+2.9
 0.1
 1
 NIL
@@ -235,14 +232,14 @@ HORIZONTAL
 
 SLIDER
 21
-309
+328
 193
-342
+361
 inhibition-range-x
 inhibition-range-x
 activation-range-x
 10
-6.1
+5.9
 0.1
 1
 NIL
@@ -250,14 +247,14 @@ HORIZONTAL
 
 SLIDER
 21
-346
+365
 194
-379
+398
 inhibition-range-y
 inhibition-range-y
 activation-range-y
 10
-6.1
+5.9
 0.1
 1
 NIL
@@ -269,7 +266,24 @@ BUTTON
 156
 167
 restart
-ask patches [\nset pcolor one-of (list black white)\n]
+ask patches [\nset state random 2\n]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+23
+409
+158
+442
+NIL
+setup-neighborhoods
 NIL
 1
 T
