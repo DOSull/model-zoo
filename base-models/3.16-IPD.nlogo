@@ -80,6 +80,7 @@ to update-display
   ask patches [
     set pcolor item s-number palette
     set plabel s-number
+    ;; color label black if a light color, white if dark
     ifelse pcolor mod 10 >= 5
     [ set plabel-color black ]
     [ set plabel-color white ]
@@ -136,26 +137,26 @@ to update-score
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+247
 10
-670
-491
+897
+681
 -1
 -1
-9.0
+8.0
 1
-6
-1
-1
-1
-0
+7
 1
 1
 1
 0
-49
+1
+1
+1
 0
-49
+79
+0
+79
 1
 1
 1
@@ -163,10 +164,10 @@ ticks
 30.0
 
 BUTTON
-7
-10
-70
-43
+128
+23
+191
+56
 NIL
 setup
 NIL
@@ -180,10 +181,10 @@ NIL
 1
 
 BUTTON
-7
-48
-70
-81
+128
+61
+191
+94
 step
 go
 NIL
@@ -197,10 +198,10 @@ NIL
 1
 
 BUTTON
-8
-86
-71
-119
+129
+99
+192
+132
 NIL
 go
 T
@@ -222,7 +223,7 @@ p-mutate
 p-mutate
 0
 0.01
-0.01
+0.005
 0.001
 1
 NIL
@@ -231,18 +232,18 @@ HORIZONTAL
 TEXTBOX
 10
 233
-205
-494
-     me-them previous round\n#      C-C C-D D-C D-D\n0        C     C     C     C   always-C\n1        C     C     C     D\n2        C     C     D     C\n3        C     C     D     D   stubborn\n4        C     D     C     C\n5        C     D     C     D   tit-for-tat\n6        C     D     D     C   win-stay-lose-shift\n7        C     D     D     D   retaliator\n8        D     C     C     C\n9        D     C     C     D\n10      D     C     D     C   bully\n11      D     C     D     D\n12      D     D     C     C   fickle\n13      D     D     C     D\n14      D     D     D     C\n15      D     D     D     D  all-D
-10
+245
+499
+     me-them previous round\n#      C-C C-D D-C D-D\n0        C     C     C     C   always-C\n1        C     C     C     D\n2        C     C     D     C\n3        C     C     D     D   stubborn\n4        C     D     C     C\n5        C     D     C     D   tit-for-tat\n6        C     D     D     C   win-stay-lose-shift\n7        C     D     D     D   retaliator\n8        D     C     C     C\n9        D     C     C     D\n10      D     C     D     C   bully\n11      D     C     D     D\n12      D     D     C     C   fickle\n13      D     D     C     D\n14      D     D     D     C\n15      D     D     D     D  always-D
+11
 0.0
 1
 
 INPUTBOX
-712
-77
-772
-137
+924
+32
+984
+92
 C-C
 4
 1
@@ -250,10 +251,10 @@ C-C
 Number
 
 INPUTBOX
-776
-76
-832
-136
+988
+31
+1044
+91
 C-D
 0
 1
@@ -261,10 +262,10 @@ C-D
 Number
 
 INPUTBOX
-712
-141
-772
-201
+924
+96
+984
+156
 D-C
 5
 1
@@ -272,10 +273,10 @@ D-C
 Number
 
 INPUTBOX
-777
-140
-831
-200
+989
+97
+1043
+157
 D-D
 2
 1
@@ -298,70 +299,70 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-704
-55
-824
-73
+916
+10
+1075
+28
 Pay off matrix, me-them
 11
 0.0
 1
 
 TEXTBOX
-702
-84
-717
-102
+914
+39
+929
+57
 R
 11
 0.0
 1
 
 TEXTBOX
-837
-84
-852
-102
+1049
+39
+1064
+57
 S
 11
 0.0
 1
 
 TEXTBOX
-701
-149
-716
-167
+913
+104
+928
+122
 T
 11
 0.0
 1
 
 TEXTBOX
-836
-147
-851
-165
+1048
+102
+1063
+120
 P
 11
 0.0
 1
 
 TEXTBOX
-704
-224
-854
-266
+919
+185
+1069
+227
 For prisoner's dilemma\nT > R > P > S and\n2R > S + T
 11
 0.0
 1
 
 BUTTON
-731
-272
-813
-305
+946
+233
+1028
+266
 setup-PD
 set C-C 4\nset C-D 0\nset D-C 5\nset D-D 2
 NIL
@@ -375,20 +376,20 @@ NIL
 1
 
 TEXTBOX
-707
-330
-857
-358
+922
+291
+1072
+319
 For chicken games\nT > R > S > P
 11
 0.0
 1
 
 BUTTON
-733
-367
-841
-400
+948
+328
+1056
+361
 setup-chicken
 set D-C 3\nset C-C 2\nset C-D 1\nset D-D 0
 NIL
@@ -402,10 +403,10 @@ NIL
 1
 
 SWITCH
-722
-453
-845
-486
+931
+393
+1054
+426
 spatial?
 spatial?
 0
