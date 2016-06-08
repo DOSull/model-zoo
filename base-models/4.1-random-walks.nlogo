@@ -2,9 +2,9 @@
 ;;
 ;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
 ;; including without limitation the rights to use, copy, modify, merge,
 ;; publish, distribute, sublicense, and/or sell copies of the Software,
 ;; and to  permit persons to whom the Software is furnished to do so,
@@ -41,16 +41,16 @@ globals [
 
 to setup
   clear-all
-  
+
   set max-x 0
   set min-x 0
   set max-y 0
   set min-y 0
-  
-  if use-random-seed? [ 
+
+  if use-random-seed? [
     random-seed seed-value
   ]
-  
+
   ; make the world white
   ask patches [ set pcolor white ]
   create-turtles num-of-walkers [
@@ -59,7 +59,7 @@ to setup
     set real_x xcor
     set real_y ycor
   ]
-  set world-edge patches with [pycor = min-pycor or pycor = max-pycor or pxcor = min-pxcor or pxcor = max-pxcor]
+
   update-stats
   reset-ticks
 end
@@ -67,7 +67,7 @@ end
 ; switches pen-mode to raise or lower pens of turtles
 to toggle-tracks
   ask turtles [
-    ifelse pen-mode = "up" 
+    ifelse pen-mode = "up"
     [  set pen-mode "down" ]
     [ set pen-mode "up" ]
   ]
@@ -105,7 +105,7 @@ to step
       fd 1
     ]
     ; move unit distance but direction is determined by turning
-    ; from current direction 
+    ; from current direction
     if type-of-walk = "correlated directions" [
       rt random-normal 0 stdev-angle
       set real_x real_x + dx
@@ -114,7 +114,7 @@ to step
     ]
     if type-of-walk = "normally distributed step length" [
       set heading random-float 360
-      let step-length abs random-normal 0 mean-step-length
+      let step-length abs random-normal 0 (mean-step-length * sqrt (pi / 2))
       set real_x real_x + (dx * step-length)
       set real_y real_y + (dy * step-length)
       fd step-length
@@ -148,7 +148,7 @@ to update-stats
     set max-d max dists
     set min-d min dists
     set mean-d mean dists
-    ; root mean square distance is expected to equal sqrt(#steps) so calculate it 
+    ; root mean square distance is expected to equal sqrt(#steps) so calculate it
     set rms-d sqrt mean map [? * ?] dists
 
     let x [real_x] of turtles
@@ -159,16 +159,16 @@ to update-stats
     set min-y min list min-y (min y)
   ]
 end
-  
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 194
 10
-602
-439
+801
+638
 99
 99
-2.0
+3.0
 1
 10
 1
@@ -189,10 +189,10 @@ ticks
 200.0
 
 SLIDER
-14
-273
-186
-306
+15
+239
+187
+272
 num-of-walkers
 num-of-walkers
 1
@@ -204,14 +204,14 @@ NIL
 HORIZONTAL
 
 CHOOSER
-14
-310
-184
-355
+17
+276
+187
+321
 type-of-walk
 type-of-walk
 "lattice" "simple" "normally distributed step length" "exponentially distributed step length" "Cauchy distributed step lengths" "correlated directions"
-1
+0
 
 BUTTON
 122
@@ -282,9 +282,9 @@ NIL
 1
 
 PLOT
-612
+812
 10
-944
+1144
 304
 Distance from origin
 Steps
@@ -302,9 +302,9 @@ PENS
 "expected" 1.0 0 -2674135 true "" "if ticks mod update-plot-every-x-ticks = 0 [\n  ifelse type-of-walk = \"correlated directions\" [\n    ;; These alternative lines use an adjustment for the RMS dist for \n    ;; correlated walks from \n    ;; Bovet & Benhamou, J. theor. Biol. (1988) 131, 419-433\n    ;; itself derived from \n    ;; Random Flight with Multiple Partial Correlations, C. M. Tchen\n    ;; J. Chem. Phys. 20, 214 (1952); doi:10.1063/1.1700381 \n    ;; which shows that for large #ticks RMS-D = sqrt[(1+r)/(1-r)ticks]\n    ;; where r is a correlation angle between walk steps\n    ;; ONLY RELEVANT to the correlated case, so not used in general\n    let r 1 / exp (((stdev-angle * pi / 180) ^ 2) / 2) \n    ;plotxy ticks sqrt ((1 + r) / (1 - r) * ticks)\n    ;; Note that this is approximate: there is an additional correction\n    ;; required for low turn angles\n    ;; It is unclear whether the second term is in r^2 or r; see\n    ;; Hsin-i Wu, Bai-Lian Li, Timothy A. Springer, William H. Neill, \n    ;; Modelling animal movement as a persistent random walk in two dimensions: expected magnitude of net displacement\n    ;; Ecol Mod, 132(1-2), 115-124 DOI: 10.1016/S0304-3800(00)00309-4.\n    plotxy ticks sqrt (((1 + r) / (1 - r) * ticks) - ((2 * r * r * (1 - (r ^ ticks))) / (1 - r) / (1 - r)))\n  ]\n  [\n    plotxy ticks sqrt ticks\n  ]\n]"
 
 MONITOR
-729
+929
 352
-786
+986
 397
 NIL
 max-d
@@ -313,9 +313,9 @@ max-d
 11
 
 MONITOR
-670
+870
 352
-727
+927
 397
 NIL
 mean-d
@@ -324,9 +324,9 @@ mean-d
 11
 
 MONITOR
-609
+809
 352
-666
+866
 397
 NIL
 min-d
@@ -335,9 +335,9 @@ min-d
 11
 
 MONITOR
-868
+1068
 352
-922
+1122
 397
 NIL
 rms-d
@@ -346,10 +346,10 @@ rms-d
 11
 
 SLIDER
-13
-394
-185
-427
+16
+360
+188
+393
 stdev-angle
 stdev-angle
 0
@@ -362,9 +362,9 @@ HORIZONTAL
 
 SWITCH
 28
-202
+464
 186
-235
+497
 use-random-seed?
 use-random-seed?
 1
@@ -422,9 +422,9 @@ HORIZONTAL
 
 SLIDER
 28
-237
+499
 186
-270
+532
 seed-value
 seed-value
 0
@@ -436,10 +436,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-13
-358
-185
-391
+16
+324
+188
+357
 mean-step-length
 mean-step-length
 0.1
@@ -451,9 +451,9 @@ NIL
 HORIZONTAL
 
 SLIDER
-610
+810
 313
-766
+966
 346
 update-plot-every-x-ticks
 update-plot-every-x-ticks
@@ -466,10 +466,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-431
-187
-464
+16
+397
+188
+430
 p-lazy
 p-lazy
 0
@@ -483,7 +483,7 @@ HORIZONTAL
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model simulates a number of variations on the random walk as discussed in Chapter 4 of 
+This model simulates a number of variations on the random walk as discussed in Chapter 4 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
@@ -504,7 +504,7 @@ Inspection of the model procedures will show that the behaviour is similar in al
 **Cauchy distributed step length** is the same as the simple case, except that the step length is chosen from a Cauchy distribution.  This produces a L&eacute;vy flight with heavy-tailed step length distribution.
 
 **correlated directions** introduces non-independence between consecutive steps in a simple walk (i.e. equal unit step lengths). Instead of choosing a direction for each step completely at random, the direction of the next step results from a turn away from the current direction.  Turn angles are drawn from a normal distribution so that continuing in the same direction as the previous step is the single most likely outcome, and large changes in direction are very unlikely.  The sinuosity of the walk is governed by the `st-dev-angle` parameter which is the standard deviation in degrees of the turn angle distribution.
- 
+
 
 ## HOW TO USE IT
 
@@ -528,10 +528,10 @@ The `toggle-tracks` and `update-stats` procedures use `with-local-randomness` to
 
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
@@ -837,7 +837,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

@@ -53,7 +53,7 @@ players-own [
   my-strategy ;; a strategy turtle containing this players choices
   this-round-payoff ;; what I scored this round
   recent-payoffs ;; total scores in recent rounds
-  N9 ;; neighboring players plus the player itself
+  N5 ;; neighboring orthogonal players plus the player itself
 ]
 
 ;; store strategies as turtles (invisible turtles)
@@ -80,20 +80,25 @@ to setup
     set pcolor grey
     sprout-players 1 [
       set shape "big-square"
-      set my-strategy one-of strategies
+      ifelse cage-fight!? [
+        set my-strategy ifelse-value (pxcor <= min-pxcor + world-width / 2) [strategy strat-1] [strategy strat-2]
+      ]
+      [ ;; just pick a strategy at random
+        set my-strategy one-of strategies
+      ]
       set this-round-payoff 0
       set recent-payoffs []
-      set N9 (turtle-set self (players-on neighbors)) ;; since no one ever moves
     ]
   ]
   ;; create pairwise games between neighbors
   ask players [
-    ask other N9 [
+    set N5 (turtle-set self (players-on neighbors4)) ;; since no one ever moves
+    ask other N5 [
       create-game-with myself [
         ; establish order of the game based on player whos
         set player-1 first sort both-ends
         set player-2 last sort both-ends
-        set previous-plays (list random 2 random 2)
+        initialize-game-previous-plays
         set hidden? true
       ]
     ]
@@ -163,6 +168,11 @@ to update-display
   ]
 end
 
+to initialize-game-previous-plays
+  set previous-plays (list (one-of [choices] of [my-strategy] of player-1)
+                           (one-of [choices] of [my-strategy] of player-2))
+end
+
 
 ;; main loop
 to go
@@ -224,8 +234,14 @@ end
 ;; or, with probability p-mutate, mutate the strategy
 to update-strategy
   ifelse random-float 1 < p-mutate
-  [ set my-strategy one-of [link-neighbors] of my-strategy ]
-  [ set my-strategy [my-strategy] of max-one-of N9 [sum recent-payoffs] ]
+  [ mutate ]
+  [ set my-strategy [my-strategy] of max-one-of N5 [sum recent-payoffs] ]
+end
+
+
+to mutate
+  set my-strategy one-of [link-neighbors] of my-strategy
+  ask my-games [ initialize-game-previous-plays ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -307,10 +323,10 @@ NIL
 1
 
 SLIDER
-116
-181
-288
-214
+113
+598
+285
+631
 p-mutate
 p-mutate
 0
@@ -322,10 +338,10 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-19
-233
-306
-537
+13
+244
+300
+548
      me-them previous round\n#     C-C C-D D-C D-D\n0        C     C     C     C   always-C\n1        C     C     C     D\n2        C     C     D     C\n3        C     C     D     D   stubborn\n4        C     D     C     C\n5        C     D     C     D   tit-for-tat\n6        C     D     D     C   win-stay-lose-shift\n7        C     D     D     D   retaliator\n8        D     C     C     C\n9        D     C     C     D\n10      D     C     D     C   bully\n11      D     C     D     D\n12      D     D     C     C   fickle\n13      D     D     C     D\n14      D     D     D     C\n15      D     D     D     D  always-D
 13
 0.0
@@ -376,10 +392,10 @@ D-D
 Number
 
 SLIDER
-117
-142
-289
-175
+114
+559
+286
+592
 payoff-memory
 payoff-memory
 1
@@ -511,13 +527,54 @@ NIL
 NIL
 1
 
+SWITCH
+10
+113
+141
+146
+cage-fight!?
+cage-fight!?
+0
+1
+-1000
+
+SLIDER
+117
+157
+289
+190
+strat-1
+strat-1
+0
+15
+12
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+117
+194
+289
+227
+strat-2
+strat-2
+0
+15
+5
+1
+1
+NIL
+HORIZONTAL
+
 BUTTON
-186
-581
-295
-614
-color-by-Ds
-ask players [set color scale-color red (sum [choices] of my-strategy) 4 0]
+982
+631
+1133
+664
+color-cooperativity
+ask players [\n  set color scale-color green sum [choices] of my-strategy -1 5\n  ]
 NIL
 1
 T
@@ -538,6 +595,8 @@ See Chapter 3 of
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 for a brief discussion.
+
+**NOTE that this model is substantial different from the one released at first publication. In particular, here players compete with all four neighbors every round, and it is the one-to-one games which 'remember' the previous play. The original model is available at the [github repository] (http://github.com/DOSull/model-zoo/blob/master/as-released/base-models/3.16-IPD.nlogo).
 
 ## THINGS TO NOTICE
 
@@ -577,9 +636,9 @@ which allows the `my-strategy` to transition only to those other strategies link
 
 ## THINGS TO TRY
 
-This is a very open-ended model, which can be used to explore many different scenarios. As it stands, any simple 'cooperate-defect' game-theoretic situation with a fixed payoff matrix can easily be experimented with.  It is worth spending time exploring what combinations of strategies in any given game can coexist.
+This is a very open-ended model, which can be used to explore many different scenarios. As it stands, any simple 'cooperate-defect' game-theoretic situation with a fixed payoff matrix can easily be experimented with. It is worth spending time exploring what combinations of strategies in any given game can coexist. In particular using the `cage-fight!?` option you can set up 'fights' between pairs of strategies to develop a feel for which strategies prosper against one another. In many cases, you will find the results surprising: try to predict which strategy will win these contests.
 
-It may also be worth investigating how differently things play out with different initial conditions, such as ones where particular strategies are missing from the original mix, or where blocks of players with particular strategies exist at the outset.
+It may also be worth investigating how differently things play out with different initial conditions, such as ones where particular strategies are missing from the original mix, or where blocks of players with particular strategies exist at the outset. These changes will require that you understand the existing code and modify it accordingly.
 
 ## HOW TO CITE
 
