@@ -22,23 +22,121 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+
+extensions [profiler]
+
 globals [
-  rewards ;; a list of the returns to DD CD DC CC from
-          ;; perspective of the first player
-  palette
+  rewards ;; a list of the returns to CC CD DC DD from
+          ;; perspective of the first player i.e.
+          ;; item 0 is return when I cooperate (C) You cooperate (C)
+          ;; item 1 is return to C v D
+          ;; item 2 is return to D v C
+          ;; item 3 is return to D v D
 ]
 
-patches-own [
-  s-number
-  s-list ;; a list of the next choice to DD DC CD CC
+;; each game is a 'link' between neighboring pairs of players
+;; this is convenient for remembering previous outcome
+undirected-link-breed [games game]
+games-own [
+  player-1
+  player-2
+  previous-plays
+]
+
+;; possible mutations are 'links' from one strategy-turtle to another
+undirected-link-breed [mutations mutation]
+
+;; for naming purposes we make a breed of 'player' turtles
+;; who will take part in the games
+breed [players player]
+players-own [
+  my-strategy ;; a strategy turtle containing this players choices
+  this-round-payoff ;; what I scored this round
+  recent-payoffs ;; total scores in recent rounds
+  N9 ;; neighboring players plus the player itself
+]
+
+;; store strategies as turtles (invisible turtles)
+;; this is a convenient way to bundle colors etc, rather than
+;; maintaining multiple linked lists of colors, etc
+breed [strategies strategy]
+strategies-own [
+  choices ;; a list of the next choice to CC CD DC DD
            ;; encoded as
-           ;; 1 = cooperate
-           ;; 0 = defect
-  previous-outcome
-  recent-scores
-  N5
+           ;; 1 = defect
+           ;; 0 = cooperate
 ]
 
+
+to setup
+  clear-all
+
+  ;; make strategies and set up reward matrix
+  make-strategies
+  set rewards (list C-C C-D D-C D-D)
+
+  ;; create players
+  ask patches [
+    set pcolor grey
+    sprout-players 1 [
+      set shape "big-square"
+      set my-strategy one-of strategies
+      set this-round-payoff 0
+      set recent-payoffs []
+      set N9 (turtle-set self (players-on neighbors)) ;; since no one ever moves
+    ]
+  ]
+  ;; create pairwise games between neighbors
+  ask players [
+    ask other N9 [
+      create-game-with myself [
+        ; establish order of the game based on player whos
+        set player-1 first sort both-ends
+        set player-2 last sort both-ends
+        set previous-plays (list random 2 random 2)
+        set hidden? true
+      ]
+    ]
+  ]
+  update-display
+  reset-ticks
+end
+
+
+;; sets up 16 invisible strategy turtles as containers for
+;; lists of choices, which also store color, text-color,
+;; and (in the 'who') an index number
+to make-strategies
+  let palette (list
+    black (violet - 2) (violet + 2) (red - 2)
+    (red + 3) brown orange (yellow - 2)
+    yellow (green - 3) (green - 1) (green + 2)
+    (sky - 2) (sky + 2) (grey - 1) white
+  )
+  ;; text colors are black or white depending in brightness of the base color
+  let text-palette map [ifelse-value (? mod 10 < 5) [white] [black]] palette
+
+  ;; now make 16 strategies
+  create-strategies 16 [
+    set choices strategy-from-number who
+    set color item who palette
+    set label-color item who text-palette
+    set hidden? true
+  ]
+  ask strategies [
+    ;; mutations are possible between strategies that differ in one 'bit'
+    ask other strategies with [bits-difference [choices] of myself choices = 1] [
+      create-mutation-with myself [
+        set hidden? true
+      ]
+    ]
+  ]
+end
+
+;; converts number to 4 bit list 0 1 in binary code, e.g.
+;; 0 -> [0 0 0 0]
+;; 5 -> [0 1 0 1]
+;; 12 -> [1 1 0 0] etc
 to-report strategy-from-number [x]
   let s []
   repeat 4 [
@@ -48,104 +146,98 @@ to-report strategy-from-number [x]
   report s
 end
 
-to-report number-from-strategy [s]
-  report sum (map [?1 * ?2] s (reverse n-values 4 [2 ^ ?]))
+;; report the number of bits different between two bit lists
+to-report bits-difference [c1 c2]
+  let x (map [abs (?1 - ?2)] c1 c2)
+  report sum x
 end
 
-to setup
-  clear-all
-  setup-palette
-  set rewards (list C-C C-D D-C D-D)
-  ask patches [
-    set s-number random 16
-    set s-list strategy-from-number s-number
-    set previous-outcome random 4
-    set recent-scores []
-    set N5 (patch-set self neighbors4)
-  ]
-  update-display
-  reset-ticks
-end
 
-to setup-palette
-  set palette (list
-    black (violet + 3) (violet - 2) (red + 3)
-    (red - 2) orange (yellow - 3) (green - 3)
-    green (green + 2) (blue - 2) (blue + 3)
-    brown grey yellow white
-  )
-end
-
+;; color and label turtles based on their current strategy
 to update-display
-  ask patches [
-    set pcolor item s-number palette
-    set plabel s-number
-    ;; color label black if a light color, white if dark
-    ifelse pcolor mod 10 >= 5
-    [ set plabel-color black ]
-    [ set plabel-color white ]
+  ask players [
+    ;; color is that of the player's my-strategy turtle
+    set color [color] of my-strategy
+    set label [who] of my-strategy
+    set label-color [label-color] of my-strategy
   ]
 end
 
+
+;; main loop
 to go
-  ask patches [
-    let opponent nobody
-    ifelse spatial?
-    [ set opponent one-of neighbors4 ]
-    [ set opponent one-of patches ]
-    let my-go choice
-    let their-go [choice] of opponent
-    set previous-outcome 2 * my-go + their-go
-    update-score
-    ask opponent [
-      set previous-outcome 2 * their-go + my-go
-      update-score
-    ]
-  ]
-  let top-scores patches with-max [mean recent-scores]
-  ask patches [
-    ifelse random-float 1 < (1 - p-mutate) [
-      ifelse spatial?
-      [ set s-number [s-number] of one-of N5 with-max [mean recent-scores] ]
-      [ set s-number [s-number] of one-of top-scores ]
-      set s-list strategy-from-number s-number
-    ]
-    [
-      mutate-strategy
-    ]
+  ;; every game gets played every round
+  ask games [ play-game ]
+  ;; update payoffs and strategies based on outcomes
+  ask players [
+    update-payoffs
+    update-strategy
   ]
   update-display
   tick
 end
 
-to mutate-strategy
-  let i random 4
-  let new-val 1 - item i s-list
-  set s-list replace-item i s-list new-val
-  set s-number number-from-strategy s-list
+
+;; play game between this game's players basing moves on previous round plays
+to play-game
+  let prev-mv1 first previous-plays
+  let prev-mv2 last previous-plays
+  ;; based on previous plays pick this round plays
+  let mv1 [get-play prev-mv1 prev-mv2] of player-1
+  let mv2 [get-play prev-mv2 prev-mv1] of player-2
+  ;; determine payoffs and add to current payoffs
+  ask player-1 [ set this-round-payoff this-round-payoff + get-payoff mv1 mv2 ]
+  ask player-2 [ set this-round-payoff this-round-payoff + get-payoff mv2 mv1 ]
+  ;; report this rounds plays so previous play can be updated
+  set previous-plays (list mv1 mv2)
 end
 
-to-report choice
-  report item previous-outcome s-list
+to-report get-play [prev1 prev2]
+  report [item (two-bits-as-decimal prev1 prev2) choices] of my-strategy
 end
 
-to update-score
-  set recent-scores fput (item previous-outcome rewards) recent-scores
-  if length recent-scores > score-memory [
-    set recent-scores but-last recent-scores
+to-report get-payoff [m1 m2]
+  report item (two-bits-as-decimal m1 m2) rewards
+end
+
+;; 0 0 -> 0
+;; 0 1 -> 1
+;; 1 0 -> 2
+;; 1 1 -> 3
+to-report two-bits-as-decimal [b1 b0]
+  report 2 * b1 + b0
+end
+
+
+;; add this round payoff to record of previous payoffs
+;; adjust list size to limit, if required
+to update-payoffs
+  set recent-payoffs fput this-round-payoff recent-payoffs
+  if length recent-payoffs > payoff-memory [
+    set recent-payoffs but-last recent-payoffs
   ]
+  set this-round-payoff 0
+end
+
+
+;; update strategy to that of the locally best strategy
+;; or, with probability p-mutate, mutate the strategy
+to update-strategy
+  ifelse random-float 1 < p-mutate
+  [ set my-strategy one-of [link-neighbors] of my-strategy ]
+  [ set my-strategy [my-strategy] of max-one-of N9 [sum recent-payoffs] ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-247
+304
 10
-897
+954
 681
 -1
 -1
 8.0
 1
-7
+6
 1
 1
 1
@@ -161,13 +253,13 @@ GRAPHICS-WINDOW
 1
 1
 ticks
-30.0
+100.0
 
 BUTTON
-128
-23
-191
-56
+224
+20
+287
+53
 NIL
 setup
 NIL
@@ -181,10 +273,10 @@ NIL
 1
 
 BUTTON
-128
-61
-191
-94
+224
+58
+287
+91
 step
 go
 NIL
@@ -198,10 +290,10 @@ NIL
 1
 
 BUTTON
+224
+96
+287
 129
-99
-192
-132
 NIL
 go
 T
@@ -215,34 +307,34 @@ NIL
 1
 
 SLIDER
-20
-184
-192
-217
+116
+181
+288
+214
 p-mutate
 p-mutate
 0
-0.01
-0.005
+0.05
+0
 0.001
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-10
+19
 233
-245
-499
-     me-them previous round\n#      C-C C-D D-C D-D\n0        C     C     C     C   always-C\n1        C     C     C     D\n2        C     C     D     C\n3        C     C     D     D   stubborn\n4        C     D     C     C\n5        C     D     C     D   tit-for-tat\n6        C     D     D     C   win-stay-lose-shift\n7        C     D     D     D   retaliator\n8        D     C     C     C\n9        D     C     C     D\n10      D     C     D     C   bully\n11      D     C     D     D\n12      D     D     C     C   fickle\n13      D     D     C     D\n14      D     D     D     C\n15      D     D     D     D  always-D
-11
+306
+537
+     me-them previous round\n#     C-C C-D D-C D-D\n0        C     C     C     C   always-C\n1        C     C     C     D\n2        C     C     D     C\n3        C     C     D     D   stubborn\n4        C     D     C     C\n5        C     D     C     D   tit-for-tat\n6        C     D     D     C   win-stay-lose-shift\n7        C     D     D     D   retaliator\n8        D     C     C     C\n9        D     C     C     D\n10      D     C     D     C   bully\n11      D     C     D     D\n12      D     D     C     C   fickle\n13      D     D     C     D\n14      D     D     D     C\n15      D     D     D     D  always-D
+13
 0.0
 1
 
 INPUTBOX
-924
+976
 32
-984
+1036
 92
 C-C
 4
@@ -251,9 +343,9 @@ C-C
 Number
 
 INPUTBOX
-988
+1040
 31
-1044
+1096
 91
 C-D
 0
@@ -262,9 +354,9 @@ C-D
 Number
 
 INPUTBOX
-924
+976
 96
-984
+1036
 156
 D-C
 5
@@ -273,9 +365,9 @@ D-C
 Number
 
 INPUTBOX
-989
+1041
 97
-1043
+1095
 157
 D-D
 2
@@ -284,12 +376,12 @@ D-D
 Number
 
 SLIDER
-21
-145
-193
-178
-score-memory
-score-memory
+117
+142
+289
+175
+payoff-memory
+payoff-memory
 1
 5
 1
@@ -299,9 +391,9 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-916
+968
 10
-1075
+1127
 28
 Pay off matrix, me-them
 11
@@ -309,9 +401,9 @@ Pay off matrix, me-them
 1
 
 TEXTBOX
-914
+966
 39
-929
+981
 57
 R
 11
@@ -319,9 +411,9 @@ R
 1
 
 TEXTBOX
-1049
+1101
 39
-1064
+1116
 57
 S
 11
@@ -329,9 +421,9 @@ S
 1
 
 TEXTBOX
-913
+965
 104
-928
+980
 122
 T
 11
@@ -339,9 +431,9 @@ T
 1
 
 TEXTBOX
-1048
+1100
 102
-1063
+1115
 120
 P
 11
@@ -349,9 +441,9 @@ P
 1
 
 TEXTBOX
-919
+971
 185
-1069
+1121
 227
 For prisoner's dilemma\nT > R > P > S and\n2R > S + T
 11
@@ -359,9 +451,9 @@ For prisoner's dilemma\nT > R > P > S and\n2R > S + T
 1
 
 BUTTON
-946
+998
 233
-1028
+1080
 266
 setup-PD
 set C-C 4\nset C-D 0\nset D-C 5\nset D-D 2
@@ -376,20 +468,20 @@ NIL
 1
 
 TEXTBOX
-922
-291
-1072
-319
+971
+274
+1121
+302
 For chicken games\nT > R > S > P
 11
 0.0
 1
 
 BUTTON
-948
-328
-1056
-361
+997
+305
+1105
+338
 setup-chicken
 set D-C 3\nset C-C 2\nset C-D 1\nset D-D 0
 NIL
@@ -402,27 +494,92 @@ NIL
 NIL
 1
 
-SWITCH
-931
-393
-1054
-426
-spatial?
-spatial?
-0
+BUTTON
+965
+371
+1106
+404
+setup-hawk-dove
+set D-C 2\nset C-C 1\nset C-D 0\nset D-D 0
+NIL
 1
--1000
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+186
+581
+295
+614
+color-by-Ds
+ask players [set color scale-color red (sum [choices] of my-strategy) 4 0]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This is an implementation of a generic spatial evolutionary game 'arena' in which patches enact the strategies detailed in the table presented in the interface, and adapt their strategies to match those of the most successful other patches in the system.  When the `spatial?` switch is turned on, the new strategy is chosen from the most successful neighbouring strategies (including the current one) otherwise it is chosen based on the most successful strategy in the whole system.  Success is measured by defined by the mean pay-off achieved over the most recent `score-memory` rounds of play.
+This is an implementation of a generic spatial evolutionary game 'arena' in which players enact the strategies detailed in the table presented in the interface, and switch their strategies to match those of the most successful neighboring players in the system.  Success is defined by the total payoff achieved over the most recent `playoff-memory` rounds of play.
 
 See Chapter 3 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 for a brief discussion.
+
+## THINGS TO NOTICE
+
+This is a complicated model, which makes use of some NetLogo features in unusual ways.
+
+### Turtle breeds
+
+Two turtle breeds are used in the model. `players` are the turtles that engage in the game in question, and are straightforward.
+
+`strategies` are more interesting. These are invisible or 'virtual' turtles, which are used as a convenient way to store (in the `choices` variable) the choice that will be made for a particular strategy based on the two plays made in the previous game by each participant. Each `player` turtle has a `my-strategy` variable, which is an instance of one of the `strategy` turtles. This makes managing the color and labeling of `players` easier, since each `strategy` has a fixed color, enabling lines of code such as
+
+    set color [color] of my-strategy
+    set label [who] of my-strategy
+    set label-color [label-color] of my-strategy
+
+The alternative to this approach involves maintaining global lists of strategies, and associated colors, which is arguably less elegant. `strategy` turtles make use of `mutation` links in an interesting way to manage random mutation of strategies in a simple way (see below for more details).
+
+### Links
+
+Two different `link` breeds `games` and `mutations` are used in the model.
+
+First, `games` are linked pairs of neighboring turtles that will repeatedly engage in the game. This is convenient as a way to store the previous round of the game outcome in the `previous-plays` variable. This is important because the previous plays are used by each player to decide their next play based on their current strategy.
+
+Second, `mutations` are links between `strategy` turtles which can mutate into one another. Mutation is considered a change in a strategy where only one of the move choices is changed, so for example, the strategy `[0 0 1 0]` can change to any of `[1 0 1 0]`, `[0 1 1 0]`, `[0 0 0 0]` or `[0 0 1 1]` but not to any other strategies.  This is implemented in the code in the `make-strategies` procedure
+
+    ask other strategies with [choice-diff [choices] of myself choices = 1] [
+      create-mutation-with myself [
+        set hidden? true
+      ]
+    ]
+
+and in the line
+
+    set my-strategy one-of [link-neighbors] of my-strategy
+
+which allows the `my-strategy` to transition only to those other strategies linked with the current one (and which therefore differ from it in only one choice).
+
+## THINGS TO TRY
+
+This is a very open-ended model, which can be used to explore many different scenarios. As it stands, any simple 'cooperate-defect' game-theoretic situation with a fixed payoff matrix can easily be experimented with.  It is worth spending time exploring what combinations of strategies in any given game can coexist.
+
+It may also be worth investigating how differently things play out with different initial conditions, such as ones where particular strategies are missing from the original mix, or where blocks of players with particular strategies exist at the outset.
 
 ## HOW TO CITE
 
@@ -457,6 +614,11 @@ arrow
 true
 0
 Polygon -7500403 true true 150 0 0 150 105 150 105 293 195 293 195 150 300 150
+
+big-square
+false
+0
+Rectangle -7500403 true true 0 0 300 300
 
 box
 false
@@ -643,11 +805,6 @@ Rectangle -7500403 true true 47 225 75 285
 Rectangle -7500403 true true 15 75 210 225
 Circle -7500403 true true 135 75 150
 Circle -16777216 true false 165 76 116
-
-square
-false
-0
-Rectangle -7500403 true true 30 30 270 270
 
 square 2
 false
