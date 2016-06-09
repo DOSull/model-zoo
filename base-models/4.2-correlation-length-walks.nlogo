@@ -2,9 +2,9 @@
 ;;
 ;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
 ;; including without limitation the rights to use, copy, modify, merge,
 ;; publish, distribute, sublicense, and/or sell copies of the Software,
 ;; and to  permit persons to whom the Software is furnished to do so,
@@ -22,142 +22,111 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 globals [
-  last-stop
-  turn-angles   ;; stores the change of heading between locations
+  latest-stop ;;
+  turn-angles ;; list of the change of heading between locations
+  number-of-steps
 ]
 
 ;; use a breed to record the locations at which walk stopped
 breed [locations location]
 
 ;; and links to join them at the chosen aggregation level
-directed-link-breed [steps step]
+directed-link-breed [intervals interval]
 
-steps-own [
+intervals-own [
   divisor
-  len
   turn-angle
 ]
 
-locations-own [
-  real-x ;; keep track of actual x-y distance from 0,0 for R plots
-  real-y
-]
 
 to setup
   clear-all
-  
+
   ask patches [ set pcolor white ]
+  set number-of-steps 4000
   set turn-angles []
 
   create-locations 1 [
-    setup-location
-    set real-x xcor
-    set real-y ycor
+    initialize-location
   ]
-  ; make 2000 more locations...
-  repeat 2000 [
-    go
-  ] 
+  ; make more locations...
+  repeat number-of-steps [
+    ; get the last placed location to make a new one
+    ask latest-stop [
+      let turn random-normal 0 stdev-angle
+      set turn-angles lput turn turn-angles
+      set heading heading + turn
+      ;; make a new location at the current coordinates
+      ;; new location will move to the next walk location
+      make-new-location
+    ]
+  ]
+  reset-ticks
 end
 
-to go
-  ; get the last placed location to make a new one
-  ask last-stop [
-    ; make a turn first - this will store direction to next location!
-    let turn 1000 ;; dummy value to force at least one random selection
-    while [turn >= 360 or turn < -360] [ 
-      set turn random-normal 0 stdev-angle
-    ]
-    set turn-angles lput turn turn-angles
-    set heading heading + turn
-    ;; make a new location at the current coordinates
-    ;; new location will move to the next walk location
-    make-new-location real-x real-y
-  ]
+to initialize-location
+  set shape "circle"
+  set color orange
+  set size 0.7
+  set latest-stop self ;; just created, hence 'latest'
 end
-  
-  
-to make-new-location [x y]
+
+to make-new-location
   hatch 1 [
-    setup-location
+    initialize-location
     ;; now move to the next spot in the walk
-    set real-x x + dx
-    set real-y y + dy
     fd 1
   ]
 end
 
-to setup-location
-  set shape "circle"
-  set color orange
-  set size 0.7
-  set last-stop self
-end
 
-to show-aggregated-walk
+to aggregate-walk
   ; rub out any previously displayed links
-  ask steps [
-    die
-  ]
-  let this-loc location 0
-  let next-loc location aggregation-length
-  while [next-loc != nobody] [
-    ask this-loc [
-      let d distance next-loc
-      face next-loc
-      create-step-to next-loc [
+  ask intervals [ die ]
+  ;; step through the locations at a spacing
+  ;; given by aggregation-length
+  ;; build lists of the locations at the aggregation-length spacing
+  ;; one leaving out the last, the other leaving out the first
+  let waypoints sort locations with [who mod aggregation-length = 0]
+  (foreach (but-last waypoints) (but-first waypoints) [
+    ask ?1 [
+      face ?2
+      create-interval-to ?2 [
         set color blue
-        set len d
-      ]  
-    ]
-    set this-loc next-loc
-    set next-loc location ([who] of this-loc + aggregation-length)
-  ]
-  ask step 0 aggregation-length [
-    set turn-angle 0
-    ask other steps [
-      let this-angle [heading] of end1
-      let prev-angle 0
-      ask end1 [
-        set prev-angle [heading] of one-of in-step-neighbors
+        set thickness 0.7
       ]
-      set turn-angle subtract-angles this-angle prev-angle 
     ]
-  ]
-  update-plots
+  ])
+  ;; now determine turn angles for each aggregated interval
+  ask intervals [ set turn-angle subtract-angles ([heading] of end2) ([heading] of end1) ]
+  tick
 end
 
-;; reporter to allow angles to be added correctly
-to-report add-angles [a b]
-  report (a + b) mod 360
-end
-
-;; reports the right-turn angle required to 
+;; reports the right-turn angle required to
 ;; change from heading b to heading a
 to-report subtract-angles [a b]
-  let x 0
-  ifelse a > b 
-  [
-    ifelse (a - b) > 180 
-    [ set x a - b - 360 ]
-    [ set x a - b ]
+  ifelse a > b
+  [ ;; a is to right of b
+    ; but if difference exceeds 180
+    ; turn smaller angle left to get there
+    if (a - b) > 180 [ report a - b - 360 ]
   ]
-  [
-    ifelse (a - b) < -180 
-    [ set x a - b + 360 ]
-    [ set x a - b ]
+  [ ;; a is to left of b
+    ; logic of previous section is reversed
+    if (b - a) > 180 [ report a - b + 360 ]
   ]
-  report x
+  ; not a special case just report the difference
+  report a - b
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 155
-15
-567
-448
+10
+768
+644
 100
 100
-2.0
+3.0
 1
 10
 1
@@ -171,23 +140,23 @@ GRAPHICS-WINDOW
 100
 -100
 100
-0
-0
 1
+1
+0
 ticks
 100.0
 
 SLIDER
-28
+6
 51
-141
+142
 84
 stdev-angle
 stdev-angle
-5
-90
-30
-5
+3
+60
+25
+1
 1
 NIL
 HORIZONTAL
@@ -210,12 +179,12 @@ NIL
 1
 
 BUTTON
-9
+28
 151
-141
+139
 184
-show-aggregated-walk
-show-aggregated-walk
+NIL
+aggregate-walk
 NIL
 1
 T
@@ -227,10 +196,10 @@ NIL
 1
 
 PLOT
-586
-17
-919
-226
+778
+10
+1111
+219
 Turn Angles
 Turn Angle
 Relative Frequency
@@ -240,26 +209,16 @@ Relative Frequency
 10.0
 true
 true
-"clear-plot" ""
+"clear-plot" "clear-plot"
 PENS
-"agg-turn-angles" 1.0 1 -16777216 true "" "set-histogram-num-bars 18\nhistogram [remainder turn-angle 180] of steps"
+"agg-turn-angles" 1.0 1 -16777216 true "" "if ticks > 0 [\nset-histogram-num-bars 18\nhistogram [remainder turn-angle 180] of intervals\n]"
 "base-turn-angles" 1.0 0 -2674135 true "" "plot-pen-up\nplotxy plot-x-min plot-y-min\nplot-pen-down\nlet t-angles turn-angles\nlet breaks map [? * 20 - 160] n-values 18 [?] \nforeach breaks [\n  let mx ?\n  let cnt length filter [? < mx] t-angles / aggregation-length\n  set t-angles filter [? >= mx] t-angles\n  plotxy (? - 10) cnt\n]"
 
-CHOOSER
-3
-100
-141
-145
-aggregation-length
-aggregation-length
-1 2 3 4 5 6 8 10 12 15 20 30 40 50 75 100
-11
-
 PLOT
-586
-228
-919
-454
+778
+231
+1111
+457
 Aggregated Step Lengths
 Length
 Frequency
@@ -269,66 +228,84 @@ Frequency
 10.0
 true
 false
-"" ""
+"" "clear-plot"
 PENS
-"default" 1.0 1 -16777216 true "" "set-plot-x-range 0 ceiling max [len] of steps\nset-histogram-num-bars 20\nhistogram [len] of steps"
+"default" 1.0 1 -16777216 true "" "if ticks > 0 [\nlet ll [link-length] of intervals\nset-plot-x-range floor min ll ceiling max ll\nset-histogram-num-bars 20\nhistogram ll\n]"
+
+SLIDER
+5
+110
+141
+143
+aggregation-length
+aggregation-length
+1
+100
+20
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model is discussed in Chapter 5 of 
+This model is discussed in Chapter 5 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
-and is intended to demonstrate the effect of aggregating consecutive steps of a correlated random walk on the distribution of step-by-step turn angles.  
+and is intended to demonstrate the effect of aggregating consecutive steps of a correlated random walk on the distribution of step-by-step turn angles.
 
-When random walk turn angles are correlated over short time periods, the 'acceleration' in movement of a correlated random walk relative to a simple random walk falls away rapidly with time. This is because over relatively short numbers of steps, the turn angles effectively become random, as the correlation from step to step is lost. This effect is demonstrated in this model. 
+When random walk turn angles are correlated over short time periods, the 'acceleration' in movement of a correlated random walk relative to a simple random walk falls away rapidly with time. This is because over relatively short numbers of steps, the turn angles effectively become random, as the correlation from step to step is lost. This effect is demonstrated in this model.
 
 ## HOW TO USE IT
 
 Clicking the `setup` button creates a 2000 step correlated random walk.  Steps in the walk are unit length, and the heading of the walk changes at each step according to a normal distribution, mean 0 and standard deviation set by the `st-dev-angle` parameter.
 
-Now clicking `show-aggregated-walk` will show a walk based on sequences of walk steps as specified by the `aggregation-length` parameter setting.  The resulting aggregated walk will be displayed, and the associated turn angle distribution will be shown.
+Now clicking `aggregate-walk` will show a walk based on sequences of walk steps aggregated into intervals as specified by the `aggregation-length` parameter setting.  The resulting aggregated walk will be displayed, and the associated turn angle distribution will be shown.
 
 ## THINGS TO NOTICE
 
-Experiment with the `aggregation-length` setting and observe how even low sinuosity walks (those with `st-dev-angle` set to 5) begin to appear similar to simple random walks when a high `aggregation-length` is used.
+This model makes use of a turtle breed `locations` to store all the locations along a random walk of 2000 steps.  A directed link breed is used to display aggregated `intervals` and perform calculations on them, which enables the walk to be re-aggregated to different `aggregation-length` settings as required.
 
-## NETLOGO FEATURES
-
-This model makes use of a turtle breed `locations` to store all the locations along a random walk of 2000 steps.  A link breed is used to display aggregated `steps` and perform calculations on them, which enables the walk to be re-aggregated to different `aggregation-length` settings as required.
-
-The `setup` procedure makes a 2000 step correlated random walk by creating a `location` turtle at 0 0 and then calling the `go` procedure repeatedly.
-
-The `go` procedure `hatches` a copy of the most recently created location which is then stored in the `last-stop` global variable.  The newly hatched `location` then changes its heading and moves forward a step, and becomes the new `last-stop`.
+The `setup` procedure makes a multistep correlated random walk by creating a `location` turtle at 0 0 and then repeatedly `hatches` a copy of the most recently created location which is then stored in the `latest-stop` global variable.  The newly hatched `location` then changes its heading and moves forward a step, and becomes the new `latest-stop`.
 
 This creates a 2000 step correlated random walk marked out by `location` turtles.
 
-When the `show-aggregated-walk` button is pressed a series of `step` links are made between `locations` at that separation.  This code
+When the `aggregate` button is pressed a series of `interval` _directed-links_ are made between `locations` at the specified `aggregation-length` spacing. This is done by making two sets of _waypoint_ `locations` at the required spacing. This code
 
-    let this-loc location 0
-    let next-loc location aggregation-length
-    while [next-loc != nobody] [
-      ask this-loc [
-        let d distance next-loc
-        face next-loc
-        create-step-to next-loc [
-          set color blue
-          set len d
-        ]  
-      ]
-      set this-loc next-loc
-      set next-loc location ([who] of this-loc + aggregation-length)
-    ]
+    let waypoints sort locations with [who mod aggregation-length = 0]
 
-does this work, storing the length of each link and also reorienting locations to face the next one in the aggregated walk.  This allows the new statistics for the aggregated walk to be calculated.
+makes a sorted list of all the locations with a `who` ID divisible by the `aggregation-length` without remainder, e.g., for aggregation length 13, this would be
+
+    [ location 0 location 13 location 26 ... location 3978 location 3991 ]
+
+A `foreach` loop steps through this list paired with itself, but with the last and first items removed, i.e., the lists
+
+    [ location 0 location 13 location 26 ... location 3978 ]
+    [ location 13 location 26 location 39 ... location 3991 ]
+
+using the `but-last` and `but-first` reporters, so that
+
+    (foreach (but-last waypoints) (but-first waypoints) [
+      ask ?1 [
+        face ?2
+        create-interval-to ?2 [ ...
+
+will pick up locations 0 and 13 at first iteration, then 13 and 26, then 26 and 39 and so on. These pairs become the start and end nodes of an `interval` directed link, which effectively records the turn angles and distances in the aggregated walk, and also displays it.
+
+There are other ways to accomplish such stepping through the aggregated walk at the specified interval. This approach makes use of NetLogo list creation, manipulation and iteration in ways that it is useful to develop some familiarity with.
+
+## THINGS TO TRY
+
+Experiment with the `aggregation-length` setting and observe how even low sinuosity walks (those with `st-dev-angle` set to <10) begin to appear similar to simple random walks when a high `aggregation-length` is used.
 
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
@@ -634,7 +611,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

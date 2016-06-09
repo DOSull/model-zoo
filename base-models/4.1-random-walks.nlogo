@@ -22,8 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 turtles-own [
-  real_x     ; the real x coord dist from origin ie ignoring wrapping around world
-  real_y     ; the real y coord dist from origin ie ignoring wrapping around world
+  real-x     ; the real x coord dist from origin ie ignoring wrapping around world
+  real-y     ; the real y coord dist from origin ie ignoring wrapping around world
 ]
 
 globals [
@@ -46,8 +46,8 @@ to setup
   create-turtles num-of-walkers [
     set color black
     set shape "circle" ; default shape is hard to see at size 1
-    set real_x xcor
-    set real_y ycor
+    set real-x xcor
+    set real-y ycor
     set-track
   ]
 
@@ -73,56 +73,37 @@ end
 
 ; select appropropriate step method based on the type-of-walk drop-down
 to step
+  ;; default step-length
+  let step-length 1
   ;; only move from patch centre to patch centre
   if type-of-walk = "lattice" [
     face one-of neighbors4 ; easy!
-    set real_x real_x + dx
-    set real_y real_y + dy
-    fd 1
-    stop
   ]
   ; move unit distance in a uniform-random direction
   if type-of-walk = "simple" [
     set heading random-float 360
-    set real_x real_x + dx
-    set real_y real_y + dy
-    fd 1
-    stop
   ]
   ; move unit distance but direction is determined by turning
   ; from current direction
   if type-of-walk = "correlated directions" [
     rt random-normal 0 stdev-angle
-    set real_x real_x + dx
-    set real_y real_y + dy
-    fd 1
-    stop
   ]
   if type-of-walk = "normally distributed step length" [
     set heading random-float 360
     ;; note adjustment in the normal distribution call
-    let step-length abs random-normal 0 (mean-step-length * sqrt (pi / 2))
-    set real_x real_x + (dx * step-length)
-    set real_y real_y + (dy * step-length)
-    fd step-length
-    stop
+    set step-length abs random-normal 0 (mean-step-length * sqrt (pi / 2))
   ]
   if type-of-walk = "exponentially distributed step length" [
     set heading random-float 360
-    let step-length random-exponential mean-step-length ; rate ;
-    set real_x real_x + (dx * step-length)
-    set real_y real_y + (dy * step-length)
-    fd step-length
-    stop
+    set step-length random-exponential mean-step-length ; rate ;
   ]
   if type-of-walk = "Cauchy distributed step lengths" [
     set heading random-float 360
-    let step-length r-cauchy
-    set real_x real_x + (dx * step-length)
-    set real_y real_y + (dy * step-length)
-    fd step-length
-    stop
+    set step-length r-cauchy
   ]
+  set real-x real-x + (dx * step-length)
+  set real-y real-y + (dy * step-length)
+  fd step-length
 end
 
 to-report r-cauchy
@@ -132,7 +113,7 @@ end
 ; update various summary statistics for the walks
 to update-stats
   with-local-randomness [
-    set dists [sqrt(real_x ^ 2 + real_y ^ 2)] of turtles
+    set dists [sqrt(real-x ^ 2 + real-y ^ 2)] of turtles
     set max-d max dists
     set min-d min dists
     set mean-d mean dists
@@ -377,7 +358,7 @@ hundreds
 hundreds
 100
 2500
-100
+500
 100
 1
 NIL
@@ -435,7 +416,7 @@ SWITCH
 364
 show-tracks?
 show-tracks?
-0
+1
 1
 -1000
 
