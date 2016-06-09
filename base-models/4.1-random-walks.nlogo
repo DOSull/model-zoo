@@ -27,25 +27,15 @@ turtles-own [
 ]
 
 globals [
-  world-edge ; used to detect a turtle hitting the edge, when run will stop
   dists      ; list of the distances from 0 0 of all turtles
   min-d      ; minimum distance from origin of any turtle
   mean-d     ; mean distance from origin of the turtles
   max-d      ; maximum distance from origin of any turtle
   rms-d      ; root mean square distance from origin of the turtles
-  max-x
-  min-x
-  max-y
-  min-y
 ]
 
 to setup
   clear-all
-
-  set max-x 0
-  set min-x 0
-  set max-y 0
-  set min-y 0
 
   if use-random-seed? [
     random-seed seed-value
@@ -58,6 +48,7 @@ to setup
     set shape "circle" ; default shape is hard to see at size 1
     set real_x xcor
     set real_y ycor
+    set-track
   ]
 
   update-stats
@@ -65,80 +56,77 @@ to setup
 end
 
 ; switches pen-mode to raise or lower pens of turtles
-to toggle-tracks
-  ask turtles [
-    ifelse pen-mode = "up"
-    [  set pen-mode "down" ]
-    [ set pen-mode "up" ]
-  ]
+to set-track
+  ifelse show-tracks?
+  [ set pen-mode "down" ]
+  [ set pen-mode "up" ]
 end
 
-; make all turtles move
+; change pen positions, make all turtles move
 ; update various monitors and plots
-; stop model if anyone has reached the edge
 to go
+  ask turtles [ set-track ]
   ask turtles [ step ]
   update-stats
   tick
 end
 
-; update statistics and plots
-to update-status-monitors
-  update-stats
-end
-
 ; select appropropriate step method based on the type-of-walk drop-down
 to step
-  if random-float 1 >= p-lazy [
-    ;; only move from patch centre to patch centre
-    if type-of-walk = "lattice" [
-      face one-of neighbors4 ; easy!
-      set real_x real_x + dx
-      set real_y real_y + dy
-      fd 1
-    ]
-    ; move unit distance in a uniform-random direction
-    if type-of-walk = "simple" [
-      set heading random-float 360
-      set real_x real_x + dx
-      set real_y real_y + dy
-      fd 1
-    ]
-    ; move unit distance but direction is determined by turning
-    ; from current direction
-    if type-of-walk = "correlated directions" [
-      rt random-normal 0 stdev-angle
-      set real_x real_x + dx
-      set real_y real_y + dy
-      fd 1
-    ]
-    if type-of-walk = "normally distributed step length" [
-      set heading random-float 360
-      let step-length abs random-normal 0 (mean-step-length * sqrt (pi / 2))
-      set real_x real_x + (dx * step-length)
-      set real_y real_y + (dy * step-length)
-      fd step-length
-    ]
-    if type-of-walk = "exponentially distributed step length" [
-      set heading random-float 360
-      let step-length random-exponential mean-step-length ; rate ;
-      set real_x real_x + (dx * step-length)
-      set real_y real_y + (dy * step-length)
-      fd step-length
-    ]
-    if type-of-walk = "Cauchy distributed step lengths" [
-      set heading random-float 360
-      let step-length r-cauchy 0 1
-      set real_x real_x + (dx * step-length)
-      set real_y real_y + (dy * step-length)
-      fd step-length
-    ]
+  ;; only move from patch centre to patch centre
+  if type-of-walk = "lattice" [
+    face one-of neighbors4 ; easy!
+    set real_x real_x + dx
+    set real_y real_y + dy
+    fd 1
+    stop
+  ]
+  ; move unit distance in a uniform-random direction
+  if type-of-walk = "simple" [
+    set heading random-float 360
+    set real_x real_x + dx
+    set real_y real_y + dy
+    fd 1
+    stop
+  ]
+  ; move unit distance but direction is determined by turning
+  ; from current direction
+  if type-of-walk = "correlated directions" [
+    rt random-normal 0 stdev-angle
+    set real_x real_x + dx
+    set real_y real_y + dy
+    fd 1
+    stop
+  ]
+  if type-of-walk = "normally distributed step length" [
+    set heading random-float 360
+    ;; note adjustment in the normal distribution call
+    let step-length abs random-normal 0 (mean-step-length * sqrt (pi / 2))
+    set real_x real_x + (dx * step-length)
+    set real_y real_y + (dy * step-length)
+    fd step-length
+    stop
+  ]
+  if type-of-walk = "exponentially distributed step length" [
+    set heading random-float 360
+    let step-length random-exponential mean-step-length ; rate ;
+    set real_x real_x + (dx * step-length)
+    set real_y real_y + (dy * step-length)
+    fd step-length
+    stop
+  ]
+  if type-of-walk = "Cauchy distributed step lengths" [
+    set heading random-float 360
+    let step-length r-cauchy
+    set real_x real_x + (dx * step-length)
+    set real_y real_y + (dy * step-length)
+    fd step-length
+    stop
   ]
 end
 
-to-report r-cauchy [loc scl]
-  let X (pi * (random-float 1)) ;; Netlogo tan takes degrees not radians
-  report loc + scl * tan(X * (180 / pi))
+to-report r-cauchy
+  report tan (-90 + random-float 180)
 end
 
 ; update various summary statistics for the walks
@@ -150,16 +138,8 @@ to update-stats
     set mean-d mean dists
     ; root mean square distance is expected to equal sqrt(#steps) so calculate it
     set rms-d sqrt mean map [? * ?] dists
-
-    let x [real_x] of turtles
-    let y [real_y] of turtles
-    set max-x max list max-x (max x)
-    set min-x min list min-x (min x)
-    set max-y max list max-y (max y)
-    set min-y min list min-y (min y)
   ]
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 194
@@ -189,29 +169,29 @@ ticks
 200.0
 
 SLIDER
-15
-239
-187
-272
+13
+395
+185
+428
 num-of-walkers
 num-of-walkers
 1
 500
-500
+100
 1
 1
 NIL
 HORIZONTAL
 
 CHOOSER
-17
-276
-187
-321
+15
+444
+185
+489
 type-of-walk
 type-of-walk
 "lattice" "simple" "normally distributed step length" "exponentially distributed step length" "Cauchy distributed step lengths" "correlated directions"
-0
+5
 
 BUTTON
 122
@@ -231,10 +211,10 @@ NIL
 1
 
 BUTTON
-122
-51
+120
+145
 185
-84
+178
 step
 go
 NIL
@@ -248,10 +228,10 @@ NIL
 1
 
 BUTTON
-122
-166
-185
-199
+121
+261
+184
+294
 NIL
 go
 T
@@ -264,28 +244,11 @@ NIL
 NIL
 1
 
-BUTTON
-12
-11
-116
-44
-NIL
-toggle-tracks
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 PLOT
 812
-10
+45
 1144
-304
+339
 Distance from origin
 Steps
 Distance
@@ -297,74 +260,74 @@ true
 true
 "" ""
 PENS
-"all walkers" 1.0 2 -3026479 true "" "if ticks mod update-plot-every-x-ticks = 0 [\n  foreach dists [\n    plotxy ticks ?\n  ]\n]"
-"rms-dist" 1.0 0 -16777216 true "" "if ticks mod update-plot-every-x-ticks = 0 [\n  foreach dists [\n    plotxy ticks rms-d\n  ]\n]"
-"expected" 1.0 0 -2674135 true "" "if ticks mod update-plot-every-x-ticks = 0 [\n  ifelse type-of-walk = \"correlated directions\" [\n    ;; These alternative lines use an adjustment for the RMS dist for \n    ;; correlated walks from \n    ;; Bovet & Benhamou, J. theor. Biol. (1988) 131, 419-433\n    ;; itself derived from \n    ;; Random Flight with Multiple Partial Correlations, C. M. Tchen\n    ;; J. Chem. Phys. 20, 214 (1952); doi:10.1063/1.1700381 \n    ;; which shows that for large #ticks RMS-D = sqrt[(1+r)/(1-r)ticks]\n    ;; where r is a correlation angle between walk steps\n    ;; ONLY RELEVANT to the correlated case, so not used in general\n    let r 1 / exp (((stdev-angle * pi / 180) ^ 2) / 2) \n    ;plotxy ticks sqrt ((1 + r) / (1 - r) * ticks)\n    ;; Note that this is approximate: there is an additional correction\n    ;; required for low turn angles\n    ;; It is unclear whether the second term is in r^2 or r; see\n    ;; Hsin-i Wu, Bai-Lian Li, Timothy A. Springer, William H. Neill, \n    ;; Modelling animal movement as a persistent random walk in two dimensions: expected magnitude of net displacement\n    ;; Ecol Mod, 132(1-2), 115-124 DOI: 10.1016/S0304-3800(00)00309-4.\n    plotxy ticks sqrt (((1 + r) / (1 - r) * ticks) - ((2 * r * r * (1 - (r ^ ticks))) / (1 - r) / (1 - r)))\n  ]\n  [\n    plotxy ticks sqrt ticks\n  ]\n]"
+"all walkers" 1.0 2 -3026479 true "" "if ticks mod plot-update-interval = 0 [\n  foreach dists [\n    plotxy ticks ?\n  ]\n]"
+"rms-dist" 1.0 0 -16777216 true "" "if ticks mod plot-update-interval = 0 [\n  foreach dists [\n    plotxy ticks rms-d\n  ]\n]"
+"expected" 1.0 0 -2674135 true "" "if ticks mod plot-update-interval = 0 [\n  ifelse type-of-walk = \"correlated directions\" [\n    ;; These alternative lines use an adjustment for the RMS dist for \n    ;; correlated walks from \n    ;; Bovet & Benhamou, J. theor. Biol. (1988) 131, 419-433\n    ;; itself derived from \n    ;; Random Flight with Multiple Partial Correlations, C. M. Tchen\n    ;; J. Chem. Phys. 20, 214 (1952); doi:10.1063/1.1700381 \n    ;; which shows that for large #ticks RMS-D = sqrt[(1+r)/(1-r)ticks]\n    ;; where r is a correlation angle between walk steps\n    ;; ONLY RELEVANT to the correlated case, so not used in general\n    let r 1 / exp (((stdev-angle * pi / 180) ^ 2) / 2) \n    ;plotxy ticks sqrt ((1 + r) / (1 - r) * ticks)\n    ;; Note that this is approximate: there is an additional correction\n    ;; required for low turn angles\n    ;; It is unclear whether the second term is in r^2 or r; see\n    ;; Hsin-i Wu, Bai-Lian Li, Timothy A. Springer, William H. Neill, \n    ;; Modelling animal movement as a persistent random walk in two dimensions: expected magnitude of net displacement\n    ;; Ecol Mod, 132(1-2), 115-124 DOI: 10.1016/S0304-3800(00)00309-4.\n    plotxy ticks sqrt (((1 + r) / (1 - r) * ticks) - ((2 * r * r * (1 - (r ^ ticks))) / (1 - r) / (1 - r)))\n  ]\n  [\n    plotxy ticks sqrt ticks\n  ]\n]"
 
 MONITOR
-929
-352
-986
-397
+983
+348
+1061
+393
 NIL
 max-d
-3
+1
 1
 11
 
 MONITOR
-870
-352
-927
-397
+984
+398
+1062
+443
 NIL
 mean-d
-3
+1
 1
 11
 
 MONITOR
-809
-352
-866
-397
+984
+448
+1062
+493
 NIL
 min-d
-3
+1
 1
 11
 
 MONITOR
-1068
-352
-1122
+1069
 397
+1144
+442
 NIL
 rms-d
-3
+1
 1
 11
 
 SLIDER
-16
-360
-188
-393
+13
+588
+185
+621
 stdev-angle
 stdev-angle
 0
 90
-17
+22
 1
 1
 NIL
 HORIZONTAL
 
 SWITCH
-28
-464
-186
-497
+26
+52
+184
+85
 use-random-seed?
 use-random-seed?
 1
@@ -372,10 +335,10 @@ use-random-seed?
 -1000
 
 BUTTON
-121
-88
-185
-121
+120
+183
+184
+216
 go-10
 repeat 10 [ go ]
 NIL
@@ -389,10 +352,10 @@ NIL
 1
 
 BUTTON
-122
-127
-187
-160
+121
+222
+184
+255
 go-100s
 repeat hundreds [ go ]
 NIL
@@ -406,40 +369,40 @@ NIL
 1
 
 SLIDER
-19
-126
-116
-159
+18
+221
+115
+254
 hundreds
 hundreds
 100
-1000
-500
+2500
+100
 100
 1
 NIL
 HORIZONTAL
 
 SLIDER
-28
-499
-186
-532
+26
+87
+184
+120
 seed-value
 seed-value
 0
 1000
-500
+573
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-16
-324
-188
-357
+13
+510
+185
+543
 mean-step-length
 mean-step-length
 0.1
@@ -452,11 +415,11 @@ HORIZONTAL
 
 SLIDER
 810
-313
-966
-346
-update-plot-every-x-ticks
-update-plot-every-x-ticks
+348
+974
+381
+plot-update-interval
+plot-update-interval
 1
 100
 20
@@ -465,20 +428,66 @@ update-plot-every-x-ticks
 NIL
 HORIZONTAL
 
-SLIDER
-16
-397
-188
-430
-p-lazy
-p-lazy
+SWITCH
+56
+331
+184
+364
+show-tracks?
+show-tracks?
 0
-0.5
-0
-0.01
 1
-NIL
-HORIZONTAL
+-1000
+
+TEXTBOX
+6
+201
+83
+219
+100s of steps
+11
+0.0
+1
+
+TEXTBOX
+814
+384
+964
+412
+Low update interval may slow things down
+11
+0.0
+1
+
+TEXTBOX
+14
+547
+177
+577
+Relevant only to 'exponential' and 'normal'  step lengths
+11
+0.0
+1
+
+TEXTBOX
+15
+623
+168
+651
+Relevant only to 'correlated'
+11
+0.0
+1
+
+TEXTBOX
+817
+11
+1145
+39
+Note that the expected distance plot is adjusted in the correlated walks case (see code commetnts in the plot)
+12
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -491,40 +500,41 @@ An alternative version of this model is available which makes use of the R-netlo
 
 ## HOW IT WORKS
 
-Inspection of the model procedures will show that the behaviour is similar in all cases, the only difference from model to model being how the next 'step' in a random walk is determined, which is based on the `type-of-walk` drop-down selection choice.  The choices available are:
+Inspection of the model procedures will show that the behaviour is similar in all cases, the only difference from model to model being how the next 'step' in a random walk is determined, which is based on the `type-of-walk` drop-down selection choice, and happens in the `step` procedure.  The choices available are:
 
-**lattice** which will produce a 2D lattice walk, where locations in the walk are restricted to integer (x, y) locations only.  In Netlogo terms this means that each step is performed by randomly facing `one-of neighbors4`, and then moving forward 1 unit.  This could be accomplished by a single `move-to one-of neighbors4` command, but instead the heading is changed, and `dx` and `dy` are used together with `fd 1` to allow `real_x` and `real_y` variables to be correctly updated (see below on  NETLOGO FEATURES for more on this).
+**lattice** which will produce a 2D lattice walk, where locations in the walk are restricted to integer (_x_, _y_) locations only.  In NetLogo terms this means that each step is performed by randomly facing `one-of neighbors4`, and then moving forward 1 unit. This could be accomplished by a single `move-to one-of neighbors4` command, but instead the heading is changed, and `dx` and `dy` are used together with `fd 1` to allow `real_x` and `real_y` variables to be correctly updated (see below on _Some other NetLogo features_ for more on this).
 
 **simple** when each walk step is a unit length step in a random direction.
 
-**normally distributed step length** is the same as the simple case, except that the step length is chosen from a normal distribution.  Note that in this case, the `mean-step-length` parameter is interpreted as the standard-deviation of the normal distribution from which step lengths are drawn, 0 is the mean, and the absolute value of the normally distributed number is used for the step length.
+**normally distributed step length** is the same as the simple case, except that the step length is chosen from a normal distribution. Note that the `mean-step-length` parameter has to be chosen with some care, because we are only interested in positive values from a normal distribution (technically a [_folded normal distribution_](https://en.wikipedia.org/wiki/Folded_normal_distribution)), whose mean depends on the standard deviation of the underlying standard normal distribution:
+
+    let step-length abs random-normal 0 (mean-step-length * sqrt (pi / 2))
+
+You can check this works by adding some code to record `step-length` to a list and calculating its mean!
 
 **exponentially distributed step length** is the same as the simple case, except that the step length is chosen from an exponential distribution, with mean given by the `mean-step-length` parameter.
 
-**Cauchy distributed step length** is the same as the simple case, except that the step length is chosen from a Cauchy distribution.  This produces a L&eacute;vy flight with heavy-tailed step length distribution.
+**Cauchy distributed step length** is the same as the simple case, except that the step length is chosen from a Cauchy distribution.  This produces a L&eacute;vy flight with heavy-tailed step length distribution. Generation of Cauchy-distributed random deviates turns out to be rather simple
+
+    report tan (-90 + random-float 180)
+
+does the trick!
 
 **correlated directions** introduces non-independence between consecutive steps in a simple walk (i.e. equal unit step lengths). Instead of choosing a direction for each step completely at random, the direction of the next step results from a turn away from the current direction.  Turn angles are drawn from a normal distribution so that continuing in the same direction as the previous step is the single most likely outcome, and large changes in direction are very unlikely.  The sinuosity of the walk is governed by the `st-dev-angle` parameter which is the standard deviation in degrees of the turn angle distribution.
 
-
-## HOW TO USE IT
-
-Initialise using the `setup` button.  To turn on walk 'tracks' use the `toggle-tracks` button.
-
-The number of walkers which will be created is controlled by the `num-of-walkers` slider, and the number of steps they will move is determined by using the `go`, `step`, `go-10`, and `go-100s` buttons.  If you want a specific number of steps in multiples of 100, use the `hundreds` slider and `go-100s` button.
-
-## NETLOGO FEATURES
+### Some other NetLogo features
 
 **`real_x` and `real_y` turtle variables**
 
-Storage in turtle variables `real_x` and `real_y` of the actual distance moved from the origin, allowing for 'wrapping' around NetLogo's toroidal world.  This is important for calculation of meaningful distance statistics, and enables the R extension plots to show real world coordinates for all walk types.  The variable names have an underscore because R interprets NetLogo hyphenated variable names such as 'real-x' as minus signs.
+Storage in turtle variables `real_x` and `real_y` of the actual distance moved from the origin, allowing for 'wrapping' around NetLogo's toroidal world. This is important for calculation of meaningful distance statistics, and enables plots in the version of this model with the R extension plots to show real world coordinates for all walk types. The variable names have an underscore because R interprets NetLogo hyphenated variable names such as 'real-x' as minus signs.
 
 **Use of `dx` and `dy` in the `step` procedure**
 
-This also explains the use of dx and dy in the step procedure.  `dx` and `dy` report the x and y coordinate offsets associated with moving 1 unit in the current heading direction. This allows `real_x` and `real_y` to be correctly updated even when a walk is about to 'wrap' around the world.
+This also explains the use of `dx` and `dy` in the step procedure.  `dx` and `dy` report the x and y coordinate offsets associated with moving 1 unit in the current heading direction. This allows `real_x` and `real_y` to be correctly updated even when a walk is about to 'wrap' around the world.
 
-**Use of `with-local-randomness`**
+## THINGS TO TRY
 
-The `toggle-tracks` and `update-stats` procedures use `with-local-randomness` to avoid 'upsetting' the random number seed control.
+Think about adding some other kinds of walk. For the most part, these should involve no more than adding another option to the `step` procedure.
 
 ## HOW TO CITE
 
