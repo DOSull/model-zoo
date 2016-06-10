@@ -2,9 +2,9 @@
 ;;
 ;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
 ;; including without limitation the rights to use, copy, modify, merge,
 ;; publish, distribute, sublicense, and/or sell copies of the Software,
 ;; and to  permit persons to whom the Software is furnished to do so,
@@ -37,19 +37,19 @@ walkers-own [
   search-duration
 ]
 
-to setup 
+to setup
   clear-all
-  
+
   set area-per-search []
   set search-durations []
   set search-color grey + 3
-  
+
   set-default-shape spots "circle"
   ask patches [
     set pcolor white
   ]
   ask n-of n-targets patches [
-    sprout-targets 1 [ 
+    sprout-targets 1 [
       set color black
       set shape "target"
     ]
@@ -89,12 +89,12 @@ to execute-search
   set search-duration 0
   while [true] [
     let searched-patches patches with [pcolor = search-color]
-    if any? targets-on searched-patches [ 
+    if any? targets-on searched-patches [
       set spotted-target min-one-of (targets-on searched-patches) [manhattan-dist-to myself]
     ]
     ;; while no target spotted pursue random walk
     ifelse spotted-target = nobody [
-      if random-float 1 < p-direction-change 
+      if random-float 1 < p-direction-change
       [ face one-of neighbors4 ]
       jump 1
       set energy energy - 1
@@ -111,7 +111,7 @@ to execute-search
       ]
     ]
     ;; check energy level
-    ifelse energy <= 0 
+    ifelse energy <= 0
     [ die ]
     [ ;; still alive, so update the search area
       update-search-area
@@ -150,7 +150,7 @@ to mark-path
   ]
   if count spots > path-to-show [
     foreach sublist sort spots 0 (count spots - path-to-show) [
-      ask ? [ 
+      ask ? [
         die
       ]
     ]
@@ -169,11 +169,11 @@ to-report manhattan-dist-to [pt]
   let diff-x abs (pxcor - [pxcor] of pt)
   if diff-x > (world-width / 2) [
     set diff-x world-width - diff-x
-  ]  
+  ]
   let diff-y abs (pycor - [pycor] of pt)
   if diff-y > (world-height / 2) [
     set diff-y world-height - diff-y
-  ]  
+  ]
   report diff-x + diff-y
 end
 @#$#@#$#@
@@ -201,7 +201,7 @@ GRAPHICS-WINDOW
 1
 1
 1
-ticks
+targets-found
 100.0
 
 SLIDER
@@ -213,7 +213,7 @@ vision
 vision
 1
 25
-14
+8
 1
 1
 NIL
@@ -304,8 +304,8 @@ SLIDER
 n-targets
 n-targets
 1
-20
-20
+50
+50
 1
 1
 NIL
@@ -319,8 +319,8 @@ SLIDER
 path-to-show
 path-to-show
 0
-1000
-160
+500
+100
 10
 1
 NIL
@@ -335,7 +335,7 @@ p-direction-change
 p-direction-change
 0
 1
-0
+0.34
 0.01
 1
 NIL
@@ -425,23 +425,23 @@ You should consult that book for more information and details of the model.
 
 ## HOW IT WORKS
 
-This model involves a random walker (the orange circle) searching for resources (the black circles) under an energy constraint, with a fixed range vision field (the grey shaded area). When a resource comes into view, the walker switches mode to move directly to the resource. Each step costs one unit of energy. When the walker reaches the resource, its energy level is replenished to the maximum energy level specified. .
+This model involves a random walker searching for resources (the black circles) under an energy constraint, with a fixed range vision field (the grey shaded area). When a resource comes into view, the walker switches mode to move directly to the resource. Each step costs one unit of energy. When the walker reaches the resource, its energy level is replenished to the maximum energy level specified.
 
 The range of vision is specifed by the `vision` parameter. Note that vision range is a Manhattan distance not Euclidean.
 
 The number of resource targets in the world is specified by the `n-targets` parameter. Each time a resource is reached, it is removed, the walker replenishes its energy level, and a new resource is created to replace the one just exploited.
 
-The energy level is specified by the `max-energy' parameter.
+The energy level is specified by the `max-energy` parameter.
 
-The movement behavior is controlled by the 'p-direction-change' which is the probability at each step that the walker might change direction (since this leads to the walker facing one of its `neighbors4` it may actually not change direction). Higher probabilities make the walk more tortuous, and less likely to find resources quickly.
+The movement behavior is controlled by `p-direction-change` which is the probability at each step that the walker might change direction (since this leads to the walker facing one of its `neighbors4` it may actually not change direction). Higher probabilities make the walk more tortuous, and less likely to find resources quickly.
 
 ## HOW TO CITE
 
-If you mention this model in a publication, please include these citations for the model itself and for NetLogo  
+If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 +   Simon HA 1956 Rational choice and the structure of the environment. _Psychological Review_ **63** 129-138.
-+   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
++   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
@@ -753,7 +753,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.1.0
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
