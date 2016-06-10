@@ -140,27 +140,9 @@ end
 
 to make-the-island
   ask patches [ set on-island? true ]
-  
-  if island-type = "square" [
-    ask patches with [pxcor = max-pxcor or pxcor = min-pxcor or pycor = max-pycor or pycor = min-pycor] [
-      set on-island? false
-    ]
+  ask patches with [pxcor = max-pxcor or pxcor = min-pxcor or pycor = max-pycor or pycor = min-pycor] [
+    set on-island? false
   ]
-  
-  if island-type = "circle" [
-    ;; here's a circular island
-    ask patches with [distance patch 0 0 >= max-pxcor] [
-      set on-island? false
-    ] 
-  ]
-  
-  if island-type = "irregular" [
-    ask patches with [pxcor = max-pxcor or pxcor = min-pxcor or pycor = max-pycor or pycor = min-pycor] [
-      set on-island? false
-    ]
-    build-edge
-  ] 
-  
   set the-sea patches with [not on-island?]
   set the-island patches with [on-island?]
   set the-shore the-island with [any? neighbors4 with [not on-island?]]
@@ -263,71 +245,6 @@ to update-display
     [ set pcolor scale-color green low-value-resource (max-low-k * 2) (0 - max-low-k) ]
     [ set pcolor scale-color black high-value-resource (max-high-k * 2) (0 - max-high-k) ]
   ]
-end
-
-
-;; Uses a modified Eden process to erode the edge of the island to make it irregular (calls 'erode-edge').
-;; edge-state 1 -> on-island? false
-to build-edge
-  ; randomly shuffle edges to get order erode them in  
-  ; 1 = right, 2 = top, 3 = left, 4 = bottom
-  let edges shuffle [1 2 3 4]
-  
-  ; erode the edges in random order
-  foreach edges [ erode-edge ? ]
-  
-  ;; this is to catch patches isolate by the shore - otherwise if people get to them 
-  ;; there are problems...
-  ask patches with [on-island? and count neighbors with [on-island?] = 0] [
-    set on-island? false
-  ]  
-end
-
-to build-edge-new
-  let shoreline patches with [not on-island?]
-  while [any? shoreline] [
-    let new-shoreline patch-set nobody
-    ask shoreline [
-      let d lattice-distance-to patch 0 0
-      ask neighbors4 with [on-island? and lattice-distance-to patch 0 0 <= d] [
-        if random-float 1 < wiggly-edge [
-          set pcolor red
-          set on-island? false
-          set new-shoreline (patch-set new-shoreline self)
-        ]
-      ]
-    ]
-    set shoreline new-shoreline
-  ]
-end
-
-to erode-edge [ed]
-  let new-edge? true
-  let shell-loop 0
-  let erode-nhbs []
-  
-  while [ new-edge? ] [ 
-    set new-edge? false
-    set shell-loop shell-loop + 1
-    
-    ask patches with [on-island? = false and (edge-shell = shell-loop - 1) ] [
-      let fx [pxcor] of self
-      let fy [pycor] of self
-      
-      if ed = 1 [ set erode-nhbs neighbors with [pxcor = fx - 1] ]   ;; right
-      if ed = 2 [ set erode-nhbs ( neighbors with [ pycor = fy - 1 ] ) ] ;; top
-      if ed = 3 [ set erode-nhbs neighbors with [pxcor = fx + 1] ]   ;; left
-      if ed = 4 [ set erode-nhbs ( neighbors with [ pycor = fy + 1 ] ) ];; bottom
-      
-      ask erode-nhbs  [
-        if random-float 1 < wiggly-edge [ 
-          set on-island? false
-          set edge-shell shell-loop
-          set new-edge? true
-        ]
-      ]
-    ]
-  ]    
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -1053,21 +970,6 @@ min-sustainable-h
 0
 0.1
 0.1
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-224
-432
-396
-465
-wiggly-edge
-wiggly-edge
-0
-0.5
-0.28
 0.01
 1
 NIL
