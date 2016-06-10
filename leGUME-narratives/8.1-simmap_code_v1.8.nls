@@ -1,0 +1,104 @@
+; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Licensed under the Creative Commons 
+; Attribution-NonCommercial-ShareAlike 3.0 License 
+; See Info tab for full copyright and license information
+;;
+
+;; Internal setup based on SIMMAP algorithm
+;; This is slow -- I believe due repeated use of long lists
+to setup-mrc [ptchs]
+  ;; assign patches to percolation cluster
+  ask ptchs [ 
+    if random-float 1 < percolation-threshold [ 
+      set in-perc-cluster? true 
+    ]
+  ]
+  mark-habitat-patches ptchs
+  assign-habitat-patches-by-proportion ptchs proportion-high-resource
+  set clusters [] ;; throw away the list
+  assign-unassigned-to-habitat-patches ptchs proportion-high-resource
+  if no-singleton-patches? [
+    let singletons ptchs with [not any? neighbors4 with [class = [class] of myself]]
+    ask singletons [
+      set class [class] of one-of neighbors4
+    ]
+  ]
+end
+
+
+;; identifies and labels sequentially 
+;; from 0 the connected regions
+;; in the percolation cluster
+to mark-habitat-patches [ps]
+  set clusters []
+  let patch-count 1
+  let patches-to-mark sort ps with [in-perc-cluster?]
+  while [length patches-to-mark > 0] [
+    let this-cluster (patch-set one-of patches-to-mark)
+    let current-cluster patch-set nobody
+    ;; iteratively grow the patch-set that is this cluster
+    while [any? this-cluster] [ 
+      ;; mark by setting habitat-patch value
+      ask this-cluster [ 
+        set class patch-count 
+      ]
+      set current-cluster (patch-set current-cluster this-cluster)
+      ;; get the next set from the neighbours 4 of the current set
+      set this-cluster (patch-set [neighbors4] of this-cluster) with [to-mark?]
+    ]
+    ;; increment the patch-count and reset the set to mark
+    set patch-count patch-count + 1
+    set patches-to-mark filter [[class] of ? < 0] patches-to-mark
+    set clusters lput current-cluster clusters
+  ]
+  ;; make and store a list of each cluster as a patch-set
+;  set clusters map [ ps with [class = ?] ] n-values (patch-count) [ ? ]
+end
+
+
+to-report to-mark?
+  report on-island? and class < 0 and in-perc-cluster?
+end
+
+
+;; class-FD is a list of the required landscape proportion in each type
+;; cells in regions of the percolation cluster should be relabelled
+;; as 1, 2, 3... in the required proportions...
+to assign-habitat-patches-by-proportion [ps p-high]
+  ;; initialise frequency distributions for the two class types
+  let class-FD (list p-high (1 - p-high))
+  ;; make a list of the target number of patches in each class
+  let num-patches-set count ps with [class > 0]
+  let target-counts map [ ? * num-patches-set ] class-FD
+  ;; iteratively assigning clusters in the percolation cluster
+  ;; to a class, always adding to the class which is furthest
+  ;; from its target count
+  foreach clusters [
+    let biggest-shortfall max target-counts
+    let biggest-shortfall-index position biggest-shortfall target-counts
+    ask ? [ 
+      set class biggest-shortfall-index
+    ]
+    ;; update the target counts to reflect assignment just made
+    set target-counts replace-item biggest-shortfall-index target-counts (biggest-shortfall - count ?)
+  ]
+end
+
+
+;; patches so far not assigned to a class are
+;; now assigned based on the classes of neighbouring assigned patches 
+to assign-unassigned-to-habitat-patches [ps p-high]
+  let class-CFD (list p-high 1)
+  ask ps with [class < 0] [ 
+    let N neighbors with [class >= 0]
+    ifelse any? N
+    ;; assign that class to this cell
+    [ set class one-of modes [class] of N ]
+    ;; no assigned neighbours so assign one in proportion to 
+    ;; required proportions - CFD is filtered on a random draw
+    ;; to do this - this will work for any length class-CFD, 
+    ;; provided last class-CFD = 1
+    [ set class length filter [? < random-float 1] class-CFD ]
+  ]
+end
+

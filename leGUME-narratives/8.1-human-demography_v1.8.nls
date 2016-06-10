@@ -1,0 +1,225 @@
+; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Licensed under the Creative Commons 
+; Attribution-NonCommercial-ShareAlike 3.0 License 
+; See Info tab for full copyright and license information
+;;
+
+
+;; relocation can occur for two reasons:
+;; if hunting has gone bad, group will leave the island
+;; if local-foraging isn't going well then group may relocate to a new spot
+to assess-situation-and-relocate 
+  
+  if sum [pop] of groups <= min-viable-human-pop and ticks >= 120
+  [
+      ask groups
+      [
+        output-show "leaving the island"
+        set potted-history lput (word ticks " left_toofew") potted-history
+        leave-the-island
+      ]  
+  ]
+  
+  if any? groups
+  [
+   ask groups [
+     if hunting-not-good? [
+       output-show "leaving the island"
+       set potted-history lput (word ticks " left") potted-history
+       leave-the-island
+     ]
+     if foraging-not-good? [
+       relocate
+     ]
+   ] 
+  ]
+  
+end
+
+
+;; this could probably be made a lot more complicated...
+;; but this simple version at least means they stick around
+;; for a while after the hunting has already gone bad
+to-report hunting-not-good?
+  report sum [yield] of my-hunting-spots = 0
+end
+
+;; this used to be a lot more complicated, when
+;; hunting-spots could be owned by more than one
+;; group - cleaner now, but could change if needed
+to leave-the-island
+  ;; your hunting spots die with you...
+  ask my-hunting-spots [ die ]
+  die
+end
+
+;; not currently used - could be used for small groups
+;; to recombine with stronger ones  
+to merge-with [grp]
+  show (word "merging with group " ([who] of grp))
+  ask my-hunting-spots [set owner grp]
+  ask grp [
+    set pop pop + [pop] of myself
+    set my-hunting-spots (turtle-set [my-hunting-spots] of myself)
+    let n-to-forget count my-hunting-spots - hunt-memory-length
+    if n-to-forget > 0 [
+      let to-forget min-n-of n-to-forget my-hunting-spots [yield]
+      ask to-forget [ die ]
+      set my-hunting-spots my-hunting-spots with [self != nobody]
+    ]
+  ]
+  die
+end
+
+
+;; again, this could be a lot more complex
+;; checks if the local area can sustain half a year's worth of resource needs
+;; THIS HAS A BIG EFFECT SINCE IT GOVERNS OVERALL MOBILITY - how much they explore
+;; COULD BE REPLACED WITH A RANDOM DECISION based on a dwell-time - might be easier
+to-report foraging-not-good?
+  report sum [low-value-resource] of nearby < (pop * resource-per-head / 2)
+end
+
+
+;; this is called either when local foraging is poor, or by both groups
+;; after a split event
+;; modified by GP so that relocation to single patch isolates (under irregular island) not allowed.
+to relocate
+  ;; preferred 'rational' method - and generally successful
+  ;; if the search parameters are favourable
+  ;; Note that it uses the unknownness to bias towards unexplored areas
+  ifelse any? patches with [high-value-resource = 0] [ ;; v1.3.1 bug-fix
+    ifelse relocate-near-hunting? [
+      ifelse any? my-hunting-spots [
+        ;;let with [count [neighbors4] of patch-here with [the-shore = true] > 0])
+        move-to max-one-of my-hunting-spots  [unknownness] 
+        move-to min-one-of (the-island with [high-value-resource = 0]) [lattice-distance-to myself] 
+      ]
+      [ ;; this is just dumb random walking, but into the unknown ;; v1.4.1 bug-fix - if no hunting spots then just use random method
+         let min-d floor (2 * nearby-range) 
+         let max-d ceiling (3 * nearby-range)
+         move-to max-one-of (the-island with [between? min-d max-d (lattice-distance-to myself) and high-value-resource = 0]) [unknownness]
+      ]
+    ]
+    [ ;; this is just dumb random walking, but into the unknown
+       let min-d floor (2 * nearby-range) 
+       let max-d ceiling (3 * nearby-range)
+       move-to max-one-of (the-island with [between? min-d max-d (lattice-distance-to myself) and high-value-resource = 0]) [unknownness]
+    ]
+  ] 
+  [ ;; no high value resource to be found so leave island: v1.3.1 bug-fix
+    set potted-history lput (word ticks "failed_relocation") potted-history
+    leave-the-island
+  ]
+  set home-camp patch-here
+  ;; face one-of neighbors4 with [on-island?]
+  face one-of neighbors with [on-island?]
+  ask nearby [set unknownness 1]
+  set search-tortuosity initial-search-tortuosity ;; reset this to start-value for the new location
+end
+
+
+;; if group gets larger than the max-group-size
+;; it splits
+to split
+  ask groups [
+    if pop > max-group-size [
+      ;; split approximately in half by flipping a coining for each member of pop
+      let new-pop sum n-values pop [random 2]
+      set pop pop - new-pop ;; lose the pop of the new-group
+      let new-group nobody 
+      hatch-groups 1 [
+        set potted-history lput (word ticks " new_group") potted-history
+        set pop new-pop ;; they get that lost population 
+        set new-group self
+      ]
+      ;; determine a split of hunting spots
+      ;; these are returned in total-yield order
+      let new-hunting-spots split-hunting-spots
+      ; assign lower yielding spots to the smaller group
+      let smallest-first sort-on [pop] (turtle-set self new-group)
+      (foreach new-hunting-spots smallest-first [
+        ask ?2 [ 
+          set my-hunting-spots ?1
+          ask my-hunting-spots [
+            set owner myself
+          ]
+          relocate
+        ]
+      ])
+    ]
+  ]
+end
+
+
+;; splits hunting spots either N-S or E-W at the yield weighted centre location
+;; split along the longer dimension of the bounding rectangle of the spots
+to-report split-hunting-spots 
+  let xy yield-weighted-centre my-hunting-spots
+  let x item 0 xy
+  let y item 1 xy
+  ;; determine which dimension is larger
+  let range-x max [xcor] of my-hunting-spots - min [xcor] of my-hunting-spots
+  let range-y max [ycor] of my-hunting-spots - min [ycor] of my-hunting-spots
+  let chunk-1 turtle-set nobody
+  let chunk-2 turtle-set nobody
+  ifelse range-x < range-y [ ;; N-S aligned, so split on y coord 
+    set chunk-1 my-hunting-spots with [ycor > y]
+    set chunk-2 my-hunting-spots with [ycor <= y]
+  ]
+  [ ;; E-W aligned so split on x coord
+    set chunk-1 my-hunting-spots with [xcor > x]
+    set chunk-2 my-hunting-spots with [xcor <= x]
+  ]
+  ;; report smallest first so they can be allocated 'fairly'
+  report sort-by [sum [yield] of ?1 < sum [yield] of ?2] (list chunk-1 chunk-2)
+end
+
+;; returns yield-weighted mean of x-y coords of spots supplied
+;; note that if all but one are zero yield that the centroid
+;; could be at one extreme of the region if that's where the only
+;; spot with non-zero yield is
+to-report yield-weighted-centre [h-spots]
+  let total-yield sum [yield] of h-spots
+  let centroid-x sum [xcor * yield] of h-spots / total-yield
+  let centroid-y sum [ycor * yield] of h-spots / total-yield
+  report (list centroid-x centroid-y)
+end
+
+
+         
+;; this uses Poisson birth and death processes
+;; death is at the fixed r-human rate
+;; birth is affect by resource collection
+to reproduce
+  ask groups [
+    let r-birth r-humans * clamp-between 0 max-birth-rate-multiple (total-collected / resource-per-head / pop) ;; couple r to resource acquisition
+    
+    ;;let births random-poisson (pop * r-birth * random-normal 1 r-humans-sd)
+    let births round (pop * (random-normal r-birth r-humans-sd))
+    let deaths 0 ;; random-poisson (pop * r-humans)
+    set pop pop + births - deaths
+    
+    if pop <= 0 [
+      output-show "death-by-starvation"
+      set potted-history lput (word ticks " starved") potted-history
+      leave-the-island ;; by other means...
+    ]
+    
+    if pop <= min-viable-human-pop [
+      if any? other groups [
+        let target min-one-of (other groups) [distance myself]
+        merge-with target
+        set potted-history lput (word ticks " merged") potted-history
+      ] 
+    ]
+    ;; reset resource collection totals
+    set hunt-kill-to-date 0
+    set hunt-take-to-date 0
+    set local-collected 0
+    set total-collected 0
+  ]
+end
+
+
+

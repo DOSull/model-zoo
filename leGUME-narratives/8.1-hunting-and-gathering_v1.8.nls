@@ -1,0 +1,290 @@
+; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Licensed under the Creative Commons 
+; Attribution-NonCommercial-ShareAlike 3.0 License 
+; See Info tab for full copyright and license information
+;;
+
+
+;;
+;; main thread of execution for the hunting phase of decision making
+;; largely about determining which of any previously successful sites
+;; should be revisited, or, if there are none executing a search
+;;
+to go-hunting
+  ;; decide hunting effort first
+  ask groups [
+    set hunting-trips decide-number-of-hunts
+    let spots-in-range my-hunting-spots with [lattice-distance-to myself < hunt-range]
+    let good-spots spots-in-range with [yield > [good-hunt-threshold] of myself]
+    let hunt-number 1
+    repeat hunting-trips [
+      ;; first hunt of the month will always be a hunt not a search
+      ifelse hunt-number = 1 [ 
+        ;; if any known good spots, then...
+        ifelse any? good-spots 
+        ;; ... use them
+        [ pick-a-spot-and-hunt-there good-spots ]
+        ;; ... otherwise, it's a toss up
+        ;; NOTE: this is important, if they don't revisit old haunts then
+        ;; they get stuck with a rubbish list but of non-zero yields
+        ;; so they never leave the island and starve
+        [ ifelse any? spots-in-range
+          [ ;; is so, then flip a coin and maybe go to one
+            ifelse random 2 = 0 
+            ;; go to an old spot, which may not be great, but at least they'll find out
+            [ pick-a-spot-and-hunt-there spots-in-range ]
+            ;; or search
+            [ search hunt-range ]
+          ] ;; if none in range, then search
+          [ search hunt-range ]
+        ]
+      ] ;; if not first hunt of the month, and made quota, then search
+      [ search hunt-range ]
+      pen-up
+      move-to home-camp
+      ;; face pick-by-unfamiliarity neighbors4 with [on-island?]
+      face pick-by-unfamiliarity neighbors with [on-island?]
+      set hunt-number hunt-number + 1
+    ]
+    set color red
+  ]
+end
+
+
+;; decides how many hunts to go on this month
+to-report decide-number-of-hunts
+  let n 0 ;; the number of hunts we will decide on
+  let max-hunts max-hunts-possible
+  ;; if no hunts to be carried out then eay:
+  if max-hunts = 0 [ report 0 ]
+  ;; otherwise, use relative number of active i.e. non-zero spots in memory
+  let active-spots my-hunting-spots with [yield > 0]
+  ;; code to decide based on recent events how much hunting to do
+  ifelse ticks > 0 and any? my-hunting-spots [ ;; don't do this in month 0, or they just die...
+    let est-p-success count active-spots / count my-hunting-spots
+    set n random-poisson-between (est-p-success * max-hunts) 0 max-hunts
+  ]
+  [ ;; in first month, just hunt to the max...
+    set n max-hunts
+  ]
+  ; useful debugging data for the hunt decision-making
+  ; show-debug-data n my-hunting-spots possible-spots
+  report n
+end
+ 
+ 
+;; this is minimum 1 - which may punish small groups - they'll decide
+;; to go hunting and have little effort left for foraging...
+to-report max-hunts-possible
+  report ceiling (max-hunts-per-month * pop / 2 / hunt-party-size)
+end
+
+;; the amount aimed for per month, half total resource requirement for group
+to-report good-hunt-threshold
+  report 0.5 * pop * resource-per-head / 12
+end
+
+
+to show-debug-data [n-hunts h-spots p-spots]
+  output-type who output-type ": " 
+  output-type n-hunts output-type " "
+  output-type (map [[precision yield 1] of ?] reverse sort-on [yield] h-spots) output-type " " 
+  output-type (map [[precision yield 1] of ?] reverse sort-on [yield] p-spots) output-type " " 
+  output-print ""
+end
+
+
+to pick-a-spot-and-hunt-there [spots-to-choose]
+  ;; pick most accessible high yielding - yield / (d + 1) - d+1 
+  ;; in case you're camped on it (shouldn't be, but just in case)
+  let target-spot max-one-of spots-to-choose [yield / (lattice-distance-to myself + 1)]
+  ;; time available when they get there dependent on distance
+  let time-to-hunt hunt-range - (lattice-distance-to target-spot)
+  go-to-known-spot [patch-here] of target-spot
+  ;; this is an old hunting ground so we're going to update the info
+  ask target-spot [ die ]
+  ;; now hunt
+  hunt time-to-hunt
+  ;; and will be more exploratory in next search
+  set search-tortuosity clamp-between min-tortuosity max-tortuosity (search-tortuosity + search-adjust)
+end
+
+
+to go-to-known-spot [p]
+  let x1 pxcor
+  let y1 pycor
+  let x2 [pxcor] of p
+  let y2 [pycor] of p
+  let bbox patches with [between? x1 x2 pxcor and between? y1 y2 pycor]
+  ask bbox [set mh-d lattice-distance-to p]   
+  while [patch-here != p] [
+    downhill mh-d
+    set unknownness 1
+  ]
+  ask bbox [set mh-d 1000]
+end
+
+to-report manhattan-distance-to [p2]
+  report (abs (pxcor - [pxcor] of p2)) + (abs (pycor - [pycor] of p2))
+end
+
+to-report lattice-distance-to [p2]
+  report max (list (abs (pxcor - [pxcor] of p2)) (abs (pycor - [pycor] of p2)))
+end
+
+;; searches for specified time
+;; reports time-remaining for hunting if any
+to search [t]
+  let steps-remaining t
+  set color pink
+  pen-down
+  let previous-location nobody
+  while [steps-remaining > 0] [ 
+    ;; don't let them miss a really close-to-home spot
+    ;; if there is one nearby move towards it so it will
+    ;; be found
+    ifelse steps-remaining = t [ 
+      if any? nearby with [high-value-resource > 0 and not any? spots-on nearby] [
+        set previous-location patch-here ;; to prevent back-tracking next step
+        let target one-of nearby with [high-k > 0]
+        face target
+        let d distance target 
+        jump d - 1
+      ]
+    ]
+    [ ;; otherwise just change direction (or not)
+      if random-float 1 < search-tortuosity or [not on-island?] of patch-ahead 1 [
+        face pick-by-unfamiliarity (neighbors with [on-island? and self != previous-location])
+        ;; GP changed this as in irregular world can get to end of peninsula so need to be able to back-track
+        set previous-location patch-here ;; to prevent back-tracking next step
+      ]
+    ]
+    jump 1
+    set unknownness 1
+    if high-value-resource > 0 [ ;; then go hunting!
+      ;; output-type who output-type " " output-type ticks output-print " found something!"
+      hunt steps-remaining
+      stop
+    ]
+    set steps-remaining steps-remaining - 1
+  ]
+  ;; if get here, no resources found so next search will be more directed
+  set search-tortuosity enforce-lower-limit min-tortuosity (search-tortuosity - search-adjust)
+end
+
+
+;; selects a neighbour at random with the 
+;; chance of selection proportional to the unknownness  
+;; ps = neighbors4 with [on-island? and self != previous-location]
+;; modified GP to deal with irregular worlds
+
+to-report pick-by-unfamiliarity [ps]
+  ;; make same-ordered lists of the neighbouring patches 
+  ;; and their unknownness 
+  let N sort-by [[unknownness] of ?1 > [unknownness] of ?2] ps
+  let N-u map [[unknownness] of ?] N
+  ;; use reduce (haha) to cumulate sum
+  let cum-N-u but-first reduce [lput (last ?1 + ?2) ?1] (sentence [[0]] N-u)
+   
+  ;; then random number picks one out using list filter
+  ifelse not empty? cum-N-u
+  [
+    let x (random-float last cum-N-u)
+    let pick length filter [x > ?] cum-N-u
+    report item pick N
+  ]
+  [  ;; allow back-tracking if stuck [GP]
+    report one-of neighbors with [on-island?] 
+  ]
+end
+
+  
+;; hunts for the specified number of iterations  
+;; NOTE t <= 0 will give an error, but shouldn't happen
+to hunt [t]
+  pen-down
+  set color yellow
+  let total-kill 0
+  let party-size (enforce-upper-limit hunt-party-size (pop / 2))
+  let sites patch-set nobody ;; keep track of locations visited this hunt
+  repeat t [
+    set unknownness 1
+    ;; hunt efficiency modified by availability
+    let kill clamp-between 0 high-value-resource (party-size * hunt-kill-per-head * high-value-resource / max-high-k)
+    set kill kill / hunt-range
+    set high-value-resource high-value-resource - kill
+    set total-kill total-kill + kill
+    ;; if we run into an earlier memory of this patch that is belongs to us 
+    ;; erase it as we'll be updating when we leave
+    ask spots-here with [owner = myself] [ die ]
+    set sites (patch-set sites patch-here)
+    ;; and relentlessly pursue the best places...
+    move-to max-one-of (neighbors with [on-island? and high-k > 0]) [high-value-resource]
+  ]
+  ;; if the hunting has been good leave a marker and 
+  ;; put it in memory
+  if total-kill > 0 [
+    let best-remaining max-one-of sites [high-value-resource]
+    remember-this-spot best-remaining total-kill
+  ]
+  ;; calculate the take - limited to the by the party-size and take-per-person
+  ;; NOTE not affected by the time hunting
+  let total-take enforce-upper-limit total-kill (party-size * hunt-take-per-head) 
+  set hunt-take-to-date hunt-take-to-date + total-take
+  set hunt-kill-to-date hunt-kill-to-date + total-kill
+  ;; don't forget to update the total resources collected for the year
+  set total-collected total-collected + total-take
+end
+  
+
+to remember-this-spot [spot-to-remember take]
+  let the-spot nobody
+  let this-group self
+  ask spot-to-remember [
+    sprout-spots 1 [
+      set color red
+      set shape "star"
+      set size 2
+      set yield take
+      set the-spot self
+      set owner this-group
+    ]
+  ]
+  set my-hunting-spots (turtle-set my-hunting-spots the-spot)
+  ;; if that puts us over the limit, ditch a bad one
+  if count my-hunting-spots > hunt-memory-length [
+    ask min-one-of my-hunting-spots [yield] [die]
+  ]
+end
+
+
+;; ------------------------------
+;; Gathering
+;; ------------------------------
+to gather-local-resources
+  ask groups [
+    let total-take 0
+    set color orange
+    pen-down  
+    ;; up to half the total effort available is lost depending on hunting
+    let gather-effort pop - effort-deployed-hunting
+    repeat gather-effort [
+      let target max-one-of nearby [low-value-resource]
+      move-to target 
+      let take clamp-between 0 low-value-resource (gather-per-head * low-value-resource / max-low-k)
+      set low-value-resource low-value-resource - take
+      set total-take total-take + take
+      move-to home-camp
+    ]
+    set local-collected local-collected + total-take
+    set total-collected total-collected + total-take
+    pen-up
+  ]
+end
+
+
+to-report effort-deployed-hunting
+  report ceiling ((enforce-upper-limit hunt-party-size (pop / 2)) * hunting-trips / max-hunts-per-month)
+end
+
+

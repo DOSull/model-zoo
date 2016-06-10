@@ -1,0 +1,66 @@
+; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Licensed under the Creative Commons 
+; Attribution-NonCommercial-ShareAlike 3.0 License 
+; See Info tab for full copyright and license information
+;;
+
+
+;; Requires landscape patchiness already created
+to initialise-resources
+  ask patches [
+    ;; both low and high capacities set to close to the specified 
+    ;; maximums using a 'trimmed' normal
+    set low-k (random-normal-between 0.9 0.1 0 1) * max-low-K 
+    ifelse class = 0
+    [ set high-k (random-normal-between 0.9 0.1 0 1) * max-high-K ]
+    [ set high-k 0 ]
+  ]
+  diffuse4 low-k 0.8
+  diffuse4 high-k 0.8
+  ask the-sea [
+    set low-k 0
+    set high-k 0
+  ]
+  ask patches [
+    ;; initialised to trimmed normal proportion of max
+    set low-value-resource random-normal-between 0.9 0.1 0 1 * low-k
+    set high-value-resource random-normal-between 0.9 0.1 0 1 * high-k
+  ]
+  ;; grow them for a few years to initialise
+  repeat 10 [ regrow-resources ]
+end
+  
+
+;; regrowth is typical logistic growth model
+to regrow-resources
+  ;; low-value-resource:
+  ask patches with [low-k > 0] [
+    let low-grow (random-normal r-low r-lo-sd) * low-value-resource * (low-k - low-value-resource) / low-k
+    set low-value-resource clamp-between 0 low-k (low-value-resource + low-grow)
+  ]
+  ;; for low value there is some local spread
+  diffuse4 low-value-resource diffusion-rate 
+  ask the-sea [
+    set low-value-resource 0
+  ]
+  
+  ;; high value-resource
+  ask patches with [high-k > 0] [
+    let high-grow (random-normal r-high r-hi-sd) * high-value-resource * (high-k - high-value-resource) / high-k
+    set high-value-resource clamp-between 0 high-k (high-value-resource + high-grow)
+    if high-value-resource < min-sustainable-h [
+      set high-value-resource 0
+    ]
+  ]
+end
+
+
+;; DEPRECATED - used for testing only
+to deplete-resources
+  ask patches [
+    set low-value-resource clamp-between 0 low-K (low-value-resource * (0.8 + random-float 0.2))
+    set high-value-resource clamp-between 0 high-K (high-value-resource * (0.8 + random-float 0.2))
+  ]
+end
+
+
