@@ -105,8 +105,6 @@ to pick-a-spot-and-hunt-there [spots-to-choose]
   ask target-spot [ die ]
   ;; now hunt
   hunt time-to-hunt
-  ;; and will be more exploratory in next search
-  set search-tortuosity clamp-between min-tortuosity max-tortuosity (search-tortuosity + search-adjust)
 end
 
 
@@ -166,8 +164,6 @@ to search [t]
     ]
     set steps-remaining steps-remaining - 1
   ]
-  ;; if get here, no resources found so next search will be more directed
-  set search-tortuosity enforce-lower-limit min-tortuosity (search-tortuosity - search-adjust)
 end
 
 
