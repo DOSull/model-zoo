@@ -78,8 +78,6 @@ patches-own [
   high-k            ;; capacity and  
   high-value-resource ;; current level of high value resource
   
-  unknownness       ;; index recording how unknown the patch is to the humans
-                    ;; runs from 0 to 100, and influences relocation decisions
   mh-d
   on-island?
   edge-shell        ;; used by irregular island code
@@ -127,11 +125,9 @@ to initialise-patch-variables
     set in-perc-cluster? false
     ifelse on-island? [
       set nearby (patch-set self (patches in-radius nearby-range) with [on-island?])
-      set unknownness 100 ;; initially 
       set mh-d 1000
     ]
     [
-      set unknownness 0 ;; initially 
       set mh-d 10000
     ]
   ]
@@ -171,9 +167,6 @@ to initialise-groups
       set home-camp patch-here
       set my-hunting-spots turtle-set nobody
       set search-tortuosity initial-search-tortuosity
-      ask nearby [
-        set unknownness 1
-      ]
     ]
   ]
 end
@@ -203,14 +196,6 @@ to go
   go-hunting
   gather-local-resources
   update-display
-  ask the-island with [not any? groups-here] [
-    set unknownness enforce-upper-limit 100 (unknownness + 1)
-  ]
-;  diffuse4 unknownness 0.05
-  ask the-sea [
-    set unknownness 0
-  ]
-  
   update-evaluation-variables
 
   tick

@@ -43,7 +43,7 @@ to go-hunting
       pen-up
       move-to home-camp
       ;; face pick-by-unfamiliarity neighbors4 with [on-island?]
-      face pick-by-unfamiliarity neighbors with [on-island?]
+      face one-of neighbors with [on-island?]
       set hunt-number hunt-number + 1
     ]
     set color red
@@ -119,7 +119,6 @@ to go-to-known-spot [p]
   ask bbox [set mh-d lattice-distance-to p]   
   while [patch-here != p] [
     downhill mh-d
-    set unknownness 1
   ]
   ask bbox [set mh-d 1000]
 end
@@ -154,13 +153,12 @@ to search [t]
     ]
     [ ;; otherwise just change direction (or not)
       if random-float 1 < search-tortuosity or [not on-island?] of patch-ahead 1 [
-        face pick-by-unfamiliarity (neighbors with [on-island? and self != previous-location])
+        face one-of (neighbors with [on-island? and self != previous-location])
         ;; GP changed this as in irregular world can get to end of peninsula so need to be able to back-track
         set previous-location patch-here ;; to prevent back-tracking next step
       ]
     ]
     jump 1
-    set unknownness 1
     if high-value-resource > 0 [ ;; then go hunting!
       ;; output-type who output-type " " output-type ticks output-print " found something!"
       hunt steps-remaining
@@ -173,32 +171,6 @@ to search [t]
 end
 
 
-;; selects a neighbour at random with the 
-;; chance of selection proportional to the unknownness  
-;; ps = neighbors4 with [on-island? and self != previous-location]
-;; modified GP to deal with irregular worlds
-
-to-report pick-by-unfamiliarity [ps]
-  ;; make same-ordered lists of the neighbouring patches 
-  ;; and their unknownness 
-  let N sort-by [[unknownness] of ?1 > [unknownness] of ?2] ps
-  let N-u map [[unknownness] of ?] N
-  ;; use reduce (haha) to cumulate sum
-  let cum-N-u but-first reduce [lput (last ?1 + ?2) ?1] (sentence [[0]] N-u)
-   
-  ;; then random number picks one out using list filter
-  ifelse not empty? cum-N-u
-  [
-    let x (random-float last cum-N-u)
-    let pick length filter [x > ?] cum-N-u
-    report item pick N
-  ]
-  [  ;; allow back-tracking if stuck [GP]
-    report one-of neighbors with [on-island?] 
-  ]
-end
-
-  
 ;; hunts for the specified number of iterations  
 ;; NOTE t <= 0 will give an error, but shouldn't happen
 to hunt [t]
@@ -208,7 +180,6 @@ to hunt [t]
   let party-size (enforce-upper-limit hunt-party-size (pop / 2))
   let sites patch-set nobody ;; keep track of locations visited this hunt
   repeat t [
-    set unknownness 1
     ;; hunt efficiency modified by availability
     let kill clamp-between 0 high-value-resource (party-size * hunt-kill-per-head * high-value-resource / max-high-k)
     set kill kill / hunt-range

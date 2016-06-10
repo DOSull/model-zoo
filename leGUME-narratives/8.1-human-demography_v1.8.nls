@@ -92,19 +92,19 @@ to relocate
     ifelse relocate-near-hunting? [
       ifelse any? my-hunting-spots [
         ;;let with [count [neighbors4] of patch-here with [the-shore = true] > 0])
-        move-to max-one-of my-hunting-spots  [unknownness] 
+        move-to one-of my-hunting-spots
         move-to min-one-of (the-island with [high-value-resource = 0]) [lattice-distance-to myself] 
       ]
       [ ;; this is just dumb random walking, but into the unknown ;; v1.4.1 bug-fix - if no hunting spots then just use random method
          let min-d floor (2 * nearby-range) 
          let max-d ceiling (3 * nearby-range)
-         move-to max-one-of (the-island with [between? min-d max-d (lattice-distance-to myself) and high-value-resource = 0]) [unknownness]
+         move-to one-of (the-island with [between? min-d max-d (lattice-distance-to myself) and high-value-resource = 0])
       ]
     ]
     [ ;; this is just dumb random walking, but into the unknown
        let min-d floor (2 * nearby-range) 
        let max-d ceiling (3 * nearby-range)
-       move-to max-one-of (the-island with [between? min-d max-d (lattice-distance-to myself) and high-value-resource = 0]) [unknownness]
+       move-to one-of (the-island with [between? min-d max-d (lattice-distance-to myself) and high-value-resource = 0])
     ]
   ] 
   [ ;; no high value resource to be found so leave island: v1.3.1 bug-fix
@@ -114,7 +114,6 @@ to relocate
   set home-camp patch-here
   ;; face one-of neighbors4 with [on-island?]
   face one-of neighbors with [on-island?]
-  ask nearby [set unknownness 1]
   set search-tortuosity initial-search-tortuosity ;; reset this to start-value for the new location
 end
 
