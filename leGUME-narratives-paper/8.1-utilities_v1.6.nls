@@ -1,0 +1,68 @@
+; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Licensed under the Creative Commons 
+; Attribution-NonCommercial-ShareAlike 3.0 License 
+; See Info tab for full copyright and license information
+;;
+
+
+;; reports a normally distributed random number
+;; between specified values (inclusive)
+;; mean m
+;; srdev s
+;; min value mn
+;; max value mx
+;; be careful: could cause an infinite loop!
+to-report random-normal-between [m s mn mx]
+  if mn >= mx [ report mn ]
+  let x mx + 1
+  while [not between? mn mx x] [
+    set x random-normal m s
+  ]
+  report x
+end
+
+;; reports a Poisson distributed random number
+;; between specified values (inclusive)
+;; mean m
+;; min value mn
+;; max value mx
+;; be careful: could cause an infinite loop!
+to-report random-poisson-between [m mn mx]
+  if mn >= mx [ show "Warning - same min and max values sent to random-poisson-between" report mn ]
+  let x mx + 1
+  while [not between? mn mx x] [
+    set x random-poisson m
+  ]
+  report x
+end
+
+;; true if x between the supplied values (either order)
+;; note parameter order is more 'netlogo'-esque
+;; as in 'if between? a b distance target' 
+to-report between? [lim-1 lim-2 x]
+  ifelse lim-1 > lim-2
+  [ report x >= lim-2 and x <= lim-1 ]
+  [ report x >= lim-1 and x <= lim-2 ]
+end
+
+
+;; clamps x to be inside the specified range
+;; replaced lots of inline list max min calls 
+to-report clamp-between [a b x] 
+  if x < a [report a]
+  if x > b [report b]
+  report x
+end
+
+
+to-report enforce-lower-limit [a limit]
+  if a >= limit [report a]
+  report limit
+end
+
+to-report enforce-upper-limit [a limit]
+  if a <= limit [report a]
+  report limit
+end
+
+
