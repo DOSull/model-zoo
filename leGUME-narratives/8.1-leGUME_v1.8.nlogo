@@ -18,11 +18,11 @@
 ;; v1.6.0 population growth to stochastic exponential, irregular island option (had to modify pick-by-unfamiliarity)
 
 
-__includes[ "8.1-simmap_code.nls" 
-            "8.1-landscape-demography_v1.6.nls" 
-            "8.1-hunting-and-gathering_v1.7.1.nls" 
-            "8.1-human-demography_v1.6.nls" 
-            "8.1-utilities_v1.6.nls" ]
+__includes[ "8.1-simmap_code_v1.8.nls" 
+            "8.1-landscape-demography_v1.8.nls" 
+            "8.1-hunting-and-gathering_v1.8.nls" 
+            "8.1-human-demography_v1.8.nls" 
+            "8.1-utilities_v1.8.nls" ]
 
 globals [ 
   clusters          ;; a list of patch-sets of patches in each cluster
