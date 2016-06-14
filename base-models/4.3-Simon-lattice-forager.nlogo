@@ -22,48 +22,47 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 globals [
-  area-per-search
+  search-areas
   search-durations
   search-color
 ]
 
-breed [spots spot]
-breed [targets target]
-breed [walkers walker]
+breed [spots spot] ;; markers on the walker's trail
+breed [targets target] ;; target resources
+breed [walkers walker] ;; the walker
 
 walkers-own [
-  energy
-  spotted-target
-  search-duration
+  energy ;; remaining energy of the searcher
+  spotted-target ;; resource target that has come into view
+  search-duration ;; duration of the current search
 ]
 
 to setup
   clear-all
 
-  set area-per-search []
-  set search-durations []
+  set search-areas [] ;; total area searched seeking the current target
+  set search-durations [] ;; times taken the current search
   set search-color grey + 3
 
-  set-default-shape spots "circle"
   ask patches [
     set pcolor white
   ]
   ask n-of n-targets patches [
     sprout-targets 1 [
       set color black
-      set shape "target"
+      set shape "circle 3"
+      set size 2
     ]
   ]
   ask one-of patches [
     sprout-walkers 1 [
       set size 3 ;; easier to see
-      set color red
-      set energy max-energy
-      set search-duration 0
-      set spotted-target nobody
+      set color orange
       face one-of neighbors4
+      replenish-energy-and-reset
     ]
     sprout-spots 1 [
+      set shape "circle"
       set color orange + 2
     ]
   ]
@@ -72,10 +71,11 @@ end
 
 to go
   ifelse any? walkers [
+    ;; restart the search by removing the searched region color
     ask patches with [pcolor = search-color] [
       set pcolor white
     ]
-    ask walkers [
+    ask walkers [ ;; note that there is only one!
       execute-search
     ]
     tick
@@ -86,8 +86,10 @@ to go
 end
 
 to execute-search
+  ;; new search so set duration to zero
   set search-duration 0
   while [true] [
+    ;; check for spotted target
     let searched-patches patches with [pcolor = search-color]
     if any? targets-on searched-patches [
       set spotted-target min-one-of (targets-on searched-patches) [manhattan-dist-to myself]
@@ -98,12 +100,15 @@ to execute-search
       [ face one-of neighbors4 ]
       jump 1
       set energy energy - 1
-      mark-path
+      update-search-area
+      mark-path ;; update path markers
     ]
     [ ;; target found load up and setup to go again
       ifelse any? targets-here [
+        set search-areas fput (count patches with [pcolor = search-color]) search-areas
+        set search-durations fput search-duration search-durations
         replenish-energy-and-reset
-        stop
+        stop ;; done so can stop procedure here
       ]
       [ ;; move towards the target by the fastest route
         move-towards-target spotted-target
@@ -114,51 +119,54 @@ to execute-search
     ifelse energy <= 0
     [ die ]
     [ ;; still alive, so update the search area
-      update-search-area
+;      update-search-area
       set search-duration search-duration + 1
     ]
     display
   ]
 end
 
+;; moving towards target is simply about moving to a patch that is closer
+;; to the target by Manhattan distance
 to move-towards-target [t]
+  ;; do this in multiple steps so as to maintain the correct facing
   let next-location min-one-of neighbors4 [manhattan-dist-to t]
   face next-location
   jump 1
   set energy energy - 1
 end
 
+;; record results from this search and reset them
 to replenish-energy-and-reset
-  set area-per-search fput (count patches with [pcolor = search-color]) area-per-search
-  set search-durations fput search-duration search-durations
   set energy max-energy
   set spotted-target nobody
-  face one-of neighbors4
-  ask targets-here [
+  ask targets-here [ ;; recycle target rather than killing this one and making a new one
     move-to one-of patches with [not any? targets-here]
   ]
-  mark-path
 end
 
+;; mark visited patches up to the specified path-to-show limit
 to mark-path
   if count spots <= path-to-show [
+    ;; fewer than required so need to add a spot
     hatch 1 [
       set breed spots
       set size 1
       set color orange + 2
     ]
   ]
+  ;; now there will be one more than specified, or perhaps more
+  ;; if the slider has been changed, so kill the oldest ones
   if count spots > path-to-show [
     foreach sublist sort spots 0 (count spots - path-to-show) [
-      ask ? [
-        die
-      ]
+      ask ? [ die ]
     ]
   ]
 end
 
 to update-search-area
-  ask patches in-radius (vision + 0.5) with [manhattan-dist-to myself <= vision] [
+  ;; note that we only calculate Manhattan distances for those inside relevant radius
+  ask patches in-radius (vision + 0.25) with [manhattan-dist-to myself <= vision] [
     set pcolor search-color
   ]
 end
@@ -166,14 +174,17 @@ end
 ;; note that pt can be a patch or a turtle
 ;; since pxcor/pycor of turtle is that of the patch it occupies
 to-report manhattan-dist-to [pt]
+  ;; determine absolute difference in x and y coords
   let diff-x abs (pxcor - [pxcor] of pt)
+  let diff-y abs (pycor - [pycor] of pt)
+  ;; if it is more than half width or height, then account for 'wrapping'
   if diff-x > (world-width / 2) [
     set diff-x world-width - diff-x
   ]
-  let diff-y abs (pycor - [pycor] of pt)
   if diff-y > (world-height / 2) [
     set diff-y world-height - diff-y
   ]
+  ;; Manhattan distance is sum of the absolute coordinate differences
   report diff-x + diff-y
 end
 @#$#@#$#@
@@ -213,7 +224,7 @@ vision
 vision
 1
 25
-8
+10
 1
 1
 NIL
@@ -228,7 +239,7 @@ max-energy
 max-energy
 100
 5000
-500
+1000
 100
 1
 NIL
@@ -305,7 +316,7 @@ n-targets
 n-targets
 1
 50
-50
+25
 1
 1
 NIL
@@ -320,7 +331,7 @@ path-to-show
 path-to-show
 0
 500
-100
+20
 10
 1
 NIL
@@ -335,7 +346,7 @@ p-direction-change
 p-direction-change
 0
 1
-0.34
+0.59
 0.01
 1
 NIL
@@ -408,7 +419,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 1 -16777216 true "" "if length area-per-search > 0 [\n  set-plot-x-range 0 ceiling max area-per-search\n  set-histogram-num-bars 20\n  histogram area-per-search\n]"
+"default" 1.0 1 -16777216 true "" "if length search-areas > 0 [\n  set-plot-x-range 0 ceiling max search-areas\n  set-histogram-num-bars 20\n  histogram search-areas\n]"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -425,15 +436,23 @@ You should consult that book for more information and details of the model.
 
 ## HOW IT WORKS
 
-This model involves a random walker searching for resources (the black circles) under an energy constraint, with a fixed range vision field (the grey shaded area). When a resource comes into view, the walker switches mode to move directly to the resource. Each step costs one unit of energy. When the walker reaches the resource, its energy level is replenished to the maximum energy level specified.
+This model involves a random walker searching for resources (the black open circles) under an energy constraint, with a fixed range vision field (the grey shaded area). When a resource comes into view, the walker switches mode to move directly to the resource. Each step costs one unit of energy. When the walker reaches the resource, its energy level is replenished to the maximum energy level specified.
 
-The range of vision is specifed by the `vision` parameter. Note that vision range is a Manhattan distance not Euclidean.
+The range of vision is specifed by the `vision` parameter. Note that vision range is a _Manhattan distance_ not Euclidean (see the `manhattan-dist-to` reporter for details).
 
 The number of resource targets in the world is specified by the `n-targets` parameter. Each time a resource is reached, it is removed, the walker replenishes its energy level, and a new resource is created to replace the one just exploited.
 
 The energy level is specified by the `max-energy` parameter.
 
 The movement behavior is controlled by `p-direction-change` which is the probability at each step that the walker might change direction (since this leads to the walker facing one of its `neighbors4` it may actually not change direction). Higher probabilities make the walk more tortuous, and less likely to find resources quickly.
+
+## THINGS TO NOTICE
+
+The code in `update-search-area` and `mark-path` is worth close attention as the functionality provided is fairly often required in models of this general kind.
+
+## THINGS TO TRY
+
+There are many, many things in this model that lend themselves to reworking and exploration. Changing how vision is implemented (not Manhattan distance based, for example, or only forward looking), how energy is handled (targets might offer different amounts of energy and be differently attractive for that reason), and how movement works are all viable (and relatively simple to implement, and potentially of scientific interest).
 
 ## HOW TO CITE
 
@@ -521,6 +540,11 @@ false
 0
 Circle -7500403 true true 0 0 300
 Circle -16777216 true false 30 30 240
+
+circle 3
+true
+0
+Circle -7500403 false true 2 2 295
 
 cow
 false
