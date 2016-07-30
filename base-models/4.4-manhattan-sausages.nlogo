@@ -27,10 +27,9 @@
 ;; Psychological Review, 63(2), 129-138. American Psychological Association.
 ;; Retrieved from http://www.ncbi.nlm.nih.gov/pubmed/13310708
 
-;; extensions [r]
 
 globals [
-  area-per-step
+  search-areas
   search-durations
   search-color
 ]
@@ -42,8 +41,8 @@ walkers-own [
 ]
 
 patches-own [
-  searched
-  visited
+  searched?
+  visited?
 ]
 
 to setup
@@ -51,13 +50,13 @@ to setup
 
   ;; r:setPlotDevice
 
-  set area-per-step []
+  set search-areas []
   set search-durations []
   set search-color grey + 3
 
   ask patches [
-    set searched 0
-    set visited 0
+    set searched? false
+    set visited? false
     update-patch-color
   ]
   ask patch (world-width / 2) (world-height / 2) [
@@ -68,7 +67,7 @@ to setup
       set search-duration 0
       face one-of neighbors4
     ]
-    set visited 1
+    set visited? true
   ]
   reset-ticks
 end
@@ -86,9 +85,9 @@ to go
 end
 
 to update-patch-color
-  ifelse searched = 1
+  ifelse searched?
   [ set pcolor search-color ]
-  [ ifelse visited = 1
+  [ ifelse visited?
     [ set pcolor search-color - 3 ]
     [ set pcolor white ]
   ]
@@ -96,20 +95,20 @@ end
 
 to move
   ifelse self-avoiding? [
-    ifelse any? neighbors4 with [visited = 0] [
-      if random-float 1 < p-direction-change or ([visited = 1] of patch-ahead 1) [
-        face one-of neighbors4 with [visited = 0]
+    ifelse any? neighbors4 with [not visited?] [
+      if random-float 1 < p-direction-change or ([visited?] of patch-ahead 1) [
+        face one-of neighbors4 with [not visited?]
       ]
       jump 1
-      update-search-area
     ]
     [ ; if no available unvisited N4, then find the closest unvisited lattice site
-      let this-patch patch-here
-      let target min-one-of (patches with [visited = 0]) [manhattan-dist-to this-patch]
+      ; note that this is costly operation because it inspects all unvisited patches
+      ; and calculated Manhattan distance; however, it should be unusual enough for
+      ; this inefficiency not to matter too much
+      let target min-one-of (patches with [not visited?]) [manhattan-dist-to myself]
       let d-cost manhattan-dist-to target
       repeat d-cost [
         move-towards-target target
-        update-search-area
       ]
     ]
   ]
@@ -118,8 +117,8 @@ to move
        face one-of neighbors4
      ]
      jump 1
-     update-search-area
   ]
+  update-search-area
   display
 end
 
@@ -131,9 +130,9 @@ end
 
 to update-search-area
   set search-duration search-duration + 1
-  set visited 1
+  set visited? true
   ask patches in-radius (vision + 0.5) with [manhattan-dist-to myself < vision] [
-    set searched 1
+    set searched? true
     update-patch-color
   ]
 end
@@ -151,18 +150,6 @@ to-report manhattan-dist-to [pt]
   ]
   report diff-x + diff-y
 end
-
-;; R plotting code
-;;to r-plot-search-area
-;;  r:put "s" map [[searched] of ?] sort patches
-;;  r:put "v" map [[visited] of ?] sort patches
-;;  r:put "p" p-direction-change
-;;  r:put "nr" world-height
-;;  r:put "nc" world-width
-;;  r:eval("map <- matrix(s+v, ncol=nc, nrow=nr)")
-;;  r:eval("cols <- colorRampPalette(c('white', 'black'))")
-;;  r:eval("image(map, asp=1, col=cols(3), axes=F)")
-;;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 143
@@ -289,14 +276,24 @@ HORIZONTAL
 
 SWITCH
 4
-301
+298
 136
-334
+331
 self-avoiding?
 self-avoiding?
 0
 1
 -1000
+
+TEXTBOX
+7
+335
+138
+368
+Not strictly self-avoiding!
+11
+15.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -306,6 +303,12 @@ This model is referenced in Chapter 4 of
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
+
+The model code is similar to that of the preceding Simon lattice forager model, and the primary purpose of this model was to collect data for figure 4.12. Refer to the code comments for additional information.
+
+## THINGS TO TRY
+
+See if you can produce your own version of figure 4.12.
 
 ## HOW TO CITE
 

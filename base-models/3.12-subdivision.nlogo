@@ -328,7 +328,7 @@ n-subdivisions
 n-subdivisions
 100
 count patches / 4
-6634
+2382
 1
 1
 NIL
@@ -353,7 +353,7 @@ p-state-change
 p-state-change
 0
 1
-1
+0
 0.01
 1
 NIL
@@ -366,7 +366,7 @@ SWITCH
 506
 inherit-state?
 inherit-state?
-0
+1
 1
 -1000
 
@@ -489,7 +489,7 @@ You should consult that book for more information and details of the model.
 
 ## THINGS TO NOTICE
 
-This model uses NetLogo turtles as placeholders that store information about the subdivision structure, and also as a mechanism to operate the subdivision. Each `node` turtles has a `domain` attribute which is a `patch-set` of all its 'member' patches.  Patches correspondinly store a `my-node` attribute which is the node turtles whose domain they are in. A `node` can act on its domain by invoking
+This model uses NetLogo turtles as placeholders that store information about the subdivision structure, and also as a mechanism to operate the subdivision. Each `node` turtle has a `domain` attribute which is a `patch-set` of all its 'member' patches.  Patches correspondingly store a `my-node` attribute which is the node turtles whose domain they are in. A `node` can act on its domain by invoking
 
     ask domain [
       ;; do stuff

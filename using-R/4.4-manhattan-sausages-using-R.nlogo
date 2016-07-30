@@ -22,113 +22,159 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-; Simple model to implement Game of Life CA
+;; Loosely based on
+;; Simon, H. A. (1956). Rational choice and the structure of the environment.
+;; Psychological Review, 63(2), 129-138. American Psychological Association.
+;; Retrieved from http://www.ncbi.nlm.nih.gov/pubmed/13310708
 
-;; extensions [r]
 
-; patch pcolor built-in used for current state
-patches-own [
-  next-state ; the next state of the patch
-  state
+extensions [ r ]
+
+globals [
+  area-per-step
+  search-durations
+  search-color
 ]
 
-; setup model so that a proportion of the patches
-; equal to the density are initially alive
+breed [walkers walker]
+
+walkers-own [
+  search-duration
+]
+
+patches-own [
+  searched
+  visited
+]
+
 to setup
   clear-all
-  ;;r:setPlotDevice
 
-  if use-seed? [random-seed 1]
+  r:setPlotDevice
+
+  set area-per-step []
+  set search-durations []
+  set search-color grey + 3
 
   ask patches [
-    ifelse (random-float 1 < density)
-    [ set state 1 ]
-    [ set state 0 ]
+    set searched 0
+    set visited 0
+    update-patch-color
   ]
-  update-patches
+  ask patch (world-width / 2) (world-height / 2) [
+    sprout-walkers 1 [
+      pd
+      set size 2 ;; easier to see
+      set color red
+      set search-duration 0
+      face one-of neighbors4
+    ]
+    set visited 1
+  ]
   reset-ticks
 end
 
-to update-patches
-  ask patches [
-    ifelse state = 1
-    [ set pcolor black ]
+to go
+  ifelse ticks < walk-duration [
+    ask walkers [
+      move
+    ]
+    tick
+  ]
+  [
+    stop
+  ]
+end
+
+to update-patch-color
+  ifelse searched = 1
+  [ set pcolor search-color ]
+  [ ifelse visited = 1
+    [ set pcolor search-color - 3 ]
     [ set pcolor white ]
   ]
 end
 
-to go
-  ifelse update-mode = "synchronous"
-  [ synchronous-update ]
-  [ asynchronous-update ]
-  update-patches
-  tick
-end
-
-to synchronous-update
-  ask patches [
-    set next-state 0; assume all patches will die
-    ; count how many live neighbours of the patch
-    let n sum [state] of (patch-set self neighbors)
-
-    ifelse n > 4
-    [ set next-state 1 ]
-    [ set next-state 0 ]
-  ]
-  ask patches [
-    set state next-state
-  ]
-end
-
-to asynchronous-update
-  if update-mode = "async all random" [
-    ask patches [
-      update-state
+to move
+  ifelse self-avoiding? [
+    ifelse any? neighbors4 with [visited = 0] [
+      if random-float 1 < p-direction-change or ([visited = 1] of patch-ahead 1) [
+        face one-of neighbors4 with [visited = 0]
+      ]
+      jump 1
+      update-search-area
     ]
-  ]
-  if update-mode = "async random" [
-    repeat count patches [
-      ask one-of patches [
-        update-state
+    [ ; if no available unvisited N4, then find the closest unvisited lattice site
+      let this-patch patch-here
+      let target min-one-of (patches with [visited = 0]) [manhattan-dist-to this-patch]
+      let d-cost manhattan-dist-to target
+      repeat d-cost [
+        move-towards-target target
+        update-search-area
       ]
     ]
   ]
-  if update-mode = "async ordered" [
-    foreach sort patches [
-      ask ? [
-        update-state
-      ]
-    ]
+  [
+     if random-float 1 < p-direction-change [
+       face one-of neighbors4
+     ]
+     jump 1
+     update-search-area
+  ]
+  display
+end
+
+to move-towards-target [t]
+  let next-location min-one-of neighbors4 [manhattan-dist-to t]
+  face next-location
+  jump 1
+end
+
+to update-search-area
+  set search-duration search-duration + 1
+  set visited 1
+  ask patches in-radius (vision + 0.5) with [manhattan-dist-to myself < vision] [
+    set searched 1
+    update-patch-color
   ]
 end
 
-to update-state
-  let n sum [state] of  (patch-set self neighbors)
-  ifelse n > 4
-  [ set state 1 ]
-  [ set state 0 ]
+;; note that pt can be a patch or a turtle
+;; since pxcor/pycor of turtle is that of the patch it occupies
+to-report manhattan-dist-to [pt]
+  let diff-x abs (pxcor - [pxcor] of pt)
+  if diff-x > (world-width / 2) [
+    set diff-x world-width - diff-x
+  ]
+  let diff-y abs (pycor - [pycor] of pt)
+  if diff-y > (world-height / 2) [
+    set diff-y world-height - diff-y
+  ]
+  report diff-x + diff-y
 end
 
-; R plotting code
-;to r-plot-world
-;  r:put "s" map [[state] of ?] sort patches
-;  r:put "nr" world-height
-;  r:put "nc" world-width
-;  r:eval("map <- matrix(s, ncol=nc, nrow=nr)")
-;  r:eval("cols <- colorRampPalette(c('white', 'black'))")
-;  r:eval("image(map, asp=1, col=cols(2), axes=F)")
-;end
+;; R plotting code
+to r-plot-search-area
+  r:put "s" map [[searched] of ?] sort patches
+  r:put "v" map [[visited] of ?] sort patches
+  r:put "p" p-direction-change
+  r:put "nr" world-height
+  r:put "nc" world-width
+  r:eval("map <- matrix(s+v, ncol=nc, nrow=nr)")
+  r:eval("cols <- colorRampPalette(c('white', 'black'))")
+  r:eval("image(map, asp=1, col=cols(3), axes=F)")
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-205
+143
 10
-623
-449
-25
-25
-8.0
+553
+441
+-1
+-1
+4.0
 1
-10
+8
 1
 1
 1
@@ -136,21 +182,36 @@ GRAPHICS-WINDOW
 1
 1
 1
--25
-25
--25
-25
+0
+99
+0
+99
 1
 1
 1
 ticks
-30.0
+100.0
+
+SLIDER
+4
+128
+137
+161
+vision
+vision
+1
+25
+10
+1
+1
+NIL
+HORIZONTAL
 
 BUTTON
-135
-23
-198
-56
+73
+10
+136
+43
 NIL
 setup
 NIL
@@ -164,27 +225,10 @@ NIL
 1
 
 BUTTON
-130
 72
-201
-105
-go-100
-repeat 100 [go]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-134
+85
+136
 118
-197
-151
 NIL
 go
 T
@@ -197,38 +241,60 @@ NIL
 NIL
 1
 
+BUTTON
+72
+48
+136
+81
+step
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
 SLIDER
-21
-165
-193
-198
-density
-density
+4
+260
+137
+293
+walk-duration
+walk-duration
+0
+1000
+200
+10
+1
+NIL
+HORIZONTAL
+
+SLIDER
+4
+223
+136
+256
+p-direction-change
+p-direction-change
 0
 1
-0.5
+0.25
 0.01
 1
 NIL
 HORIZONTAL
 
-CHOOSER
-48
-220
-189
-265
-update-mode
-update-mode
-"synchronous" "async all random" "async random" "async ordered"
-0
-
 SWITCH
-72
-387
-184
-420
-use-seed?
-use-seed?
+4
+301
+136
+334
+self-avoiding?
+self-avoiding?
 0
 1
 -1000
@@ -236,46 +302,11 @@ use-seed?
 @#$#@#$#@
 ## WHAT IS IT?
 
-This is a simple majority-rule cellular automaton which demonstrates how changing the timing of cell state updating changes the behaviour of the model.  Four different updating schemes are provided:
-
-+   `synchronous` is the standard update mode for the many CA models where the next state of all cells is determined simulatneously
-+   `async all random` is when cell states are updated in random order, but where every cell is guaranteed to be updated in each generation
-+   `async random` update is one cell at a time updating in random order
-+   `async ordered` is one cell at a time updating but in order from top-left to bottom-right of the lattice
-
-This model is referenced in Chapter 6 of
+This model is referenced in Chapter 4 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
-where the details of these different updating schemes are described in more detail.
-
-## HOW IT WORKS
-
-This section could explain what rules the agents use to create the overall behavior of the model.
-
-## HOW TO USE IT
-
-This section could explain how to use the model, including a description of each of the items in the interface tab.
-
-## THINGS TO NOTICE
-
-This section could give some ideas of things for the user to notice while running the model.
-
-## THINGS TO TRY
-
-This section could give some ideas of things for the user to try to do (move sliders, switches, etc.) with the model.
-
-## EXTENDING THE MODEL
-
-This section could give some ideas of things to add or change in the procedures tab to make the model more complicated, detailed, accurate, etc.
-
-## NETLOGO FEATURES
-
-This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab.  It might also point out places where workarounds were needed because of missing features.
-
-## RELATED MODELS
-
-This section could give the names of models in the NetLogo Models Library or elsewhere which are of related interest.
+You should consult that book for more information and details of the model.
 
 ## HOW TO CITE
 
@@ -438,6 +469,12 @@ Circle -16777216 true false 113 68 74
 Polygon -10899396 true false 189 233 219 188 249 173 279 188 234 218
 Polygon -10899396 true false 180 255 150 210 105 210 75 240 135 240
 
+half line 2
+true
+0
+Polygon -7500403 true true 150 150 135 180 165 180 150 150
+Line -7500403 true 150 165 150 300
+
 house
 false
 0
@@ -487,6 +524,15 @@ Polygon -7500403 true true 165 180 165 210 225 180 255 120 210 135
 Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
 Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
 Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
+
+sheep
+false
+0
+Rectangle -7500403 true true 151 225 180 285
+Rectangle -7500403 true true 47 225 75 285
+Rectangle -7500403 true true 15 75 210 225
+Circle -7500403 true true 135 75 150
+Circle -16777216 true false 165 76 116
 
 square
 false
@@ -583,6 +629,20 @@ NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count patches with [searched?]</metric>
+    <enumeratedValueSet variable="vision">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="p-direction-change" first="0" step="0.05" last="1"/>
+    <enumeratedValueSet variable="walk-duration">
+      <value value="100"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default

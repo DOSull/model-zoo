@@ -36,7 +36,7 @@ patches-own [
 ; equal to the density are initially alive
 to setup
   clear-all
-  r:setPlotDevice
+  ;;r:setPlotDevice
 
   if use-seed? [random-seed 0]
 
