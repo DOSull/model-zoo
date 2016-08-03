@@ -22,24 +22,19 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-turtles-own
-[
-  startCell
-  currCell
-  Rhistory
-  Rnow
+turtles-own [
+  start-cell
+  range
 ]
 
-patches-own
-[
+patches-own [
   occupied?
 ]
 
 to setup
   clear-all
 
-  ask patches
-  [
+  ask patches [
     set occupied? false
     set pcolor black
 
@@ -47,9 +42,7 @@ to setup
       set occupied? true
       set pcolor white
     ]
-
   ]
-
   place-ant
 
   reset-ticks
@@ -57,19 +50,14 @@ end
 
 to place-ant
   ;; place the ant
-  ask n-of ants patches with [occupied? = true]
-    [ sprout 1
-      [
-        set size 2
-        set shape "circle"
-        set color red
-        set currCell patch-here
-
-       set startCell patch-here
-       set Rhistory []
-       set Rnow 0
+  ask n-of ants patches with [occupied? = true] [
+    sprout 1 [
+      set size 2
+      set shape "circle"
+      set color red
+      set start-cell patch-here
     ]
-    ]
+  ]
 end
 
 to go
@@ -78,50 +66,30 @@ to go
 end
 
 to move
-  ask turtles
-    [
+  ask turtles [
+      let new-loc patch-here
+
       ; if blind -> select one of N4 and move if occupied
-      ; if myopic -> select one of occupied N4
-
-      let new-loc currCell
-
-      if antBehaviour = "blind"
-      [
+      if antBehaviour = "blind" [
         let n one-of neighbors4
-        if [occupied?] of n = true [set new-loc n]
-      ]
-
-      if antBehaviour = "myopic"
-      [
-        if any? neighbors4 with [occupied? = true]
-        [
-          set new-loc one-of neighbors4 with [occupied? = true]
+        if [occupied?] of n [
+          set new-loc n
         ]
       ]
-
-      if new-loc != currCell
-      [
-        move-to new-loc
-        ask new-loc [ set pcolor blue ]
-        set currCell new-loc
+      ; if myopic -> select one of occupied N4
+      if antBehaviour = "myopic" [
+        if any? neighbors4 with [occupied?] [
+          set new-loc one-of neighbors4 with [occupied?]
+        ]
       ]
-
-      let newR eucl-distance-on-torus startCell [pxcor] of currCell [pycor] of currCell
-      set RNow newR
-      set Rhistory lput newR Rhistory
+      if new-loc != patch-here [
+        move-to new-loc
+        ask new-loc [
+          set pcolor red + 3
+        ]
+      ]
+      set range distance start-cell
     ]
-end
-
-;; Euclidean distance **on a torus**  between patch p1 and point (x2,y2)
-to-report eucl-distance-on-torus[p1 x2 y2]
-;; See: http://www.swarm.org/pipermail/modelling/2005-October/003828.html
-    let x1 [pxcor] of p1
-    let y1 [pycor] of p1
-
-    let xDist min list (abs (x1 - x2)) (max-pxcor - abs (x1 - x2))
-    let yDist min list (abs (y1 - y2)) (max-pycor - abs (y1 - y2))
-
-    report sqrt ( xDist ^ 2 + yDist ^ 2)
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -160,7 +128,7 @@ p
 p
 0
 1
-0.5
+0.59
 0.01
 1
 NIL
@@ -168,9 +136,9 @@ HORIZONTAL
 
 BUTTON
 60
-13
+16
 133
-46
+49
 NIL
 setup
 NIL
@@ -184,11 +152,11 @@ NIL
 1
 
 TEXTBOX
-212
-567
-435
-597
-Occupied patches in white
+739
+514
+962
+559
+Occupied patches in white\nAnts in red. \nVisited patches in pink.
 12
 0.0
 1
@@ -216,7 +184,7 @@ MONITOR
 187
 476
 Distance
-mean [Rnow] of turtles
+mean [range] of turtles
 2
 1
 11
@@ -234,13 +202,13 @@ Distance
 0.0
 10.0
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot mean [Rnow] of turtles"
-"pen-1" 1.0 0 -4539718 true "" "plot mean [Rnow] of turtles - standard-deviation [Rnow] of turtles"
-"pen-2" 1.0 0 -4539718 true "" "plot mean [Rnow] of turtles + standard-deviation [Rnow] of turtles"
-"pen-3" 1.0 0 -2674135 true "" "plot median [Rnow] of turtles"
+"mean-d" 1.0 0 -16777216 true "" "plot mean [range] of turtles"
+"mean - sd" 1.0 0 -4539718 true "" "plot mean [range] of turtles - standard-deviation [range] of turtles"
+"mean + sd" 1.0 0 -4539718 true "" "plot mean [range] of turtles + standard-deviation [range] of turtles"
+"median-d" 1.0 0 -2674135 true "" "plot median [range] of turtles"
 
 CHOOSER
 58
@@ -250,7 +218,7 @@ CHOOSER
 antBehaviour
 antBehaviour
 "blind" "myopic"
-0
+1
 
 BUTTON
 139
@@ -277,8 +245,8 @@ SLIDER
 ants
 ants
 1
-100
-100
+200
+200
 1
 1
 NIL
