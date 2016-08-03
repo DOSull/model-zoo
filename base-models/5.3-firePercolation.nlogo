@@ -25,52 +25,56 @@
 globals [
   fire-front
   fire-size
-  s
+  forest-color
+  s ; stores the random-seed for behaviour space experiments
 ]
 
 to setup
   clear-all
+  ;; get, store and set a random-seed
   set s new-seed
-  ask n-of (p * world-width * world-height) patches [set pcolor green]
-
+  random-seed s
+  set forest-color green + 3
+  ask patches [
+    if random-float 1 < p [
+      set pcolor forest-color
+    ]
+  ]
   set fire-front patch-set nobody
   reset-ticks
 end
 
 to go
   if ticks = 0 [
-    igniteFire
+    ignite-fire
   ]
   ifelse any? fire-front [
-    fireSpread
+    fire-spread
   ]
   [ stop ]
   tick
 end
 
 
-to igniteFire
+to ignite-fire
   set fire-size 0
-  ask one-of patches with [pcolor = green] [
+  ask one-of patches with [pcolor = forest-color] [
     set pcolor red
-    set fire-front patch-set self               ;; a new fire-front patch-set
+    set fire-front patch-set self
   ]
 end
 
-to fireSpread
-   let new-fire-front patch-set nobody     ;; Empty set of patches for the next 'round' of the fire
+to fire-spread
+  ;; Empty set of patches for the next 'round' of the fire
+  let new-fire-front patch-set nobody
 
-   ask fire-front [
-
-     let N neighbors4 with [ pcolor = green ]
-
-     ask N
-     [
-       set new-fire-front ( patch-set new-fire-front self)
-     ]
-   ]
-   ask new-fire-front [set pcolor red]
-   set fire-front new-fire-front
+  ask fire-front [
+    ask neighbors4 with [pcolor = forest-color] [
+      set new-fire-front (patch-set new-fire-front self)
+    ]
+  ]
+  ask new-fire-front [set pcolor red]
+  set fire-front new-fire-front
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -101,10 +105,10 @@ ticks
 100.0
 
 BUTTON
-17
-71
-106
-104
+91
+26
+180
+59
 setup
 setup\n
 NIL
@@ -118,10 +122,10 @@ NIL
 1
 
 MONITOR
-18
-222
-77
-267
+104
+225
+175
+270
 Size
 count patches with [pcolor = red]
 0
@@ -137,7 +141,7 @@ p
 p
 0
 1
-0.57
+0.59
 .01
 1
 NIL
@@ -496,7 +500,6 @@ NetLogo 5.3
   <experiment name="nshells-expt" repetitions="50" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <exitCondition>extinguished? = true</exitCondition>
     <metric>ticks</metric>
     <steppedValueSet variable="p" first="0.5" step="0.01" last="0.75"/>
   </experiment>
