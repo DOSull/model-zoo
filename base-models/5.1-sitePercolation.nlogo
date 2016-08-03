@@ -23,8 +23,8 @@
 ;;
 
 globals [
-  cluster-size        ;; list of size of each occupied cluster, length is cluster-count - 1
-  log-cluster-size    ;; log cluster size
+  cluster-sizes       ;; list of sizes of each occupied cluster, length is cluster-count - 1
+  log-cluster-sizes   ;; log cluster size
   cluster-count       ;; total number of occupied clusters
   spanning-present?   ;; flag to denote presence of spanning cluster
   mean-size           ;; mean size of occupied, non-spanning cluster
@@ -34,9 +34,7 @@ patches-own [
   cluster-id ;; cluster ID assigned during tagging
   occupied?  ;; the percolation process outcome
   spanning?  ;; patch part of a spanning cluster?
-  largest?  ;; patch part of largest cluster?
-
-  r-num-code   ;; code for export to R (0 = not occupied, 1 = occupied + !spanning, 1 = occupied + spanning)
+  largest?   ;; patch part of largest cluster?
 ]
 
 ;; initialise the lattice based on percolation threshold
@@ -47,18 +45,16 @@ to setup
     set occupied? false
     set spanning? false
     set largest? false
-    set cluster-id -1
-    set r-num-code 0
-
+    set cluster-id -1 ;; denotes no cluster membership yet
+    ;; now make the cluster
     set pcolor black
     if random-float 1 <= p [
       set occupied? true
       set pcolor white
-      set r-num-code 1
     ]
   ]
   ;; initialise the globals
-  set cluster-size []
+  set cluster-sizes []
   reset-ticks
 end
 
@@ -69,15 +65,16 @@ to tag
   tag-largest-cluster
   set mean-size typical-cluster-size
 
-  set log-cluster-size map [log ? 10] cluster-size ;-occupied
-  histogram log-cluster-size
+  set log-cluster-sizes map [log ? 10] cluster-sizes
+  histogram log-cluster-sizes
 end
 
+;; color the largest cluster red
 to colour-largest
   ask patches with [largest?] [set pcolor red]
 end
 
-;; Colour spanning cluster green
+;; color spanning cluster (if present) green
 to colour-spanning
   ifelse spanning-present? [
     ask patches with [spanning?] [set pcolor green]
@@ -88,51 +85,51 @@ to colour-spanning
 end
 
 to tag-largest-cluster
-  ifelse cluster-count = 1 [
-    if p = 1 [ask patches [set largest? true]]
-  ]
-  [
-    let biggestClusterId (position (max cluster-size) cluster-size )
-    ask patches with [cluster-id = (biggestClusterId)] [set largest? true]
+  let biggest-cluster-id (position (max cluster-sizes) cluster-sizes )
+  ask patches [
+    set largest? cluster-id = biggest-cluster-id
   ]
 end
 
 to identify-clusters
   set cluster-count 0
-  let occupied patches with [occupied?]
-  let all-to-tag sort occupied with [cluster-id = -1]
-  while [ length all-to-tag > 0 ] [
-    set cluster-count cluster-count + 1
+  let occupied-cells patches with [occupied?]
+  let all-to-tag occupied-cells with [cluster-id = -1]
+  while [ any? all-to-tag ] [
     ;; keep track of the current cluster for efficient testing if it is spanning at end
     let current-cluster patch-set nobody
-    ;; lists are mutable so we use those here, starting with
-    ;; a randomly selected untagged patch
-    let patches-to-tag (patch-set one-of all-to-tag)
 
-    let col random 140
+    ;; start with a randomly selected untagged patch
+    let patches-to-tag (patch-set one-of all-to-tag)
+    let col (random 14) * 10 + (random 5) + 5
+
     while [ any? patches-to-tag ] [
-      set current-cluster (patch-set current-cluster patches-to-tag)
       ask patches-to-tag [
         ;; tag and assign cluster ID
-        set cluster-id cluster-count - 1 ;; 0 will be the first cluster ID
+        set cluster-id cluster-count ;; 0 will be the first cluster ID
         set pcolor col  ;; this allows user to see progress
       ]
+      ;; add them to the current-cluster
+      set current-cluster (patch-set current-cluster patches-to-tag)
+      ;; now get the next lot
       set patches-to-tag (patch-set [neighbors4] of patches-to-tag) with [occupied? and cluster-id = -1]
     ]
     let n count current-cluster
-    set cluster-size lput n cluster-size
+    set cluster-sizes lput n cluster-sizes
     ;; check here whether it is a spanning cluster
-    if n >= min(list world-width world-height) [
+    if n >= min (list world-width world-height) [
       if width current-cluster = world-width or height current-cluster = world-height [
         ask current-cluster [set spanning? true]
         set spanning-present? true
       ]
     ]
-    set all-to-tag filter [[cluster-id] of ? = -1] all-to-tag
-    tick
+    ;; remove tagged cells from the all-to-tag list
+    set all-to-tag all-to-tag with [ cluster-id = -1 ]
+    set cluster-count cluster-count + 1
   ]
-  ;; restore the colours
-  ask patches with [occupied?] [ set pcolor white ]
+  wait 1 ;; wait so people can see the clusters!
+  ;; then restore the colours
+  ask occupied-cells [ set pcolor white ]
 end
 
 ;; reporters for width and height of a patch-set
@@ -144,28 +141,28 @@ to-report height [p-set]
   report max [pycor] of p-set - min [pycor] of p-set + 1
 end
 
-to-report prop-spanning
+to-report proportion-spanning
   let pf 0
   if spanning-present? [
-    set pf (count patches with [spanning? = true]) / (count patches)
+    set pf (count patches with [spanning?]) / (count patches)
   ]
   report pf
 end
 
 to-report typical-cluster-size
-  ;; mean cluster size is calcualted without the spanning cluster and without bkgd and is size weighted
+  ;; mean cluster size is calculated without the spanning cluster and without bkgd and is size weighted
   ;; basically the typical size cluster that a rnd selected site will belong too
   ;; so make a list of the cluster-size of each occupied, non-spanning cluster patch one entry per patch
-  let weighted-list map [item ([cluster-id] of ?) cluster-size] sort (patches with [occupied? and not spanning?])
   ;; mean of this list is the required weighted cluster size mean
-  report mean weighted-list
+  ifelse any? patches with [not spanning?]
+  [ report mean map [item ([cluster-id] of ?) cluster-sizes] sort (patches with [occupied? and not spanning?]) ]
+  [ report 0 ]
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+207
 10
-670
+667
 491
 -1
 -1
@@ -190,10 +187,10 @@ clusters-tagged
 100.0
 
 SLIDER
-24
-53
-196
-86
+25
+54
+197
+87
 p
 p
 0
@@ -206,7 +203,7 @@ HORIZONTAL
 
 BUTTON
 66
-333
+334
 198
 369
 NIL
@@ -222,17 +219,17 @@ NIL
 1
 
 TEXTBOX
-211
-446
-434
-466
+675
+473
+827
+491
 Occupied patches in white
 12
 0.0
 1
 
 BUTTON
-64
+66
 374
 198
 407
@@ -249,10 +246,10 @@ NIL
 0
 
 PLOT
-692
-11
-960
-228
+678
+10
+946
+227
 Cluster size distribution
 log10 (Cluster Size)
 Frequency
@@ -278,32 +275,32 @@ cluster-count
 11
 
 MONITOR
-794
-236
-896
-281
-Mean Cluster Size
+775
+235
+881
+280
+Mean cluster size
 mean-size
-1
+2
 1
 11
 
 MONITOR
-902
-236
-959
-281
-pFrac
-prop-spanning
+888
+235
+945
+280
+p-frac
+proportion-spanning
 3
 1
 11
 
 BUTTON
-91
-116
-194
-149
+99
+95
+196
+128
 setup
 setup
 NIL
@@ -321,7 +318,7 @@ BUTTON
 16
 197
 49
-set p to pc
+set p-critical
 set p 0.59274621
 NIL
 1
@@ -334,19 +331,19 @@ NIL
 1
 
 TEXTBOX
-70
-190
-200
-259
-Note tagging can take some time!  Cells are coloured blue as they get tagged to show progress.
+77
+195
+207
+264
+Note tagging can take some time!  Cells are coloured as they get tagged to show progress.
 11
 0.0
 1
 
 BUTTON
-131
+99
 154
-194
+196
 187
 NIL
 tag
@@ -361,10 +358,10 @@ NIL
 1
 
 TEXTBOX
-693
-231
-788
-321
+681
+235
+776
+338
 This plot is not very useful - a better option is available in the R-enabled version of this model
 11
 0.0
