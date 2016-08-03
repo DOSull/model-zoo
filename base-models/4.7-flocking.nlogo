@@ -26,25 +26,22 @@ breed [flockers flocker]  ;; the flocking individuals
 breed [tails tail]        ;; turtles to form a tail showing recent locations
 
 flockers-own [
-  new-heading
+  new-heading  ;; new direction of movement
   my-tail      ;; maintain a tail of recently visited locations
                ;; such that first turtle in my-tail at the previous location
   v-x          ;; x component of current velocity
   v-y          ;; y component
   new-v-x      ;; x component of the calculated new velocity
   new-v-y      ;; y component
-  speed
+  speed        ;; speed of movement
   flock-mates  ;; the 'reference group' that the flocker adjusts its movement to
 ]
 
-tails-own [
-  speed
-]
 
-;; this simplifies the search by only considering movers on the current
+;; this simplifies search for nearby flockers by only considering movers on the current
 ;; and neighbouring patches
 patches-own [
-  locale         ;; store the patch and its neighbours in a patch-set for efficiency
+  locale         ;; store the patch and patches in radius in a patch-set for efficiency
   local-flockers ;; flockers on the locale - stored for efficiency
 ]
 
@@ -82,27 +79,31 @@ end
 ;; adds the current location to the tail
 ;; and deletes oldest consistent with the currently set tail-length
 to update-tail
-    let latest nobody
-    hatch-tails 1 [
-      set size [speed] of myself
-      set speed size
-      set latest self
-    ]
-    set my-tail fput latest my-tail
-    ;; now kill any tail turtles surplus to the current tail-length requirement
-    foreach sublist my-tail (min list tail-length length my-tail) (length my-tail) [
-      ask ? [ die ]
-    ]
-    ;; finally update my-tail
-    ;; this avoids it filling up with dead tail turtles
-    set my-tail sublist my-tail 0 (min list tail-length length my-tail)
+  let latest nobody
+  hatch-tails 1 [
+    ;; faster flockers need longer tails!
+    set size [speed] of myself
+    set latest self
+  ]
+  set my-tail fput latest my-tail
+
+  ;; now ensure tail is correct length
+  let excess max (list (length my-tail - tail-length) 0)
+  repeat excess [
+    ask last my-tail [ die ]
+    ;; note that list will retain reference to dead
+    ;; turtles which is a problem so also shorten the list
+    set my-tail but-last my-tail
+  ]
 end
 
 ;; updates stored set of local flockers for each patch
+;; also color patches if density display is turned on
 to update-local-flockers
   ask patches [
     set local-flockers flockers-on locale
   ]
+  ;; find peak density and color patches accordingly
   let max-density max [count local-flockers] of patches
   ask patches [
     ifelse show-density-map?
@@ -111,6 +112,7 @@ to update-local-flockers
   ]
 end
 
+;; main loop
 to go
   ask flockers [
     update-tail
@@ -121,18 +123,23 @@ to go
   ask links [die]
   if show-links? [
     ask flockers [
-      create-links-with flock-mates
+      create-links-with flock-mates [ set color red + 3 ]
     ]
   ]
   ask flockers [
+    ;; first determine mean velocity in x and y directions
+    ;; use speed alignment with neighbors
     ifelse use-alignment-effect? [
+      ;; not we include self in the flock mates to avoid division by zero error
+      ;; in cases where there are no flockers in the flock-mates
       set new-v-x mean [v-x] of (turtle-set self flock-mates)
       set new-v-y mean [v-y] of (turtle-set self flock-mates)
     ]
-    [
+    [ ;; otherwise keep on keeping on
       set new-v-x v-x
       set new-v-y v-y
     ]
+    ;; this is repulsion / attraction between self and flock-mates
     if use-body-force? and any? flock-mates [
       set new-v-x new-v-x - rel-body-force * mean [force-x myself] of flock-mates
       set new-v-y new-v-y - rel-body-force * mean [force-y myself] of flock-mates
@@ -142,16 +149,19 @@ to go
     update-movement-variables
   ]
   ask flockers [
-    jump speed ;speed
+    jump speed
   ]
   update-local-flockers
   tick
 end
 
+;; set the reference flockers used to determine movement changes
 to set-flock-mates
+  ;; this method uses the sector and visible angle settings
   if flock-mates-method = "near" [
     set flock-mates reference-flockers
   ]
+  ;; this just uses all flockers in the locale
   if flock-mates-method = "lattice" [
     set flock-mates other local-flockers
   ]
@@ -172,13 +182,18 @@ end
 ;; finalises any change in heading by updating from new-v-x, new-v-y
 ;; and adding any random perturbation
 to update-movement-variables
-  set new-heading heading
-  if new-v-x != 0 or new-v-y != 0 [
-    set new-heading atan new-v-x new-v-y
-  ]
+  ;; both new-v-x and -y are 0 just retain old heading
+  ;; [atan will crash if this happens, hence the conditional]
+  ifelse new-v-x = 0 and new-v-y = 0
+  [ set new-heading heading ]
+  [ set new-heading atan new-v-x new-v-y ]
+
   set heading new-heading + ((random-float 2 - 1) * directional-noise)
+  ;; determine speed from x-y components
   set speed sqrt (new-v-x ^ 2 + new-v-y ^ 2)
+  ;; limit it to min-max range
   set speed min (list max-speed (max (list speed min-speed)))
+  ;; and now align it with the heading
   set v-x speed * dx
   set v-y speed * dy
 end
@@ -191,27 +206,36 @@ end
 
 ;; selects only the closest other turtle in each 'pie-slice' sector
 ;; around the asking turtle
+;; this method finds the nearest turtle in each requested direction
+;; one per sector/direction
 to-report inner-ring
   let ring []
   let pie-angle 360 / sectors-to-check
-  let range-headings list 0 pie-angle
+  ;; two item list of min-max headings for current pie-slice
+  ;; from - to + half the pie-slice angle
+  let range-headings map [? * pie-angle] [-0.5 0.5]
   let in-cone-candidates other local-flockers with [in-field-of-view? myself self range (view-angle / 2)]
   repeat sectors-to-check [
-    let candidates in-cone-candidates with [between? range-headings norm-heading (180 + (pie-angle / 2) + towards myself)]
+    ;; note use of towards to determine heading to the candidate
+    let candidates in-cone-candidates with [between? range-headings norm-heading (180 + towards myself)]
     if any? candidates [
+      ;; put the nearest one in the ring
       set ring fput (first sort-on [distance myself] candidates) ring
     ]
+    ;; update range-headings by adding pie-angle to both entries
     set range-headings map [? + pie-angle] range-headings
   ]
   report ring
 end
 
+;; checks if x is between the first and last items in list min-max
 to-report between? [min-max x]
   report x >= first min-max and x < last min-max
 end
 
 ;; this appears a quicker way to emulate a cone-angle
 ;; than the built-in in-cone reporter
+;; determines if turtle t2 is visible to t1 within a cone of range d and angle dh
 to-report in-field-of-view? [t1 t2 d dh]
   let dist 0
   ask t1 [ set dist distance t2 ]
@@ -279,7 +303,7 @@ density
 density
 0.1
 2
-0.5
+0.3
 0.05
 1
 NIL
@@ -294,7 +318,7 @@ directional-noise
 directional-noise
 0
 30
-2.5
+0
 2.5
 1
 NIL
@@ -390,7 +414,7 @@ view-angle
 view-angle
 5
 360
-205
+240
 5
 1
 NIL
@@ -445,7 +469,7 @@ preferred-distance
 preferred-distance
 0
 2
-0.6
+0.85
 0.05
 1
 NIL
@@ -554,7 +578,7 @@ SWITCH
 178
 show-links?
 show-links?
-1
+0
 1
 -1000
 
@@ -587,7 +611,7 @@ range
 range
 preferred-distance
 5
-1
+1.55
 0.1
 1
 NIL
@@ -609,6 +633,32 @@ which are discussed in detail in Chapters 4 and 6 of
 You should consult that book for more information and details of the model.
 
 An alternative version of the model that requires the R-netlogo extension is available and provides some additional options.
+
+## THINGS TO NOTICE
+
+This is a fairly complicated model, although it's not so bad if you just look through the code in a systematic way. One NetLogo 'trick' it uses a lot is turtle-centric 'geometry' using turtle `heading` and the `towards` reporter. A good example of this is in the determination of whether another turtle is a flock-mate within distance `range` and inside a cone-angle set by the `view-range` parameter. There is a built-in NetLogo reporter for this, which could be used like this
+
+    let in-cone-candidates other local-flockers in-cone range view-angle
+
+However, this turns out to be quite slow (I am not sure why, and a later version of NetLogo may speed it up). As a result this has been implemented 'by hand' as follows:
+
+    let in-cone-candidates other local-flockers with [in-field-of-view? myself self range (view-angle / 2)]
+
+calling the `in-field-of-view?` reporter:
+
+    to-report in-field-of-view? [t1 t2 d dh]
+      let dist 0
+      ask t1 [ set dist distance t2 ]
+      report (dist < d) and (in-cone-angle? t1 t2 dh)
+    end
+
+which reports `true` when turtle `t2` is in the field of view of `t1` defined by distance `d` and cone-angle `dh`. The distance part is obvious. The `in-cone-angle?` test
+
+    to-report in-cone-angle? [t1 t2 dh]
+      report heading-difference ([towards t2] of t1) [heading] of t1 < dh
+    end
+
+may be less so. We calculate the angular difference between the heading `towards t2` and the current `heading`. Angular difference is complicated by how headings 'wrap' at 360 degrees, but follow through the `heading-difference` code and it should all make sense.
 
 ## HOW TO CITE
 
