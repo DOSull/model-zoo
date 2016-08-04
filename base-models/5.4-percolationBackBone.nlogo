@@ -22,6 +22,10 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [nw]
+
+breed [nodes node]
+
 patches-own [
   time-tag-1
   time-tag-2
@@ -36,7 +40,6 @@ patches-own [
 ]
 
 globals [
-  clock
   fire-front
   spanning-present?   ;; bool flag to denote presence of spanning cluster
   hit-bone
@@ -48,7 +51,6 @@ globals [
 
 to setup
   clear-all
-  random-seed seed
   set progress "setup"
   ask patches [ set-default-state ]
   ask n-of (p * count patches) patches [
@@ -91,16 +93,18 @@ end
 to find-backbone
   ifelse spanning-present? [
     ;; burn the spanning cluster starting near a corner
-    run-burn get-start-cell 1
+    run-burn-pass-1
+;    run-burn get-start-cell 1
     set progress "pass one finished"
 
     ;; burn the spanning cluster starting from the other end
-    run-burn get-end-cell 2
+    run-burn-pass-2
+;    run-burn get-end-cell 2
     set progress "pass two finished"
 
     ;; burn starting from all cells with a loop count greater than one
-    ;; to find the
-    run-burn patches with [loop-count >= 1] 3
+    run-burn-pass-3
+;    run-burn patches with [loop-count >= 1] 3
     set progress "pass three finished"
   ]
   [
@@ -112,8 +116,8 @@ end
 to-report get-start-cell
   let c nobody
   ifelse vertical?
-  [ set c one-of patches with [pycor = max-pycor and spanning?] with-min [pxcor] ]
-  [ set c one-of patches with [pxcor = max-pxcor and spanning?] with-min [pycor] ]
+  [ set c one-of patches with [spanning? and pycor = max-pycor] with-min [pxcor] ]
+  [ set c one-of patches with [spanning? and pxcor = max-pxcor] with-min [pycor] ]
   ask c [ mark-with-x green ]
   report c
 end
@@ -123,9 +127,9 @@ end
 to-report get-end-cell
   let c nobody
   ifelse vertical?
-  [ set c one-of patches with [pycor = min-pycor and spanning?] with-max [time-tag-1] with-max [pxcor] ]
-  [ set c one-of patches with [pxcor = min-pxcor and spanning?] with-max [time-tag-1] with-max [pycor] ]
-  ask c [ mark-with-x red ]
+  [ set c one-of patches with [pycor = min-pycor] with-max [time-tag-1] with-max [pxcor] ]
+  [ set c one-of patches with [pxcor = min-pxcor] with-min [pxcor] with-max [time-tag-1] with-max [pycor] ]
+  ask c [ mark-with-x blue ]
   report c
 end
 
@@ -137,103 +141,117 @@ to mark-with-x [col]
   ]
 end
 
-to run-burn [initial-sites burn-number]
-  if burn-number = 1 [
-    set clock 0
-    ask initial-sites [
-      set time-tag-1 clock
-      set fire-front patch-set self
-    ]
-    fire-spread burn-number
+;; forward search to tag sites in spanning cluster with distance from a source
+;; selected near a corner on one of the edges
+to run-burn-pass-1
+  let clock 0
+  ask get-start-cell [
+    set time-tag-1 clock
+    set fire-front patch-set self
   ]
-  if burn-number = 2 [
-    set clock 0
-    ask initial-sites [
-      set elastic? true
-      set backbone? true
-      set time-tag-2 clock
-      set fire-front patch-set self
-    ]
-    fire-spread burn-number
-  ]
-  if burn-number = 3 [
-    if any? initial-sites [
-      foreach sort-on [time-tag-1] initial-sites [
-        ask patches [set time-tag-3 -1]
-        set clock 0
-        ask ? [
-          set time-tag-3 clock
-          set hit-bone 0
-          set fire-front patch-set self
-        ]
-        fire-spread burn-number
-        if hit-bone > 1 [
-          ask patches with [time-tag-3 != -1] [
-            set backbone? true
-          ]
-          ask patches with [backbone?] [
-            set pcolor pink
-          ]
-        ]
-      ]
-    ]
-  ]
-end
-
-
-to fire-spread [ pass ]
-  let hits patch-set nobody
   while [ any? fire-front ] [
     set clock clock + 1
     ;; Empty set of patches for next 'round' of fire
     let new-fire-front patch-set nobody
     ask fire-front [
-      if pass = 1 [
-        ;; here we only need to burn the spanning cluster
-        ;; (saves a little time on large grids)
-        ;; also detect 'loops'
-        ask neighbors4 with [ spanning? ] [;; [ spanning? and time-tag-1 = -1 ] [
-          ifelse time-tag-1 = -1 [
-            ;; this is the first arrival
-            set time-tag-1 clock
-            set new-fire-front (patch-set new-fire-front self)
-          ]
-          [ ;; this is a second or later path, so increment loop-count
-            set loop-count loop-count + 1
-          ]
+      ;; here we only need to burn the spanning cluster
+      ;; also detect 'loops'
+      ask neighbors4 with [ spanning? ] [
+        ifelse time-tag-1 = -1 [
+          ;; this is the first arrival
+          set time-tag-1 clock
+          set new-fire-front (patch-set new-fire-front self)
         ]
-      ]
-      if pass = 2 [
-        ;; this time we only burn cells with lower time-tag in pass 1 than ourself
-        let my-time-tag-1 time-tag-1
-        ask neighbors4 with [ spanning? and time-tag-1 < my-time-tag-1 ] [
-          set elastic? true
-          set backbone? true
-          set time-tag-2 clock
-          set new-fire-front ( patch-set new-fire-front self)
-        ]
-      ]
-      if pass = 3 [
-        ifelse count fire-front = 1 [
-;          let my-time-tag-1 time-tag-1
-          ;; can only burn to patches burned in pass-one, with lower
-          ;; time-tag-1 and not in elastic backbone
-          let N neighbors4 with [ spanning? and time-tag-3 = -1 ]
-          set hits (patch-set hits N with [backbone?])
-          ;set hit-bone hit-bone + (count N with [elastic?])
-          ask N with [not backbone?] [
-            set time-tag-3 clock
-            set new-fire-front ( patch-set new-fire-front self)
-          ]
-        ]
-        [
-          set new-fire-front patch-set nobody
+        [ ;; this is a second or later path, so increment loop-count
+          set loop-count loop-count + 1
         ]
       ]
     ]
     set fire-front new-fire-front
   ]
-  set hit-bone count hits
+end
+
+;; search back from end cell to find elastic backbone
+to run-burn-pass-2
+  let clock 0
+  ask get-end-cell [
+    set time-tag-2 clock
+    set fire-front patch-set self
+    set elastic? true
+    set backbone? true
+  ]
+  while [ any? fire-front ] [
+    set clock clock + 1
+    ;; Empty set of patches for next 'round' of fire
+    let new-fire-front patch-set nobody
+    ask fire-front [
+      ;; this time we only burn cells with lower time-tag in pass 1 than ourself
+      let my-time-tag-1 time-tag-1
+      ask neighbors4 with [ spanning? and time-tag-1 < my-time-tag-1 ] [
+        set elastic? true
+        set backbone? true
+        set time-tag-2 clock
+        set new-fire-front ( patch-set new-fire-front self)
+      ]
+    ]
+    set fire-front new-fire-front
+  ]
+end
+
+;; final pass checks out the loops
+;; using the nw extension
+;; THIS ONE IS UNCLEAR
+to run-burn-pass-3
+  nw:set-context nodes links
+  ask patches with [time-tag-1 > -1] [
+    sprout-nodes 1 [
+      set size 0.5
+      set color grey
+    ]
+  ]
+  ask nodes [
+    ask nodes-on neighbors4 [
+      create-link-with myself []
+    ]
+  ]
+  ask nodes-on patches with [backbone?] [set color red]
+  let candidate-links (link-set [my-links] of nodes-on patches with [not backbone?])
+  while [any? candidate-links] [
+    let my-nodes nobody
+    ask one-of candidate-links [
+      set my-nodes both-ends
+      die
+    ]
+    let wcc nw:weak-component-clusters
+    ifelse length wcc > 1 [
+      ;; breaks the cluster, so 'dangling'
+      foreach wcc [
+        ask ? [
+          if length remove-duplicates [color] of ? = 1 [
+            ask ? [ die ]
+          ]
+        ]
+      ]
+    ]
+    [ ;; restore link
+      let ns sort my-nodes
+      ask first ns [
+        create-link-with last ns [
+          set color black
+        ]
+      ]
+    ]
+    set candidate-links (link-set [my-links with [color != black]] of nodes-on patches with [not backbone?])
+  ]
+  ask nodes [
+    set backbone? true
+    set pcolor pink
+    die
+  ]
+end
+
+to-report two-colors?
+  report length remove-duplicates map [[color] of ?] sort both-ends > 1
 end
 
 to colour-cluster
@@ -252,6 +270,7 @@ to colour-cluster
     user-message "You must identify the backbone first - STOPPING"
   ]
 end
+
 
 ;; similar to the cluster identification in model 5.1
 to identify-clusters
@@ -303,11 +322,11 @@ end
 GRAPHICS-WINDOW
 224
 10
-1034
-841
+634
+441
 -1
 -1
-20.0
+8.0
 1
 10
 1
@@ -318,14 +337,14 @@ GRAPHICS-WINDOW
 0
 1
 0
-39
+49
 0
-39
-1
-1
-1
+49
+0
+0
+0
 ticks
-30.0
+100.0
 
 BUTTON
 48
@@ -368,10 +387,10 @@ SLIDER
 167
 p
 p
-0
-1.0
-0.61
-.01
+0.5
+0.7
+0.594
+.001
 1
 NIL
 HORIZONTAL
@@ -432,76 +451,14 @@ progress
 11
 
 TEXTBOX
-1049
-12
-1236
-70
+646
+15
+833
+73
 White = occupied, not spanning\nYellow = spanning\nOrange = backbone\nRed = elastic backbone
 11
 0.0
 1
-
-BUTTON
-1050
-101
-1113
-134
-tt1
-ask patches [\nset plabel time-tag-1 set plabel-color black\n]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-1047
-144
-1110
-177
-tt2
-ask patches [\nset plabel time-tag-2 set plabel-color black\n]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-1056
-241
-1122
-274
-loops
-ask patches [\nset plabel loop-count set plabel-color black\n]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-INPUTBOX
-37
-314
-192
-374
-seed
-1
-1
-0
-Number
 
 @#$#@#$#@
 ## WHAT IS IT?
