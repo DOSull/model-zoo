@@ -35,10 +35,8 @@ to setup
   set s new-seed
   random-seed s
   set forest-color green + 3
-  ask patches [
-    if random-float 1 < p [
-      set pcolor forest-color
-    ]
+  ask n-of (p * count patches) patches [
+    set pcolor forest-color
   ]
   set fire-front patch-set nobody
   reset-ticks
