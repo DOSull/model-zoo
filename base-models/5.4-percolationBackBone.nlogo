@@ -27,25 +27,19 @@ extensions [nw]
 breed [nodes node]
 
 patches-own [
-  time-tag-1
-  time-tag-2
-  time-tag-3
-  occupied?
-  loop-count
-  cluster-id
-  cluster-set?
+  time-tag   ;; used during 'burning' to record distance
+  occupied?  ;; patch is occupied by percolation
+  cluster-id ;; ID of the cluster to which the patch belongs
   spanning?  ;; patch part of a spanning cluster?
   elastic?   ;; patch part of elastic backbone?
   backbone?  ;; patch part of percolation backbone?
 ]
 
 globals [
-  fire-front
-  spanning-present?   ;; bool flag to denote presence of spanning cluster
-  hit-bone
-  horizontal?
-  vertical?
-  progress
+  spanning-present?   ;; flag to denote presence of spanning cluster
+  horizontal?         ;; flag denoting that spanning cluster is horizontal
+  vertical?           ;; ditto vertical
+  progress            ;; text indicating progress
 ]
 
 
@@ -65,47 +59,84 @@ end
 
 to set-default-state
   set cluster-id -1
-  set loop-count 0
   set occupied? false
   set spanning? false
   set elastic? false
   set backbone? false
-  set time-tag-1 -1
-  set time-tag-2 -1
-  set time-tag-3 -1
+  set time-tag count patches
 end
 
 to tag
-  set spanning-present? false
   identify-clusters
   set progress "clusters identified"
   tick
 end
 
+
+;; similar to the cluster identification in model 5.1
+to identify-clusters
+  let cluster-count 0
+  let occupied-sites patches with [ occupied? ]
+  while [any? occupied-sites with [cluster-id = -1]] [
+    ;; lists are mutable so we use those here, starting with
+    ;; a randomly selected untagged patch
+    let patches-to-tag (patch-set one-of occupied-sites with [cluster-id = -1])
+    while [any? patches-to-tag] [
+      let next-patches-to-tag patch-set nobody ;; a list of the next set of patches in the same cluster
+      ask patches-to-tag [
+        ;; tag as counted and mark for statistical purposes
+        ;set cluster-set? true
+        set cluster-id cluster-count
+      ]
+      ask patches-to-tag [
+        ;; add untagged neighbours to the set to be tagged next
+        ask neighbors4 with [occupied? and cluster-id = -1] [
+          set next-patches-to-tag (patch-set self next-patches-to-tag)
+        ]
+      ]
+      set patches-to-tag next-patches-to-tag
+    ]
+    ;; check here whether it is a spanning cluster
+    let focal-cluster patches with [cluster-id = cluster-count]
+    ;; note we designate only one spanning cluster
+    ;; even if more exist (which can happen, albeit rarely)
+    if count focal-cluster >= min (list world-width world-height) and not spanning-present? [
+      let h? is-horizontal-spanning? focal-cluster
+      let v? is-vertical-spanning? focal-cluster
+      if h? or v? [
+        ask focal-cluster [
+          set spanning? true
+        ]
+        set spanning-present? true
+        set horizontal? h?
+        set vertical? v?
+      ]
+    ]
+    set cluster-count cluster-count + 1
+  ]
+end
+
+;; returns true if the supplied patch-set has members on the left and right hand edges
 to-report is-horizontal-spanning? [p-set]
   report (min [pxcor] of p-set = min-pxcor) and (max [pxcor] of p-set = max-pxcor)
 end
 
+;; returns true if the supplied patch-set has members on the top and bottom edges
 to-report is-vertical-spanning? [p-set]
   report (min [pycor] of p-set = min-pycor) and (max [pycor] of p-set = max-pycor)
 end
 
+;; See the INFO tab for details
 to find-backbone
   ifelse spanning-present? [
-    ;; burn the spanning cluster starting near a corner
-    run-burn-pass-1
-;    run-burn get-start-cell 1
-    set progress "pass one finished"
-
-    ;; burn the spanning cluster starting from the other end
-    run-burn-pass-2
-;    run-burn get-end-cell 2
-    set progress "pass two finished"
-
-    ;; burn starting from all cells with a loop count greater than one
-    run-burn-pass-3
-;    run-burn patches with [loop-count >= 1] 3
-    set progress "pass three finished"
+    ask shortest-paths get-start-cell (patch-set get-end-cell) patches with [spanning?] [
+      set elastic? true
+      set backbone? true
+      set pcolor pink
+    ]
+    set progress "elastic backbone found"
+    augment-elastic-backbone
+    set progress "complete backbone found"
   ]
   [
     user-message("No spanning cluster - stopping.")
@@ -122,13 +153,12 @@ to-report get-start-cell
   report c
 end
 
-;; reports a cell on the opposite edge from the start cell,
-;; at maximum distance by fire-spread steps
+;; reports a cell on the opposite edge from the start cell
 to-report get-end-cell
   let c nobody
   ifelse vertical?
-  [ set c one-of patches with [pycor = min-pycor] with-max [time-tag-1] with-max [pxcor] ]
-  [ set c one-of patches with [pxcor = min-pxcor] with-min [pxcor] with-max [time-tag-1] with-max [pycor] ]
+  [ set c one-of patches with [spanning? and pycor = min-pycor] with-max [pxcor] ]
+  [ set c one-of patches with [spanning? and pxcor = min-pxcor] with-max [pycor] ]
   ask c [ mark-with-x blue ]
   report c
 end
@@ -141,121 +171,89 @@ to mark-with-x [col]
   ]
 end
 
-;; forward search to tag sites in spanning cluster with distance from a source
-;; selected near a corner on one of the edges
-to run-burn-pass-1
-  let clock 0
-  ask get-start-cell [
-    set time-tag-1 clock
-    set fire-front patch-set self
-  ]
-  while [ any? fire-front ] [
-    set clock clock + 1
-    ;; Empty set of patches for next 'round' of fire
+;; find shortest paths from source to targets inside the patch-set c
+;; and report all the cells included as a patch-set
+;; this uses the first two passes of the 'burning' algorithm first reported in
+;; Hermann et al. 1986 (see INFO tab)
+;; essentially, we burn within the cluster outward from the source
+;; recording the time taken for the fire front to get to each cell
+;; then, we retrace steps by burning back from the target, but only
+;; allowing cells closer to the source (by the time-tag) to be included
+;; in the retracing. Such cells are in the shortest path (for
+;; source and target cells on opposite edges of a spanning cluster these
+;; will be the 'elastic backbone' induced by those cells).
+;; if no shortest path exists the return patch-set will be empty
+to-report shortest-paths [source targets pset]
+  let sp-cells patch-set nobody
+  ;let marked patch-set nobody
+  let fire-front patch-set source
+  let max-t count pset
+  ask pset [ set time-tag max-t ]
+  let time 0
+  ;; forward
+  while [any? fire-front and not any? targets with [time-tag < max-t]] [ ;[any? fire-front and not member? target marked] [
     let new-fire-front patch-set nobody
     ask fire-front [
-      ;; here we only need to burn the spanning cluster
-      ;; also detect 'loops'
-      ask neighbors4 with [ spanning? ] [
-        ifelse time-tag-1 = -1 [
-          ;; this is the first arrival
-          set time-tag-1 clock
-          set new-fire-front (patch-set new-fire-front self)
-        ]
-        [ ;; this is a second or later path, so increment loop-count
-          set loop-count loop-count + 1
-        ]
-      ]
+      ;set marked (patch-set marked self)
+      set time-tag time
+      let successors neighbors4 with [member? self pset and time-tag = max-t]
+      set new-fire-front (patch-set new-fire-front successors)
     ]
     set fire-front new-fire-front
+    set time time + 1
   ]
+  ;; back
+  if any? targets with [time-tag < max-t] [
+    set fire-front patch-set targets with [time-tag < max-t]
+    while [any? fire-front] [
+      let new-fire-front patch-set nobody
+      ask fire-front [
+        set sp-cells (patch-set sp-cells self)
+        let predecessors neighbors4 with [time-tag < [time-tag] of myself]; [member? self marked and time-tag < [time-tag] of myself]
+        set new-fire-front (patch-set new-fire-front predecessors)
+      ]
+      set fire-front new-fire-front
+    ]
+  ]
+  report sp-cells
 end
 
-;; search back from end cell to find elastic backbone
-to run-burn-pass-2
-  let clock 0
-  ask get-end-cell [
-    set time-tag-2 clock
-    set fire-front patch-set self
-    set elastic? true
-    set backbone? true
-  ]
-  while [ any? fire-front ] [
-    set clock clock + 1
-    ;; Empty set of patches for next 'round' of fire
-    let new-fire-front patch-set nobody
-    ask fire-front [
-      ;; this time we only burn cells with lower time-tag in pass 1 than ourself
-      let my-time-tag-1 time-tag-1
-      ask neighbors4 with [ spanning? and time-tag-1 < my-time-tag-1 ] [
-        set elastic? true
-        set backbone? true
-        set time-tag-2 clock
-        set new-fire-front ( patch-set new-fire-front self)
-      ]
-    ]
-    set fire-front new-fire-front
-  ]
-end
-
-;; final pass checks out the loops
-;; using the nw extension
-;; THIS ONE IS UNCLEAR
-to run-burn-pass-3
-  nw:set-context nodes links
-  ask patches with [time-tag-1 > -1] [
-    sprout-nodes 1 [
-      set size 0.5
-      set color grey
-    ]
-  ]
-  ask nodes [
-    ask nodes-on neighbors4 [
-      create-link-with myself []
-    ]
-  ]
-  ask nodes-on patches with [backbone?] [set color red]
-  let candidate-links (link-set [my-links] of nodes-on patches with [not backbone?])
-  while [any? candidate-links] [
-    let my-nodes nobody
-    ask one-of candidate-links [
-      set my-nodes both-ends
-      die
-    ]
-    let wcc nw:weak-component-clusters
-    ifelse length wcc > 1 [
-      ;; breaks the cluster, so 'dangling'
-      foreach wcc [
-        ask ? [
-          if length remove-duplicates [color] of ? = 1 [
-            ask ? [ die ]
-          ]
+;; see INFO tab for details
+to augment-elastic-backbone
+  ;; assumes we have already run shortest-path and tagged
+  ;; cells in the elastic backbone
+  let tested-sites []
+  let allowed-sites patches with [spanning? and not backbone?]
+  let candidate-sources allowed-sites with [any? neighbors4 with [backbone?]]
+  while [any? candidate-sources] [
+    ask candidate-sources [
+      let sps shortest-paths self other candidate-sources allowed-sites
+      ifelse any? sps [
+        ask sps [
+          ;; add to backbone
+          set backbone? true
+          set pcolor pink
         ]
       ]
-    ]
-    [ ;; restore link
-      let ns sort my-nodes
-      ask first ns [
-        create-link-with last ns [
-          set color black
-        ]
+      [ ;; remove this site from the candidate sources
+        ;; by adding it to the list of tested-sites
+        set tested-sites lput self tested-sites
       ]
+      set allowed-sites allowed-sites with [spanning? and not backbone?]
+      set candidate-sources allowed-sites with [any? neighbors4 with [backbone?] and not member? self tested-sites]
     ]
-    set candidate-links (link-set [my-links with [color != black]] of nodes-on patches with [not backbone?])
   ]
-  ask nodes [
+  ;; tidy up - some sites may end up as trapped singletons in the backbone
+  ;; they should be designated backbone, but can't find a path to another
+  ;; candidate site so are not found by the above method
+  ask allowed-sites with [count neighbors4 with [backbone?] > 1] [
     set backbone? true
     set pcolor pink
-    die
   ]
-end
-
-to-report two-colors?
-  report length remove-duplicates map [[color] of ?] sort both-ends > 1
 end
 
 to colour-cluster
-  ifelse progress = "pass three finished" [
+  ifelse progress = "complete backbone found" [
     ask patches with [occupied? and spanning? and not backbone?] [
       set pcolor yellow
     ]
@@ -270,54 +268,6 @@ to colour-cluster
     user-message "You must identify the backbone first - STOPPING"
   ]
 end
-
-
-;; similar to the cluster identification in model 5.1
-to identify-clusters
-  let cluster-count 0
-  ask patches [
-    set cluster-set? true
-  ]
-  let occupied-sites patches with [ occupied? ]
-  ask occupied-sites [
-    set cluster-set? false
-  ]
-  while [any? occupied-sites with [ not cluster-set? ]] [
-    ;; lists are mutable so we use those here, starting with
-    ;; a randomly selected untagged patch
-    let patches-to-tag (patch-set one-of occupied-sites with [ not cluster-set? ])
-    while [any? patches-to-tag] [
-      let next-patches-to-tag patch-set nobody ;; a list of the next set of patches in the same cluster
-      ask patches-to-tag [
-        ;; tag as counted and mark for statistical purposes
-        set cluster-set? true
-        set cluster-id cluster-count
-      ]
-      ask patches-to-tag [
-        ;; add untagged neighbours to the set to be tagged next
-        ask neighbors4 with [ not cluster-set? ] [
-          set next-patches-to-tag (patch-set self next-patches-to-tag)
-        ]
-      ]
-      set patches-to-tag next-patches-to-tag
-    ]
-    ;; check here whether it is a spanning cluster
-    let focal-cluster patches with [cluster-id = cluster-count]
-    if count focal-cluster >= min (list world-width world-height) [
-      let h? is-horizontal-spanning? focal-cluster
-      let v? is-vertical-spanning? focal-cluster
-      if h? or v? [
-        ask focal-cluster [
-          set spanning? true
-        ]
-        set spanning-present? true
-        set horizontal? h?
-        set vertical? v?
-      ]
-    ]
-    set cluster-count cluster-count + 1
-  ]
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 224
@@ -326,7 +276,7 @@ GRAPHICS-WINDOW
 441
 -1
 -1
-8.0
+4.0
 1
 10
 1
@@ -337,9 +287,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-49
+99
 0
-49
+99
 0
 0
 0
@@ -387,8 +337,8 @@ SLIDER
 167
 p
 p
-0.5
-0.7
+0.525
+0.625
 0.594
 .001
 1
@@ -416,10 +366,10 @@ TEXTBOX
 41
 238
 191
-268
-Note - cluster tagging can be slow - be pat	ient!
+294
+Note: finding the backbone can be slow, particulary with a high p setting - be patient!
 11
-0.0
+15.0
 1
 
 BUTTON
@@ -427,8 +377,8 @@ BUTTON
 93
 184
 126
-NIL
 colour-cluster
+colour-cluster\nask patches [set plabel \"\"]
 NIL
 1
 T
@@ -451,10 +401,10 @@ progress
 11
 
 TEXTBOX
-646
-15
-833
-73
+38
+308
+225
+366
 White = occupied, not spanning\nYellow = spanning\nOrange = backbone\nRed = elastic backbone
 11
 0.0
@@ -473,12 +423,42 @@ and the discussion in Chapter 5 of
 
 You should consult that book for more information and details of the model.
 
+## NOTE
+
+This model is substantially revised from the originally released version, see below for details.
+
+## THINGS TO NOTICE
+
+This is a pretty complicated model! There are many connections between percolation theory and the implementation of various kinds of search algorithms in graph and tree data structures, and some of those connections become apparent here.
+
+The cluster identification code in the `identify-clusters` procedure is similar to that in model 5.1, which you should consult for more information.  The real interest here is in finding the percolation backbone (the `shortest-paths` and `augment-elastic-backbone` procedures.
+
+This version of this model is a substantial revision of that originally released with the book _Spatial Simulation_. The simple Hermann et al. 1986 algorithm of 'burning' to identify the elastic backbone of a percolation cluster was later found to be flawed in
+
++   Porto M, Bunde A, Havlin S and Roman HE 1997 Structural and dynamical properties of the percolation backbone in two and three dimensions. _Physical Review E_ **56**(2) 1667–1675
+
+More recent work by
+
++   Li C and Chou T-W 2007 A direct electrifying algorithm for backbone identification. _Journal of Physics A_ **40**(49) 14679–14686
++   Yin W-G and Tao R 2000 Algorithm for finding two-dimensional site percolation backbones. _Physica B_ **279**(1–3) 84–86
+
+proposes alternative algorithms. The latter has similarities to the code in our model 5.5. The former makes use of circuit analysis methods and departs substantially from the 'burning' procedure of the Hermann approach.
+
+Here we have remained fairly true to that inspiration.
+
+The reporter `shortest-paths source targets pset` is key. This reporter returns all the patches that lie on all the shortest paths between a `source` patch and the first patch in the set of `targets` reached by burning, subject to the constraint that the patches must all be members of the supplied patch-set `pset`. The reporter works by 'burning' successive patches connected to the current `fire-front` and marking them with the time elapsed to reach them. When one or more of the `targets` has been reached, 'reverse burning' back to the source constrained to only patches closer to the source identifies the shortest paths.
+
+Invoking this reporter with a source on one edge of the spanning cluster, and a target on the other, constrained to the members of the spanning cluster, finds the elastic backbone induced by that source-target pair directly.
+
+Once that has been done the `augment-elastic-backbone` procedure also uses `shortest-paths` to find 'loops' that connect sites connected to the elastic backbone to other sites connected to the backbone, with the paths restricted to sites in the spanning cluster but _not_ in the backbone so far identified.  This is applied iteratively until no cells remain to be tested.  A few isolated singleton patches can end up not being assigned to the backbone in this way and they are picked up as exceptions at the end of the `augment-elastic-backbone` procedure.
+
 ## HOW TO CITE
 
 If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   Herrmann HJ, Hong DC and Stanley HE 1984 Backbone and elastic backbone of percolation clusters obtained by the new method of ‘burning’. _Journal of Physics A: Mathematical and General_ **17** L261–L266
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
++   Porto M, Bunde A, Havlin S and Roman HE 1997 Structural and dynamical properties of the percolation backbone in two and three dimensions. _Physical Review E_ **56**(2) 1667–1675
 +   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
