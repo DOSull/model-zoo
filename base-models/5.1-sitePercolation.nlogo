@@ -34,7 +34,6 @@ patches-own [
   cluster-id ;; cluster ID assigned during tagging
   occupied?  ;; the percolation process outcome
   spanning?  ;; patch part of a spanning cluster?
-  largest?   ;; patch part of largest cluster?
 ]
 
 ;; initialise the lattice based on percolation threshold
@@ -44,7 +43,6 @@ to setup
   ask patches [
     set occupied? false
     set spanning? false
-    set largest? false
     set cluster-id -1 ;; denotes no cluster membership yet
     ;; now make the cluster
     set pcolor black
@@ -62,7 +60,6 @@ to tag
   set spanning-present? false
 
   identify-clusters
-  tag-largest-cluster
   set mean-size typical-cluster-size
 
   set log-cluster-sizes map [log ? 10] cluster-sizes
@@ -71,7 +68,8 @@ end
 
 ;; color the largest cluster red
 to colour-largest
-  ask patches with [largest?] [set pcolor red]
+  let largest-cluster-id (position (max cluster-sizes) cluster-sizes )
+  ask patches with [cluster-id = largest-cluster-id] [set pcolor red]
 end
 
 ;; color spanning cluster (if present) green
@@ -84,25 +82,25 @@ to colour-spanning
   ]
 end
 
-to tag-largest-cluster
-  let biggest-cluster-id (position (max cluster-sizes) cluster-sizes )
-  ask patches [
-    set largest? cluster-id = biggest-cluster-id
-  ]
-end
 
+;; this procedure tags occupied patches with cluster-ids based on
+;; their connection (orthogonal) to other occupied patches
 to identify-clusters
   set cluster-count 0
-  let occupied-cells patches with [occupied?]
-  let all-to-tag occupied-cells with [cluster-id = -1]
+  ;; initialize a patch-sets of the occupied patches
+  ;; that need to be tagged with cluster-id
+  let all-to-tag patches with [occupied? and cluster-id = -1]
   while [ any? all-to-tag ] [
-    ;; keep track of the current cluster for efficient testing if it is spanning at end
+    ;; keep track of the current cluster for
+    ;; efficient testing if it is spanning at end
     let current-cluster patch-set nobody
 
     ;; start with a randomly selected untagged patch
     let patches-to-tag (patch-set one-of all-to-tag)
+    ;; and pick a random color for this cluster
     let col (random 14) * 10 + (random 5) + 5
-
+    ;; now, while there are any remaining patches to tag
+    ;; iteratively tag occupied neighbors of the starting patch
     while [ any? patches-to-tag ] [
       ask patches-to-tag [
         ;; tag and assign cluster ID
@@ -114,22 +112,27 @@ to identify-clusters
       ;; now get the next lot
       set patches-to-tag (patch-set [neighbors4] of patches-to-tag) with [occupied? and cluster-id = -1]
     ]
-    let n count current-cluster
-    set cluster-sizes lput n cluster-sizes
-    ;; check here whether it is a spanning cluster
-    if n >= min (list world-width world-height) [
-      if width current-cluster = world-width or height current-cluster = world-height [
-        ask current-cluster [set spanning? true]
-        set spanning-present? true
-      ]
-    ]
-    ;; remove tagged cells from the all-to-tag list
+    ;; update the all-to-tag patch-set
     set all-to-tag all-to-tag with [ cluster-id = -1 ]
+
+    ;; record size of this cluster
+    set cluster-sizes lput (count current-cluster) cluster-sizes
     set cluster-count cluster-count + 1
+    check-for-spanning current-cluster
   ]
-  wait 1 ;; wait so people can see the clusters!
+  wait 1 ;; wait a second so people can see the clusters!
   ;; then restore the colours
-  ask occupied-cells [ set pcolor white ]
+  ask patches with [occupied?] [ set pcolor white ]
+end
+
+;; check if the supplied patch-set c is a spanning cluster
+to check-for-spanning [c]
+  if count c >= min (list world-width world-height) [
+    if width c = world-width or height c = world-height [
+      ask c [set spanning? true]
+      set spanning-present? true
+    ]
+  ]
 end
 
 ;; reporters for width and height of a patch-set
@@ -141,22 +144,29 @@ to-report height [p-set]
   report max [pycor] of p-set - min [pycor] of p-set + 1
 end
 
+
+;; returns the proportion of the space
+;; occupied by the spanning cluster
 to-report proportion-spanning
-  let pf 0
-  if spanning-present? [
-    set pf (count patches with [spanning?]) / (count patches)
-  ]
-  report pf
+  ifelse spanning-present?
+  [ report count patches with [spanning?] / count patches ]
+  [ report 0 ]
 end
 
+;; reports mean size of clusters subject to some constraints (see below)
 to-report typical-cluster-size
   ;; mean cluster size is calculated without the spanning cluster and without bkgd and is size weighted
-  ;; basically the typical size cluster that a rnd selected site will belong too
-  ;; so make a list of the cluster-size of each occupied, non-spanning cluster patch one entry per patch
-  ;; mean of this list is the required weighted cluster size mean
-  ifelse any? patches with [not spanning?]
-  [ report mean map [item ([cluster-id] of ?) cluster-sizes] sort (patches with [occupied? and not spanning?]) ]
+  ;; it is the typical size cluster that a rnd selected site will belong too
+  ifelse any? patches with [not spanning?] [
+    let non-spanning-occupied-patches sort (patches with [occupied? and not spanning?])
+    report mean map [size-of-my-cluster ?] non-spanning-occupied-patches
+  ]
   [ report 0 ]
+end
+
+;; returns the size of the cluster of which ptch is a member
+to-report size-of-my-cluster [ptch]
+  report item ([cluster-id] of ptch) cluster-sizes
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -377,6 +387,12 @@ This model demonstrates site percolation and as discussed in Chapter 5 of
 You should consult that book for more information and details of the model.
 
 An alternative version of this model that uses the R-netlogo extension is available and provides a better plot of the cluster size distribution.
+
+## THINGS TO NOTICE
+
+The code comments give a good overview of how the model works.
+
+The most complicated procedure is the tagging of connected clusters of occupied patches in the `identify-clusters` procedure. This code (or variants of it) reappears in many of the models in chapter 5, so it is advisable to follow it carefully.
 
 ## HOW TO CITE
 
