@@ -22,21 +22,16 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [ gradient profiler ]
-
-globals
-[
+globals [
   perimeter-set
   perimeter-tip-set
-  p-length-list
 ]
 
-patches-own
-[
+patches-own [
   t-colonised
   attempts
   occupied?
-  n-occupied-N4  ; number of occupied nieghbors4 - keepinging track of this helps efficiency
+  n-occupied-N4  ; number of occupied neighbors4 - keepinging track of this helps efficiency
 ]
 
 to setup
@@ -46,15 +41,7 @@ to setup
     set t-colonised -1
     set n-occupied-N4 0
   ]
-
-  let start-site nobody
-
-  ;; get the start loication - either centre of grid or random location
-  ifelse start-in-centre?
-   [ set start-site patch (max-pxcor / 2) (max-pycor / 2) ]
-   [ set start-site one-of patches ]
-
-  ask start-site [
+  ask patch (max-pxcor / 2) (max-pycor / 2) [
     set pcolor white
     set t-colonised 0
     set perimeter-set neighbors4
@@ -63,10 +50,6 @@ to setup
       set n-occupied-N4 n-occupied-N4 + 1
     ]
   ]
-
-  set p-length-list []
-  set p-length-list lput (count perimeter-set) p-length-list
-
   reset-ticks
 end
 
@@ -78,17 +61,13 @@ to go
   [ set new-site one-of perimeter-tip-set ]
   [ set new-site one-of perimeter-set ]
 
-  ask new-site
-  [
+  ask new-site [
     ;; if m = 0 then this is the classical Eden process as per Eden 1961, otherwise it's the noise-reduced form
-    ifelse attempts >= m
-    [
+    ifelse attempts >= m [
       set occupied? true
       set pcolor white
       set t-colonised ticks
-      ask neighbors4 [
-        set n-occupied-N4 n-occupied-N4 + 1
-      ]
+      ask neighbors4 [ set n-occupied-N4 n-occupied-N4 + 1 ]
       rebuild-perimeter
       rebuild-perimeter-tips
     ]
@@ -96,7 +75,6 @@ to go
       set attempts attempts + 1
     ]
   ]
-  set p-length-list lput (count perimeter-set) p-length-list
   tick
 end
 
@@ -111,9 +89,8 @@ end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied?]
-  [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
+  ask patches with [occupied?] [
+    set pcolor scale-color green t-colonised 0 ticks
   ]
 end
 
@@ -123,13 +100,6 @@ to colour-tips
   ask perimeter-tip-set [set pcolor red]
 end
 
-to profile
-  profiler:start         ;; start profiling
-  repeat 2000 [ go ]       ;; run something you want to measure
-  profiler:stop          ;; stop profiling
-  print profiler:report  ;; view the results
-  profiler:reset         ;; clear the data
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -208,7 +178,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks last p-length-list"
+"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter-set"
 
 BUTTON
 48
@@ -269,17 +239,6 @@ If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961).
 0.0
 1
 
-SWITCH
-43
-333
-193
-366
-start-in-centre?
-start-in-centre?
-0
-1
--1000
-
 SLIDER
 30
 388
@@ -289,7 +248,7 @@ R
 R
 0
 200
-100
+23
 1
 1
 NIL

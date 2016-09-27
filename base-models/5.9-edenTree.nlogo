@@ -24,14 +24,11 @@
 
 extensions [ gradient ]
 
-globals
-[
+globals [
   perimeter-set
-  p-length-list
 ]
 
-patches-own
-[
+patches-own [
   t-colonised
   attempts
   occupied?
@@ -39,40 +36,27 @@ patches-own
 
 to setup
   clear-all
-  let start-site nobody
   ask patches [
     set occupied? false
     set t-colonised -1
   ]
-
-  ;; get the start loication - either centre of grid or random location
-  ifelse start-in-centre?
-   [ set start-site patch (max-pxcor / 2) (max-pycor / 2) ]
-   [ set start-site one-of patches ]
-
-  ask start-site [
+  ask patch (max-pxcor / 2) (max-pycor / 2) [
     set occupied? true
     set pcolor white
     set t-colonised 0
     set perimeter-set neighbors4
   ]
-
-  set p-length-list []
-  set p-length-list lput (count perimeter-set) p-length-list
-
   reset-ticks
 end
 
 to go
   ;; initiate the growth
   if not any? perimeter-set [stop]
-  ask one-of perimeter-set
-  [
+  ask one-of perimeter-set [
     ;; m controls noise-reduction (m = 0 is off)
     set attempts attempts + 1
 
-    if attempts >= m
-    [
+    if attempts >= m [
       set occupied? true
       set pcolor white
       set t-colonised ticks
@@ -85,18 +69,13 @@ to go
       ;; remove all perimeter-set members with more than one occupied neighbour
       set perimeter-set (perimeter-set with [count neighbors4 with [occupied? = true] = 1])
     ]
-
   ]
-
-  set p-length-list lput (count perimeter-set) p-length-list
-
   tick
 end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied?]
-  [
+  ask patches with [occupied?] [
     set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
   ]
 end
@@ -184,7 +163,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks (last p-length-list)"
+"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter-set"
 
 BUTTON
 32
@@ -212,7 +191,7 @@ m
 m
 0
 10
-10
+0
 1
 1
 NIL
@@ -227,17 +206,6 @@ If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961).
 10
 0.0
 1
-
-SWITCH
-24
-246
-174
-279
-start-in-centre?
-start-in-centre?
-0
-1
--1000
 
 @#$#@#$#@
 ## WHAT IS IT?

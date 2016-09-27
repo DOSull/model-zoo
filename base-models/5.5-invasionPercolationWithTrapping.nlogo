@@ -22,8 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [gradient]
-
 globals [
   last-invaded           ;; the most recently invaded patch
   next-to-invade         ;; list of the patches subject to invasion next
@@ -125,7 +123,7 @@ to update-patch-states
   ]
 end
 
-;; reports a list with patch x inserted in lst of patches lst
+;; reports a list with patch x inserted in list of patches lst
 ;; while maintaining it in sorted order by p value
 ;; ASSUMES that lst is already sorted by p values
 to-report insert-in-order [lst x]
@@ -169,10 +167,12 @@ to tag-traps [poss-closes]
       ]
       ask this-trap [
         let N4 neighbors4 with [not invaded?]
-        set next-this-trap (patch-set N4 next-this-trap)
         ask N4 [
-          set escaped? escaped? or (pxcor > item pycor max-x) or (pycor > item pxcor max-y) or (pycor < item pxcor min-y)
+          set escaped? escaped? or (pxcor > item pycor max-x)
+                                or (pycor > item pxcor max-y)
+                                or (pycor < item pxcor min-y)
         ]
+        set next-this-trap (patch-set N4 next-this-trap)
       ]
       set this-trap next-this-trap
     ]
@@ -212,19 +212,13 @@ end
 ;; Colour each patch by its p (underlying random field) value
 to colour-field
   ask patches with [invaded? = false] [
-    set pcolor gradient:scale [ [229 245 249] [153 216 201] [44 162 95] ]  p min-field max-field
+    set pcolor scale-color orange p 0 1
   ]
 end
 
 to colour-by-time
-;  ask patches with [ invaded? = true and time-invaded != -1] [
-;    set pcolor gradient:scale [[227 74 51] [253 187 132] [254 232 200] ]  time-invaded 0 ticks
-;  ]
-;  ask patches with [ invaded? = true and time-invaded = -1] [
-;    set pcolor grey - 2
-;  ]
   ask patches [
-    set pcolor scale-color black time-invaded ticks -1
+    set pcolor scale-color blue time-invaded ticks -1
   ]
 end
 
@@ -237,11 +231,9 @@ to gradient-field
    ask patches [
      set p random-normal (pycor / max-pycor) 1
    ]
-
    let scalar-p abs min [p] of patches
-
    ask patches [
-     set p P + scalar-p
+     set p p + scalar-p
    ]
 end
 
@@ -252,8 +244,8 @@ end
 GRAPHICS-WINDOW
 79
 10
-601
-297
+729
+361
 -1
 -1
 1.0
@@ -267,9 +259,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-511
+639
 0
-255
+319
 0
 0
 1
@@ -378,9 +370,9 @@ NIL
 
 MONITOR
 738
-355
+364
 828
-400
+409
 invasion-front
 length next-to-invade
 0
@@ -389,9 +381,9 @@ length next-to-invade
 
 SWITCH
 740
-273
+282
 854
-306
+315
 trapping?
 trapping?
 0
@@ -404,15 +396,15 @@ TEXTBOX
 724
 396
 Set view updates to continuous or if it is set to 'on ticks' then make sure the speed slider is set towards the faster end of the range.  Otherwise, this model will run very slowly.
-11
+12
 0.0
 1
 
 BUTTON
 739
-229
+238
 860
-262
+271
 colour-by-time
 colour-by-time
 NIL
@@ -427,9 +419,9 @@ NIL
 
 SWITCH
 745
-152
+161
 853
-185
+194
 gradient?
 gradient?
 1
@@ -464,9 +456,9 @@ HORIZONTAL
 
 BUTTON
 741
-193
+202
 859
-226
+235
 NIL
 colour-field
 NIL
@@ -483,7 +475,7 @@ TEXTBOX
 748
 94
 898
-139
+149
 Note: this GREATLY slows the process, esp. if there is no trapping.  Go and get a coffee.
 11
 15.0
@@ -491,9 +483,9 @@ Note: this GREATLY slows the process, esp. if there is no trapping.  Go and get 
 
 TEXTBOX
 742
-314
+323
 892
-344
+353
 Will run a lot slower with trapping OFF.
 11
 15.0

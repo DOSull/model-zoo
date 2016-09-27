@@ -22,11 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [gradient]
-
 globals [
   perimeter-set
-  p-length-list
   at-edge?
 ]
 
@@ -42,22 +39,12 @@ to setup
     set occupied? false
     set t-colonised -1
   ]
-  let start-site nobody
-
-  ;; get the start location - either centre of grid or random location
-  ifelse start-in-centre?
-  [ set start-site patch (max-pxcor / 2) (max-pycor / 2) ]
-  [ set start-site one-of patches ]
-
-  ask start-site [
+  ask patch (max-pxcor / 2) (max-pycor / 2) [
     set occupied? true
     set t-colonised 1
     set perimeter-set neighbors4
     set pcolor white
   ]
-  set p-length-list []
-  set p-length-list lput (count perimeter-set) p-length-list
-
   reset-ticks
 end
 
@@ -75,36 +62,30 @@ to go
       set t-colonised ticks + 1
 
       let new-edge-cells neighbors4 with [occupied? = false]
-
       ;; rebuilds the perimeter-list with the new candidates added and the newly colonised patch removed
       set perimeter-set (patch-set (other perimeter-set) new-edge-cells)
       test-edge
     ]
   ]
-
-  set p-length-list lput (count perimeter-set) p-length-list
   tick
 end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied?]
-  [
-       set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
+  ask patches with [occupied?] [
+    set pcolor scale-color green t-colonised -1000 ticks
   ]
 end
 
 ;; highlight the perimeter cells only
 to colour-edge
   ask patches [set pcolor black]
-  ask perimeter-set [set pcolor red]
+  ask perimeter-set [set pcolor yellow]
 end
 
 to test-edge
-  if pxcor = min-pxcor + 2 or pxcor = max-pxcor - 2 or pycor = min-pycor + 2 or pycor = max-pycor - 2
-  [
-    set at-edge? true
-  ]
+  set at-edge? pxcor = min-pxcor + 2 or pxcor = max-pxcor - 2 or
+               pycor = min-pycor + 2 or pycor = max-pycor - 2
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -184,7 +165,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks last p-length-list"
+"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter-set ;last p-length-list"
 
 BUTTON
 40
@@ -245,17 +226,6 @@ If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961).
 0.0
 1
 
-SWITCH
-29
-296
-179
-329
-start-in-centre?
-start-in-centre?
-0
-1
--1000
-
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -274,8 +244,6 @@ A noise-reduced variant, as discussed in
 is also supported.
 
 An alternative version of this model that does not require the R-netlogo extension is also available.
-
-The R code in this model requires that the matlab package be installed.
 
 ## HOW TO CITE
 

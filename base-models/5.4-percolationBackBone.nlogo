@@ -22,8 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [nw]
-
 breed [nodes node]
 
 patches-own [

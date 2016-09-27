@@ -40,74 +40,51 @@ patches-own
 
 to setup
     clear-all
-    ask patches
-    [
+    ask patches [
       set occupied? false
       set t-colonised -1
     ]
-
-    let start-site nobody
-
-    ;; get the start loication - either centre of grid or random location
-    ifelse start-in-centre?
-     [ set start-site patch (max-pxcor / 2) (max-pycor / 2) ]
-     [ set start-site one-of patches ]
-
-    ask start-site [
+    ask patch (max-pxcor / 2) (max-pycor / 2) [
       set occupied? true
       set t-colonised 0
       set perimeter-set neighbors4
       set pcolor white
     ]
-
-    set p-length-list []
-    set p-length-list lput (count perimeter-set) p-length-list
     reset-ticks
 end
 
 to go
   ;; initiate the spread dynamic
-
-  ifelse any? perimeter-set
-  [
+  ifelse any? perimeter-set [
     let target-cell one-of perimeter-set
 
     ;; grow into new site?
-    ifelse random-float 1 <= g
-    [
-      ask target-cell
-      [
+    ifelse random-float 1 <= g [
+      ask target-cell [
         set occupied? true
         set pcolor white
         set t-colonised ticks
 
-        let new-edge-cells neighbors4 with [occupied? = false]
+        let new-edge-cells neighbors4 with [not occupied?]
 
         ;; rebuilds the perimeter-list with the new candidates added and the newly colonised patch removed
         set perimeter-set (patch-set (other perimeter-set) new-edge-cells)
-
       ]
     ]
-    ;; afflicted cell recovers?
-    [
-      let recover-set [neighbors4 with [occupied? = true]] of target-cell
-      if any? recover-set
-      [
+    [ ;; afflicted cell recovers?
+      let recover-set [neighbors4 with [occupied?]] of target-cell
+      if any? recover-set [
         let recover-cell one-of recover-set
-        ask recover-cell
-        [
+        ask recover-cell [
           set occupied? false
           set t-colonised -1
           set pcolor black
-          if count ([neighbors4 with [occupied? = true]] of recover-cell)  > 1
-          [
+          if count ([neighbors4 with [occupied?]] of recover-cell) > 1 [
             set perimeter-set (patch-set recover-cell perimeter-set)
           ]
         ]
       ]
     ]
-  set p-length-list lput (count perimeter-set) p-length-list
-
     tick
   ]
   [
@@ -118,8 +95,7 @@ end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied? = true]
-  [
+  ask patches with [occupied? = true] [
     set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
   ]
 end
@@ -129,7 +105,6 @@ to colour-edge
   ask patches [set pcolor black]
   ask perimeter-set [set pcolor red]
 end
-
 
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -207,7 +182,7 @@ Length
 10.0
 true
 false
-"" "if ticks > 0\n[ plotxy ticks last p-length-list ]"
+"" "if ticks > 0\n[ plotxy ticks count perimeter-set ]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -259,17 +234,6 @@ g
 1
 NIL
 HORIZONTAL
-
-SWITCH
-34
-372
-184
-405
-start-in-centre?
-start-in-centre?
-0
-1
--1000
 
 MONITOR
 79
