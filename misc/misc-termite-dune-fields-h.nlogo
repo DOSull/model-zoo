@@ -1,10 +1,10 @@
 ; Copyright (c) 2011-13 David O'Sullivan and George Perry
-; Licensed under the Creative Commons 
-; Attribution-NonCommercial-ShareAlike 3.0 License 
+; Licensed under the Creative Commons
+; Attribution-NonCommercial-ShareAlike 3.0 License
 ; See Info tab for full copyright and license information
 ;;
 
-globals [ 
+globals [
   max-h
   elevated
 ]
@@ -17,7 +17,7 @@ patches-own [
 to setup
   clear-all
   set max-h 3
-  ask patches [ 
+  ask patches [
     set h random 4
     set upwind (patch-set (patch-at -1 -1) (patch-at -1 0) (patch-at -1 1))
   ]
@@ -26,15 +26,15 @@ to setup
   reset-ticks
 end
 
-to recolor 
-  set pcolor scale-color orange h 0 10
+to recolor
+  set pcolor scale-color yellow h -2 12
 end
 
 to go
   ask one-of (elevated with [not any? (upwind with [h > [h + 1] of myself])]) [ ;; this promotes development of large immobile dunes
 ;  ask one-of (elevated) [ ;; this promotes mobile dunes that _advance_ not retreat...
     set h h - 1
-    recolor 
+    recolor
     if h = 0 [ set elevated other elevated ]
     sprout 1 [
       set heading 90
@@ -80,8 +80,8 @@ GRAPHICS-WINDOW
 38
 -75
 75
-1
-1
+0
+0
 1
 ticks
 100.0
@@ -129,7 +129,7 @@ sd-angle
 sd-angle
 0
 30
-3
+4
 1
 1
 NIL
@@ -144,7 +144,7 @@ mean-speed
 mean-speed
 0
 20
-10
+5
 0.1
 1
 NIL
@@ -170,7 +170,7 @@ friction
 friction
 0
 1
-0.5
+0.8
 0.1
 1
 NIL
@@ -185,7 +185,7 @@ sd-speed
 sd-speed
 0
 5
-2.5
+0.5
 0.1
 1
 NIL
@@ -238,9 +238,9 @@ Note than when you stop the GO forever button, the termites keep moving for a li
 
 ## HOW TO CITE
 
-If you mention this model in a publication, we ask that you include these citations for the model itself and for the NetLogo software:  
-- Wilensky, U. (1997).  NetLogo Termites model.  http://ccl.northwestern.edu/netlogo/models/Termites.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
-- Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.  
+If you mention this model in a publication, we ask that you include these citations for the model itself and for the NetLogo software:
+- Wilensky, U. (1997).  NetLogo Termites model.  http://ccl.northwestern.edu/netlogo/models/Termites.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+- Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
@@ -539,7 +539,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.0
+NetLogo 5.3
 @#$#@#$#@
 setup
 ask turtles [ repeat 150 [ go ] ]
@@ -561,4 +561,3 @@ Line -7500403 true 150 150 210 180
 @#$#@#$#@
 1
 @#$#@#$#@
-
