@@ -111,13 +111,12 @@ to change-grain
   let n-blocks ceiling (world-width / new-grain)
   ;; edge offset is half the space required by a set of blocks one narrower
   let offset floor ((world-width - (n-blocks - 1) * new-grain) / 2)
-  let center-coords n-values n-blocks [ ?1 -> ?1 * new-grain + offset ]
+  let center-coords n-values n-blocks [ i -> i * new-grain + offset ]
 
   ;; build the blocks around each centre and apply modal filter
-  foreach center-coords [ ?1 ->
-    let cx ?1
-    foreach center-coords [ ??1 ->
-      ask patch cx ??1 [
+  foreach center-coords [ cx ->
+    foreach center-coords [ cy ->
+      ask patch cx cy [
         build-blocks new-grain
         set centre? true
         let modal-state one-of modes [state] of block-set
@@ -140,13 +139,12 @@ end
 to build-blocks [width]
   set block-set patch-set nobody
   ;; make a list from -half the width to +half width
-  let offsets n-values width [ ?1 -> ?1 - floor (width / 2) ]
+  let offsets n-values width [ x -> x - floor (width / 2) ]
   ;; loop over offsets in both x and y directions
   ;; adding patch at that offset to the block set
-  foreach offsets [ ?1 ->
-    let offset-x ?1
-    foreach offsets [ ??1 ->
-      set block-set (patch-set block-set patch-at offset-x ??1)
+  foreach offsets [ offset-x ->
+    foreach offsets [ offset-y ->
+      set block-set (patch-set block-set patch-at offset-x offset-y)
     ]
   ]
 end

@@ -57,25 +57,24 @@ to draw-pegs
   ;; y row starts from 1 goes to the bottom edge
   let y-row n-values (max-pycor - bottom-edge + 1) [ ?1 -> ?1 ]
   set x-coords (list x-start-position)
-  foreach y-row [ ?1 ->
-    let y ?1
-    foreach x-coords [ ??1 ->
+  foreach y-row [ y ->
+    foreach x-coords [ x ->
       create-pegs 1 [
         set shape "dot"
         set size 1.2
         set color red
-        setxy ??1 (max-pycor - y)
+        setxy x (max-pycor - y)
       ]
     ]
-    set column-heights map [ ??1 -> ??1 ] x-coords
+    set column-heights x-coords
     ; each row starts a factor of c to the left
-    set x-coords map [ ??1 -> ??1 * c ] x-coords
+    set x-coords map [ x -> x * c ] x-coords
     ; and extends one peg to the right
     set x-coords lput (last x-coords / c / c) x-coords
     ; throw away any x-coords off the edge of the screen
-    set x-coords filter [ ??1 -> ??1 < max-pxcor ] x-coords
+    set x-coords filter [ x -> x < max-pxcor ] x-coords
   ]
-  set x-coords map [ ?1 -> precision ?1 4 ] column-heights
+  set x-coords map [ x -> precision x 4 ] column-heights
   set column-heights map [0] column-heights
 end
 

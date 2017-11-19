@@ -59,15 +59,15 @@ to plot-intensity
  if density-method = "quartic-kernel" [
    ask turtles [
      let w-in-r []
-     foreach (sort patches in-radius bw) [ ?1 ->
-       ask ?1 [
+     foreach (sort patches in-radius bw) [ p ->
+       ask p [
          set w-in-r lput get-quartic bw distance myself w-in-r
        ]
      ]
      let sum-w sum w-in-r
-     (foreach (sort patches in-radius bw) w-in-r [ [?1 ?2] ->
-         ask ?1 [
-           set lambda lambda + ?2 / sum-w
+     (foreach (sort patches in-radius bw) w-in-r [ [p w] ->
+         ask p [
+           set lambda lambda + w / sum-w
          ]
      ])
    ]
@@ -233,7 +233,7 @@ CHOOSER
 density-method
 density-method
 "smoothing" "quartic-kernel"
-0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?

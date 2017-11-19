@@ -111,8 +111,8 @@ to make-glider
   ;; find an empty spot
   ask one-of patches with [sum [state] of neighbors + state = 0] [
     ;; pick a glider and set the states appropriately
-    foreach one-of gliders [ ?1 ->
-      ask patch-at item 0 ?1 item 1 ?1 [
+    foreach one-of gliders [ xy ->
+      ask patch-at item 0 xy item 1 xy [
         set state 1
       ]
     ]
