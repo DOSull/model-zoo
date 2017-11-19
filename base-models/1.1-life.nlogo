@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -111,8 +111,8 @@ to make-glider
   ;; find an empty spot
   ask one-of patches with [sum [state] of neighbors + state = 0] [
     ;; pick a glider and set the states appropriately
-    foreach one-of gliders [
-      ask patch-at item 0 ? item 1 ? [
+    foreach one-of gliders [ ?1 ->
+      ask patch-at item 0 ?1 item 1 ?1 [
         set state 1
       ]
     ]
@@ -153,8 +153,8 @@ end
 GRAPHICS-WINDOW
 205
 10
-615
-441
+613
+419
 -1
 -1
 5.0
@@ -333,7 +333,7 @@ Although the Game of Life is conceptually very simple, there are some tricks inv
 
 Most importantly, because cell state update occurs simultaneously across all cells, it is necessary for the NetLogo patches to keep track of both their current and next state.  This is accomplished by the `state` and `next-state` patch variables.
 
-Also, cell states are stored as integer 0 ('dead') or 1 ('live') values.  This means it is easy to count live cells in neighbourhoods using the `sum` reporter.  It is also requires the `update-states` procedure to colur patches according to their current state.
+Also, cell states are stored as integer 0 ('dead') or 1 ('live') values.  This means it is easy to count live cells in neighbourhoods using the `sum` reporter.  It is also requires the `update-states` procedure to colour patches according to their current state.
 
 The `make-glider` procedure makes use of a list of lists of coordinate offsets for each of the four possible glider orientations. One of these is selected at random and the offsets are used to 'draw' the chosen glider at a randomly selected patch location.
 
@@ -348,7 +348,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -637,9 +637,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -655,7 +654,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

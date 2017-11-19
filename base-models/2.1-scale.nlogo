@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -111,13 +111,13 @@ to change-grain
   let n-blocks ceiling (world-width / new-grain)
   ;; edge offset is half the space required by a set of blocks one narrower
   let offset floor ((world-width - (n-blocks - 1) * new-grain) / 2)
-  let center-coords n-values n-blocks [? * new-grain + offset]
+  let center-coords n-values n-blocks [ ?1 -> ?1 * new-grain + offset ]
 
   ;; build the blocks around each centre and apply modal filter
-  foreach center-coords [
-    let cx ?
-    foreach center-coords [
-      ask patch cx ? [
+  foreach center-coords [ ?1 ->
+    let cx ?1
+    foreach center-coords [ ??1 ->
+      ask patch cx ??1 [
         build-blocks new-grain
         set centre? true
         let modal-state one-of modes [state] of block-set
@@ -140,13 +140,13 @@ end
 to build-blocks [width]
   set block-set patch-set nobody
   ;; make a list from -half the width to +half width
-  let offsets n-values width [? - floor (width / 2)]
+  let offsets n-values width [ ?1 -> ?1 - floor (width / 2) ]
   ;; loop over offsets in both x and y directions
   ;; adding patch at that offset to the block set
-  foreach offsets [
-    let offset-x ?
-    foreach offsets [
-      set block-set (patch-set block-set patch-at offset-x ?)
+  foreach offsets [ ?1 ->
+    let offset-x ?1
+    foreach offsets [ ??1 ->
+      set block-set (patch-set block-set patch-at offset-x ??1)
     ]
   ]
 end
@@ -164,8 +164,8 @@ end
 GRAPHICS-WINDOW
 197
 10
-703
-537
+705
+519
 -1
 -1
 4.0
@@ -179,9 +179,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-123
+124
 0
-123
+124
 1
 1
 1
@@ -231,7 +231,7 @@ new-grain
 new-grain
 3
 15
-11
+9.0
 2
 1
 NIL
@@ -243,7 +243,7 @@ BUTTON
 188
 45
 NIL
-setup\n
+setup
 NIL
 1
 T
@@ -263,7 +263,7 @@ n-types
 n-types
 2
 10
-8
+6.0
 1
 1
 NIL
@@ -278,7 +278,7 @@ lattice-L
 lattice-L
 24
 249
-124
+125.0
 1
 1
 NIL
@@ -291,7 +291,7 @@ SWITCH
 374
 show-block-centre?
 show-block-centre?
-1
+0
 1
 -1000
 
@@ -304,7 +304,7 @@ new-extent
 new-extent
 29
 249
-71
+84.0
 1
 1
 NIL
@@ -316,7 +316,7 @@ BUTTON
 186
 147
 trim
-trim-extent\n
+trim-extent
 NIL
 1
 T
@@ -328,19 +328,19 @@ NIL
 1
 
 CHOOSER
-705
+710
 13
-843
+848
 58
 method
 method
 "random" "mrc" "voter"
-1
+2
 
 INPUTBOX
-705
+710
 61
-843
+848
 121
 class-file
 2.1-classes.txt
@@ -349,35 +349,35 @@ class-file
 String
 
 SLIDER
-705
+710
 176
-844
+849
 209
 p
 p
 0
 .6
-0.54
+0.41
 .01
 1
 NIL
 HORIZONTAL
 
 SWITCH
-705
+710
 219
-895
+900
 252
 remove-singleton-patches?
 remove-singleton-patches?
-1
+0
 1
 -1000
 
 TEXTBOX
-707
+712
 256
-891
+896
 286
 MRC can be slow - be patient!
 12
@@ -385,9 +385,9 @@ MRC can be slow - be patient!
 1
 
 TEXTBOX
-709
+714
 126
-886
+891
 170
 For MRC, the class-file needs to have as many lines in it as there are n-types.
 12
@@ -395,24 +395,24 @@ For MRC, the class-file needs to have as many lines in it as there are n-types.
 1
 
 SLIDER
-713
+710
 291
-885
+882
 324
 voter-iterations
 voter-iterations
 0
 100
-100
+30.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-712
+709
 333
-862
+859
 361
 Only used by the voter initialization method
 11
@@ -483,7 +483,7 @@ See also
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -781,9 +781,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3.1
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -799,7 +798,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

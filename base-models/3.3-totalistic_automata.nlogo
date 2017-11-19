@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -74,7 +74,7 @@ to setup-patch-neighbourhoods
 end
 
 to-report patches-at [offsets]
-  report patch-set map [patch-at (item 0 ?) (item 1 ?)] offsets
+  report patch-set map [ xy -> patch-at (item 0 xy) (item 1 xy) ] offsets
 end
 
 ;; reports a list of tuples of [Dx Dy] for the neighbourhood range and type
@@ -91,15 +91,14 @@ end
 ;; we want, we only calculate once doing it this way
 to-report n-offset-coords
   ;; the possible x- and y-ranges are from -range to +range
-  let x-range n-values (2 * (floor range) + 1) [? - floor range]
-  let y-range n-values (2 * (floor range) + 1) [? - floor range]
+  let x-range n-values (2 * (floor n-range) + 1) [ x -> x - floor n-range ]
+  let y-range x-range
   ;; make the full array of possible offsets within range in either x or y directions
   ;; this is a list of two element lists, where the elements are x-offset, y-offset
   let array []
-  foreach x-range [
-    let x-o ?
-    foreach y-range [
-      set array lput (list x-o ?) array
+  foreach x-range [ x ->
+    foreach y-range [ y ->
+      set array lput (list x y) array
     ]
   ]
   ;; remove the [0 0] offset entry
@@ -108,9 +107,9 @@ to-report n-offset-coords
   if neighbourhood-style != "orth+diag" [
     ifelse neighbourhood-style = "orthogonal"
     ;; in this case use Manhattan distance, i.e. dx + dy
-    [ set array filter [manhattan-distance item 0 ? item 1 ? <= range] array ]
+    [ set array filter [ xy -> manhattan-distance item 0 xy item 1 xy <= n-range ] array ]
     ;; otherwise use Euclidean distance
-    [ set array filter [euclidean-distance item 0 ? item 1 ? <= range] array ]
+    [ set array filter [ xy -> euclidean-distance item 0 xy item 1 xy <= n-range ] array ]
   ]
   report array
 end
@@ -213,13 +212,13 @@ end
 ;; this reports a list of output states based on a min and max sum
 ;; and whether or not to invert the result
 to-report get-on-sums [min-sum max-sum invert?]
-  let zero-to-n n-values (n-size + 1) [?]  ;; [0 1 2 3... n]
+  let zero-to-n range (n-size + 1)
   ;; now convert so False for < min-sum or > max-sum, True otherwise
-  let on-sums map [? >= min-sum and ? <= max-sum] zero-to-n
+  let on-sums map [ s -> s >= min-sum and s <= max-sum ] zero-to-n
   ;; invert if required
-  if invert? [ set on-sums map [not ?] on-sums ]
+  if invert? [ set on-sums map [ b -> not b ] on-sums ]
   ;; convert to integer 0/1
-  report map [boolean-as-int ?] on-sums
+  report map [ b -> boolean-as-int b ] on-sums
 end
 
 to-report boolean-as-int [b]
@@ -245,10 +244,10 @@ to setup-rule-from-code
   ;; convert evens and odds to the necessary lists for the rule
   ;; even indices are the births (i.e state 0 -> state 1)
   ;; odd indices are the survivals (i.e. state 1 -> state 1)
-  let even-indices filter [? mod 2 = 0] n-values reqd-len [?]
-  let odd-indices filter [? mod 2 = 1] n-values reqd-len [?]
-  let births map [item ? binary-list] even-indices
-  let survivals map [item ? binary-list] odd-indices
+  let even-indices filter [ x -> x mod 2 = 0 ] range reqd-len
+  let odd-indices filter [ x -> x mod 2 = 1 ] range reqd-len
+  let births map [ i -> item i binary-list ] even-indices
+  let survivals map [ i -> item i binary-list ] odd-indices
   set rule (list births survivals)
   show-rule-details
 end
@@ -269,12 +268,12 @@ end
 ;; show the rule in the output window and listings
 to show-rule-details
   set rule-desc "      State\nN-sum  0  1\n___________\n"
-  foreach n-values (length (item 0 rule)) [?] [
-    let on-sum pack-string ? 3
+  foreach range (length (item 0 rule)) [ x ->
+    let on-sum pack-string x 3
     set rule-desc (word rule-desc
-                        pack-string ? 3
-                        pack-string (item ? (item 0 rule)) 5
-                        pack-string (item ? (item 1 rule)) 3
+                        pack-string x 3
+                        pack-string (item x (item 0 rule)) 5
+                        pack-string (item x (item 1 rule)) 3
                         "\n")
   ]
   set list-0 list-to-string item 0 rule
@@ -297,7 +296,7 @@ end
 to-report list-to-string [L]
   ;; put a "" in front of the list
   ;; then run reduce to string the items together
-  report reduce [word ?1 ?2] (fput "" L)
+  report reduce [ [i1 i2] -> word i1 i2 ] (fput "" L)
 end
 
 
@@ -305,12 +304,11 @@ end
 to set-Wolfram-code-from-lists
   let list-pair (list force-list-length list-0 force-list-length list-1)
   let wc 0
-  foreach [0 1] [
-    let d0 ?
-    let lst item d0 list-pair
-    foreach n-values (n-size + 1) [?] [
-      if (item ? lst) = "1" [
-        set wc wc + 2 ^ (2 * ? + d0)
+  foreach [0 1] [ b ->
+    let lst item b list-pair
+    foreach range (n-size + 1) [ i ->
+      if (item i lst) = "1" [
+        set wc wc + 2 ^ (2 * i + b)
       ]
     ]
   ]
@@ -335,10 +333,10 @@ end
 GRAPHICS-WINDOW
 134
 10
-537
-434
-65
-65
+535
+412
+-1
+-1
 3.0
 1
 10
@@ -456,7 +454,7 @@ birth-min
 birth-min
 0
 n-size
-3
+3.0
 1
 1
 NIL
@@ -471,7 +469,7 @@ birth-max
 birth-max
 birth-min
 n-size
-3
+3.0
 1
 1
 NIL
@@ -492,11 +490,11 @@ SLIDER
 82
 644
 115
-range
-range
+n-range
+n-range
 1
 5
-1
+1.0
 0.1
 1
 NIL
@@ -533,7 +531,7 @@ surv-min
 surv-min
 0
 n-size
-2
+2.0
 1
 1
 NIL
@@ -548,7 +546,7 @@ surv-max
 surv-max
 surv-min
 n-size
-3
+3.0
 1
 1
 NIL
@@ -577,7 +575,7 @@ BUTTON
 758
 284
 setup-majority
-set birth-invert? false\nset survival-invert? false\nset birth-min floor (n-size / 2) + 1\nset birth-max n-size\nset surv-min floor (n-size / 2) \nset surv-max n-size\nset setup-from-ranges? true\nsetup
+set birth-invert? false\nset survival-invert? false\nset birth-min floor (n-size / 2) + 1\nset birth-max n-size\nset surv-min floor (n-size / 2)\nset surv-max n-size\nset setup-from-ranges? true\nsetup
 NIL
 1
 T
@@ -594,7 +592,7 @@ INPUTBOX
 666
 414
 Wolfram-code
-224
+224.0
 1
 0
 Number
@@ -702,7 +700,7 @@ seed-value
 seed-value
 0
 100
-49
+49.0
 1
 1
 NIL
@@ -753,7 +751,7 @@ BUTTON
 836
 426
 <-- set-Wolfram-code <--
-set-Wolfram-code-from-lists\nset setup-from-ranges? false\nsetup\n\n
+set-Wolfram-code-from-lists\nset setup-from-ranges? false\nsetup
 NIL
 1
 T
@@ -771,7 +769,7 @@ SWITCH
 326
 setup-from-ranges?
 setup-from-ranges?
-1
+0
 1
 -1000
 
@@ -977,7 +975,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -1266,9 +1264,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1311,7 +1308,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

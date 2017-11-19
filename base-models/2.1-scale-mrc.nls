@@ -65,8 +65,8 @@ to read-class-file
     set class-CFD but-first class-CFD ;; throw away the zero
     let tot-rel-p last class-CFD ;; total freq is the last value in the cumulative list
     ;; standardize both lists
-    set class-CFD map [ ? / tot-rel-p ] class-CFD
-    set class-FD map [ ? / tot-rel-p ] class-FD
+    set class-CFD map [ x -> x / tot-rel-p ] class-CFD
+    set class-FD map [ x -> x / tot-rel-p ] class-FD
     file-close
   ] [ file-close
      print "Error reading input file"]
@@ -107,11 +107,11 @@ to-report get-connected-regions
       ;; get the next set from the neighbours 4 of the current set
       set this-region (patch-set [neighbors4] of this-region) with [to-label?]
     ]
-    set patches-to-label filter [[not tagged?] of ?] patches-to-label
+    set patches-to-label filter [ x -> [not tagged?] of x ] patches-to-label
     ;; add the current region to the list of all regions
     set regions lput current-region regions
   ]
-  report sort-by [count ?1 > count ?2] regions
+  report sort-by [ [x1 x2] -> count x1 > count x2] regions
 end
 
 ;; convenience test for need to label patch
@@ -127,18 +127,16 @@ end
 to assign-habitat-patches-by-proportion [sorted-region-list]
   ;; make a list of the target number of patches in each class
   let num-patches-set count patches with [tagged?]
-  let target-counts map [ ? * num-patches-set ] class-FD
+  let target-counts map [ x -> x * num-patches-set ] class-FD
   ;; iteratively assigning connected regions 
   ;; to a class, always adding to the class farthest
   ;; from its target count
-  foreach sorted-region-list [
+  foreach sorted-region-list [ x -> 
     let biggest-shortfall max target-counts
     let biggest-shortfall-index position biggest-shortfall target-counts
-    ask ? [ 
-      set state biggest-shortfall-index
-    ]
+    ask x [ set state biggest-shortfall-index ]
     ;; update target counts to reflect assignment just made
-    set target-counts replace-item biggest-shortfall-index target-counts (biggest-shortfall - count ?)
+    set target-counts replace-item biggest-shortfall-index target-counts (biggest-shortfall - count x)
   ]
 end
 
