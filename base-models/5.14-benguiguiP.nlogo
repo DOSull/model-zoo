@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -21,8 +21,6 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
 ;;
-
-extensions [ gradient ]
 
 globals
 [
@@ -46,6 +44,7 @@ to setup
   [ set occupied? false
     set t-colonised -1
     set attempts 0
+    set pcolor grey - 2
     ]
 
   let start-site nobody
@@ -73,15 +72,12 @@ to go
   ;; initiate the growth
   let site-filled? false   ;; flag: is new cell actually occupied this tick?
 
-  ask one-of perimeter-set
-  [
-
+  ask one-of perimeter-set [
     ;; In Benguigui's model the difference to the classical Eden with NR is that sites *adjacent* to sites visited
     ;; but below m (so unoccupied) also get added to the perimeter-set.  This allows 'islands' to form.
     set attempts attempts + 1
 
-    if attempts = m
-    [
+    if attempts = m [
       set occupied? true
       set pcolor white
       set t-colonised ticks
@@ -93,16 +89,11 @@ to go
     ;; Update lists:: need to use site-filled? to decide whether to add check cell or not
     let new-edge-cells neighbors4 with [occupied? = false and attempts = 0]
 
-    if any? new-edge-cells
-    [
+    if any? new-edge-cells [
       ifelse site-filled?
-      [
-        set perimeter-set (patch-set (other perimeter-set) new-edge-cells)  ]
-      [
-        set perimeter-set (patch-set perimeter-set new-edge-cells) ]
+      [ set perimeter-set (patch-set (other perimeter-set) new-edge-cells) ]
+      [ set perimeter-set (patch-set perimeter-set new-edge-cells) ]
     ]
-
-
   ]
   ;; Increment the list storing perimeter size.
   set p-length-list lput (count perimeter-set) p-length-list
@@ -112,34 +103,34 @@ to go
 
   ;; test for completion
   if at-edge? = true or ticks > N [stop]
-
 end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied?]
-  [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
+  let pivot ticks / 2
+  ask patches with [occupied?] [
+    ifelse t-colonised < pivot
+    [ set pcolor scale-color green t-colonised 0 pivot ]
+    [ set pcolor scale-color orange t-colonised ticks pivot ]
   ]
 end
 
 to colour-by-visits
-  ask perimeter-set
-  [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  attempts 0 m
+  let max-a max [attempts] of perimeter-set
+  ask perimeter-set [
+    set pcolor scale-color blue attempts 0 max-a
   ]
 end
 
 ;; highlight the perimeter cells only
 to colour-edge
-  ask patches [set pcolor black]
   ask perimeter-set with [attempts = 1] [set pcolor red]
 end
 
 ;; send various graphics to R
 to test-edge
-  if pxcor = min-pxcor + 2 or pxcor = max-pxcor - 2 or pycor = min-pycor + 2 or pycor = max-pycor - 2
-  [
+  if pxcor = min-pxcor + 2 or pxcor = max-pxcor - 2
+  or pycor = min-pycor + 2 or pycor = max-pycor - 2 [
     set at-edge? true
   ]
 end
@@ -147,8 +138,8 @@ end
 GRAPHICS-WINDOW
 210
 10
-620
-441
+618
+419
 -1
 -1
 2.0
@@ -266,7 +257,7 @@ m
 m
 0
 20
-20
+20.0
 1
 1
 NIL
@@ -299,7 +290,7 @@ BUTTON
 176
 221
 NIL
-colour-by-visits\n
+colour-by-visits
 NIL
 1
 T
@@ -319,7 +310,7 @@ N
 N
 500
 5000
-2500
+2500.0
 50
 1
 NIL
@@ -354,7 +345,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -652,9 +643,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -670,7 +660,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

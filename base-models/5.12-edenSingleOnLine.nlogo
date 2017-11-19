@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,8 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [gradient]
-
 globals
 [
   perimeter-set
@@ -31,7 +29,6 @@ globals
   p-length-list
   n-occupied
   max-height
-  acc
 ]
 
 breed [counters counter]
@@ -53,6 +50,7 @@ to setup
     set n-occupied 0
 
     ask patches [
+      set pcolor grey - 2
       set occupied? false
       set t-colonised -1
     ]
@@ -72,7 +70,6 @@ to setup
     ]
 
     set max-height 1
-    set acc acceleration
     reset-ticks
 end
 
@@ -81,7 +78,7 @@ to go
   if max-height > max-pycor - 2 [stop]
 
   let t 0
-  repeat acc [
+  repeat world-width [
     ask one-of perimeter-set
     [
       ;; if m = 0 then this is the classical Eden process as per Eden 1961, otherwise it's the noise-reduced form
@@ -94,7 +91,7 @@ to go
         set occupied? true
         set n-occupied n-occupied + 1
         set pcolor white
-        set t-colonised (ticks * acc) + t
+        set t-colonised (ticks * world-width) + t
 
         let new-edge-cells neighbors4 with [occupied? = false]
 
@@ -120,9 +117,12 @@ end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
+  let pivot ticks * world-width / 2
   ask patches with [occupied?]
   [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 (ticks * acc)
+    ifelse t-colonised < pivot
+    [ set pcolor scale-color violet t-colonised 0 pivot ]
+    [ set pcolor scale-color green t-colonised (ticks * world-width) pivot ]
   ]
 end
 
@@ -139,14 +139,12 @@ end
 to-report get-variance-height
   report variance [hgt] of counters
 end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-988
-297
+986
+275
 -1
 -1
 1.0
@@ -165,7 +163,7 @@ GRAPHICS-WINDOW
 255
 1
 1
-0
+1
 ticks
 100.0
 
@@ -204,10 +202,10 @@ NIL
 1
 
 PLOT
-217
-307
-519
-479
+245
+284
+547
+456
 Height variance
 Time
 Length^2
@@ -219,7 +217,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy (ticks * acc) get-variance-height"
+"default" 1.0 0 -16777216 true "" "plotxy (ticks * world-width) get-variance-height"
 
 BUTTON
 50
@@ -264,7 +262,7 @@ m
 m
 0
 10
-0
+0.0
 1
 1
 NIL
@@ -281,32 +279,32 @@ If m = 0 then there is no 'noise-reduction'.
 1
 
 MONITOR
-817
-310
-883
-355
-mean-hgt
+845
+287
+938
+332
+mean-height
 get-mean-height
 2
 1
 11
 
 MONITOR
-901
-309
-965
-354
-var-hgt
+845
+339
+937
+384
+var-height
 get-variance-height
 2
 1
 11
 
 PLOT
-523
-308
-810
-481
+551
+285
+838
+458
 Mean height
 Time
 Length
@@ -318,32 +316,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy (ticks * acc) get-mean-height"
-
-SLIDER
-819
-375
-991
-408
-acceleration
-acceleration
-1
-world-width
-768
-1
-1
-NIL
-HORIZONTAL
-
-TEXTBOX
-824
-415
-999
-460
-This is only used during setup - it won't affect the model while it is running
-11
-0.0
-1
+"default" 1.0 0 -16777216 true "" "plotxy (ticks * world-width) get-mean-height"
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -370,8 +343,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
-
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
@@ -668,9 +640,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -686,7 +657,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,10 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-;; extensions [r]
-
-globals
-[
+globals [
   burned-trees-total
   burned-trees-fire    ;; how many have burned so far
   max-area
@@ -33,7 +30,6 @@ globals
   plot-interval
   count-fires
   fire-front
-
   prop-trees
 ]
 
@@ -51,17 +47,12 @@ to setup
   set max-total-area (world-width * world-height)
   set plot-interval round (max-total-area / 50)
 
-
   ask n-of (initial-trees * max-total-area) patches [set pcolor green]
 
-  ;; r:setPlotDevice
-
   reset-ticks
-
 end
 
 to go
-
   set burned-trees-fire 0
   set prop-trees lput (count patches with [pcolor = green] / max-total-area) prop-trees
 
@@ -73,10 +64,7 @@ to go
   spark
 
   set count-fires count-fires + 1
-  if count-fires mod plot-refresh = 0
-  [
-   plotting
-  ]
+  if count-fires mod plot-refresh = 0 [ plotting ]
 
   tick
 end
@@ -84,102 +72,71 @@ end
 to spark ;; modified spark procedure
   set burned-trees-fire 0
   ask one-of patches [
-    if pcolor = green
-    [
+    if pcolor = green [
       set burned-trees-fire burned-trees-fire + 1
       set fire-front patch-set self ;; a new fire-front
       spread
     ]
   ]
-
   ;; update fire history data (fire size list and max fire size)
   if burned-trees-fire > 0 [set burned-trees-total lput burned-trees-fire burned-trees-total]
   if not empty? burned-trees-total [ set max-area max burned-trees-total ]
   set burned-trees-fire 0
-
 end
 
 to spread
-
   while [ any? fire-front ] [ ;; stop when we run out of fire-front
     let new-fire-front patch-set nobody ;; empty set of patches for the next 'round' of the fire
-    ask fire-front
-    [
+    ask fire-front [
       set pcolor red
 
       let N neighbors4
-
       set N N with [ pcolor = green ]                 ;; only green patches
       set new-fire-front (patch-set new-fire-front N) ;; extend the next round front (assume *all* combustible nhbs burned)
       set burned-trees-fire burned-trees-fire + count N
     ]
     set fire-front new-fire-front
   ]
-
 end
 
 to plotting
-
-
   ;; following James and Plank (2007)
   set-current-plot "Freq-Area Distribution (log-log)"
   ;; set-current-plot-pen "fire_size_"
     clear-plot
-    let log-burned-trees-total map [ln ?] reverse sort burned-trees-total
-    let rank n-values (length log-burned-trees-total) [? + 1]
+    let log-burned-trees-total map [ ?1 -> ln ?1 ] reverse sort burned-trees-total
+    let rank (range 1 (length log-burned-trees-total + 1))
     let N length log-burned-trees-total
 
-    (foreach rank log-burned-trees-total [
-      plotxy ln (?1 / N) ?2
+    (foreach rank log-burned-trees-total [ [r x] ->
+      plotxy ln (r / N) x
     ])
-
- set-current-plot "Prop Trees"
+  set-current-plot "Prop Trees"
   plot count patches with [pcolor = green ] / max-total-area
 end
 
 to-report mle-exponent [size-list xmin]
   let b 1
-  let trunc-size-list filter [? >= xmin] size-list
-  let mle-est map [(log ? 2) / xmin] size-list
+  let trunc-size-list filter [ s -> s >= xmin ] size-list
+  let mle-est map [ s -> (log s 2) / xmin ] size-list
   set b 1 + ((sum mle-est) ^ -1)
   report b
 end
 
-;; R plotting code
-;to plot-size-freq-r
-; r:put "size" burned-trees-total
-; r:eval("size <- unique(sort(size, decreasing = TRUE))")
-; r:eval("N <- length(size)")
-; r:eval("rnk <- 1:N")
-;
-; r:eval("plot(log(rnk/N) ~ log(size), las = 1, xlab = 'ln Rank', ylab = 'ln Size', pch = 19, xlim = c(0,10), ylim = c(-7, 0))")
-; ;; log in R is ln in Netlogo.
-;
-;end
-;
-;to plot-prop-trees
-;  r:eval("have.zoo <- 'package:zoo' %in% search()")
-;  show r:get "have.zoo"
-;  r:eval("if(have.zoo) {library(zoo)}")
-;
-;  r:put "p" prop-trees
-;  r:eval("plot(p, type = 'l', las = 1, xlab = 'Time', ylab = 'Prop. trees', ylim = c(0,1))")
-;  r:eval("if(have.zoo) {lines(rollmean(p, 101), col = 'red')}")
-;end
-;
+
 to sizes-to-file
   file-open "size-freq.txt"
 
   foreach burned-trees-total
-     [ file-print ? ]
+     [ n -> file-print n ]
   file-close
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 249
 10
-659
-441
+657
+419
 -1
 -1
 2.0
@@ -322,7 +279,7 @@ size-min
 size-min
 1
 1000
-1
+1.0
 1
 1
 NIL
@@ -337,7 +294,7 @@ plot-refresh
 plot-refresh
 1
 100
-100
+100.0
 1
 1
 NIL
@@ -378,7 +335,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -667,9 +624,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -685,7 +641,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -24,7 +24,7 @@
 
 turtles-own [
   start-cell
-  range
+  dist-covered
 ]
 
 patches-own [
@@ -88,15 +88,15 @@ to move
           set pcolor red + 3
         ]
       ]
-      set range distance start-cell
+      set dist-covered distance start-cell
     ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-732
-553
+730
+531
 -1
 -1
 2.0
@@ -184,7 +184,7 @@ MONITOR
 187
 476
 Distance
-mean [range] of turtles
+mean [dist-covered] of turtles
 2
 1
 11
@@ -205,10 +205,10 @@ true
 true
 "" ""
 PENS
-"mean-d" 1.0 0 -16777216 true "" "plot mean [range] of turtles"
-"mean - sd" 1.0 0 -4539718 true "" "plot mean [range] of turtles - standard-deviation [range] of turtles"
-"mean + sd" 1.0 0 -4539718 true "" "plot mean [range] of turtles + standard-deviation [range] of turtles"
-"median-d" 1.0 0 -2674135 true "" "plot median [range] of turtles"
+"mean-d" 1.0 0 -16777216 true "" "plot mean [dist-covered] of turtles"
+"mean - sd" 1.0 0 -4539718 true "" "plot mean [dist-covered] of turtles - standard-deviation [dist-covered] of turtles"
+"mean + sd" 1.0 0 -4539718 true "" "plot mean [dist-covered] of turtles + standard-deviation [dist-covered] of turtles"
+"median-d" 1.0 0 -2674135 true "" "plot median [dist-covered] of turtles"
 
 CHOOSER
 58
@@ -246,7 +246,7 @@ ants
 ants
 1
 200
-200
+200.0
 1
 1
 NIL
@@ -299,7 +299,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -597,23 +597,11 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
-@#$#@#$#@
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
-<experiments>
-  <experiment name="experiment" repetitions="10" runMetricsEveryStep="true">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="1000"/>
-    <metric>R</metric>
-    <enumeratedValueSet variable="p">
-      <value value="0.6"/>
-    </enumeratedValueSet>
-  </experiment>
-</experiments>
+@#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
 default
@@ -626,7 +614,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

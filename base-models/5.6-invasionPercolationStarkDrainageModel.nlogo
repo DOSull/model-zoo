@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,7 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [ gradient ]
 
 globals [
   start-sites
@@ -107,7 +106,7 @@ to setup
 
   ;; every second patch on the left edge is a potential start site.
   let start-candidates (patch-set [possible-successors] of patches with [invaded?])
-  set next-to-invade sort-by [[p] of ?1 < [p] of ?2] start-candidates
+  set next-to-invade sort-by [ [?1 ?2] -> [p] of ?1 < [p] of ?2 ] start-candidates
 
   set last-invaded first next-to-invade
   update-patch-states
@@ -146,28 +145,28 @@ to update-patch-states
     ]
   ]
   ; discard any that are ineligible because they have > 1 occupied neighbour
-  set next-to-invade filter [[n-occ-nbrs] of ? <= 1] next-to-invade
+  set next-to-invade filter [ ?1 -> [n-occ-nbrs] of ?1 <= 1 ] next-to-invade
 end
 
 ;; reports a list with patch x inserted in lst of patches lst
 ;; while maintaining it in sorted order by p value
 ;; ASSUMES that lst is already sorted by p values
 to-report insert-in-order [lst x]
-  let posn length filter [[p] of ? < [p] of x] lst
+  let posn length filter [ y -> [p] of y < [p] of x ] lst
   report (sentence (sublist lst 0 posn) x (sublist lst posn (length lst)))
 end
 
 ;; Colour each patch by its p (underlying random field) value
 to colour-field
   ask patches with [not invaded?] [
-    set pcolor gradient:scale [ [229 245 249] [153 216 201] [44 162 95] ]  p min-field max-field
+    set pcolor ((scale-color black  p min-field max-field) - black) * 0.4  + 6 + black
   ]
 end
 
 ;; Colour each patch by the time it was invaded
 to colour-by-time
   ask patches with [invaded? and (time-invaded != -1)] [
-    set pcolor gradient:scale [[227 74 51] [253 187 132] [254 232 200] ]  time-invaded 0 ticks
+    set pcolor scale-color red time-invaded 0 ticks
   ]
 end
 
@@ -175,7 +174,7 @@ end
 ;; of the clusters present on the lattice
 to trace-drainage
   identify-basins
-  (foreach basins sources sinks [
+  (foreach basins sources sinks [ [?1 ?2 ?3] ->
     let this-basin ?1
     set start-cell ?2
     set end-cells ?3
@@ -207,12 +206,12 @@ to initiate [start-location pass ]
   ask start-location [
     if pass = 1 [ set t1 c ]
     if pass = 2 [ set t2 c ]
-    set front patch-set self               ;; a new fire-front patch-set
+    set front patch-set self
   ]
 end
 
 to spread [ pass ]
-  while [ any? front ] ;; Stop when we run out of flaming fire-front
+  while [ any? front ]
   [
     set c c + 1
     new-shell pass
@@ -220,7 +219,7 @@ to spread [ pass ]
 end
 
 to new-shell [pass]
-  ;; Empty set of patches for the next 'round' of the fire
+  ;; Empty set of patches for the next 'round' of the invasion
   let new-front patch-set nobody
   ask front [
     if pass = 1 [
@@ -267,23 +266,21 @@ to identify-basins
     set basins lput this-basin basins
     set sources lput (this-basin with [member? self start-sites]) sources
     set sinks lput (this-basin with-max [pxcor]) sinks
-    set all-to-tag filter [not [basin-set?] of ?] all-to-tag
+    set all-to-tag filter [ x -> not [basin-set?] of x ] all-to-tag
   ]
   ask to-recolour [
     set pcolor white
   ]
 end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-185
+124
 10
-430
-491
+582
+919
 -1
 -1
-1.0
+2.0
 1
 10
 1
@@ -304,9 +301,9 @@ ticks
 100.0
 
 BUTTON
-87
+26
 25
-150
+89
 58
 NIL
 setup
@@ -321,9 +318,9 @@ NIL
 1
 
 BUTTON
-87
+26
 62
-150
+89
 95
 step
 go
@@ -338,9 +335,9 @@ NIL
 1
 
 BUTTON
-87
+26
 99
-150
+89
 132
 NIL
 go
@@ -355,25 +352,25 @@ NIL
 1
 
 SLIDER
-68
+7
 214
-179
+118
 247
 smoothing
 smoothing
 0
 100
-0
+0.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-435
-433
-525
-478
+595
+255
+685
+300
 invasion-front
 length next-to-invade
 0
@@ -381,20 +378,20 @@ length next-to-invade
 11
 
 TEXTBOX
-122
-714
-460
-746
+595
+805
+748
+939
 Make sure that view updates is set to continuous (otherwise the model will appear to run very slowly).\nNote the model is computationally expensive in any case so be patient!
 12
 0.0
 1
 
 BUTTON
-433
-328
-554
-361
+593
+165
+714
+198
 colour-by-time
 colour-by-time
 NIL
@@ -408,10 +405,10 @@ NIL
 1
 
 BUTTON
-435
-291
-549
-324
+595
+128
+714
+161
 NIL
 colour-field
 NIL
@@ -425,10 +422,10 @@ NIL
 1
 
 BUTTON
-434
-74
-555
-107
+595
+13
+716
+46
 NIL
 trace-drainage
 NIL
@@ -442,9 +439,9 @@ NIL
 1
 
 SWITCH
-68
+7
 391
-173
+112
 424
 stop-first?
 stop-first?
@@ -453,9 +450,9 @@ stop-first?
 -1000
 
 CHOOSER
-71
+10
 259
-177
+116
 304
 field-dist
 field-dist
@@ -463,22 +460,22 @@ field-dist
 1
 
 TEXTBOX
-72
+11
 436
-171
-471
+110
+493
 Turn this on to stop things more quickly!
 11
 15.0
 1
 
 BUTTON
-434
-132
-553
-165
+595
+71
+714
+104
 colour-basins
-foreach basins [\nlet x one-of [3 5 7]\nask ? [set pcolor basin-id * 10 + x]\n]
+foreach basins [ ?1 ->\nlet x one-of [3 5 7]\nask ?1 [set pcolor basin-id * 10 + x]\n ]
 NIL
 1
 T
@@ -514,7 +511,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -812,9 +809,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -830,7 +826,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

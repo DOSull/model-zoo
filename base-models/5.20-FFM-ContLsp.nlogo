@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -21,8 +21,6 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
 ;;
-
-extensions [gradient]
 
 globals [
   fire-size
@@ -59,16 +57,19 @@ to setup
 end
 
 to go
-  if length fire-size-list > 300 [stop]
+  if length fire-size-list >= 300 [stop]
   let next-fire random-poisson fireFrequency
 
   ask patches [
     set age age + next-fire
   ]
-  let max-age max [age] of patches
+
+  ; local variables for color ramp limits (not actual max/min ages)
+  let max-age 2 * max [age] of patches
+  let min-age 0 - max-age
 
   ask patches [
-    set pcolor gradient:scale [[229 245 249] [153 216 201] [44 162 95]] age 0 max-age
+    set pcolor scale-color green age max-age min-age
     if flamm-model != "constant" [set flammability get-flamm age]
   ]
   spark
@@ -121,56 +122,28 @@ end
 to update-histo
   set-current-plot "Fire size-frequency"
   clear-plot
-  let log-fire-size-list map [ln ?] reverse sort fire-size-list
-  let rank n-values (length log-fire-size-list) [? + 1]
+  let log-fire-size-list map [ s -> ln s ] reverse sort fire-size-list
+  let rank map [ x -> x + 1 ] range length log-fire-size-list
   let N length log-fire-size-list
 
-  (foreach log-fire-size-list rank [
-    plotxy ?1 ln (?2 / N)
+  (foreach log-fire-size-list rank [ [s r] ->
+    plotxy s ln (r / N)
   ])
 end
 
 to-report mle-exponent [size-list xmin]
   let b 1
-  let trunc-size-list filter [? >= xmin] size-list
-  let mle-est map [(log ? 2) / xmin] size-list
+  let trunc-size-list filter [ s -> s >= xmin ] size-list
+  let mle-est map [ s -> (log s 2) / xmin ] size-list
   set b 1 + ((sum mle-est) ^ -1)
   report b
 end
-
-;; R plotting code - version of the netlogo plots
-;;to plot-mosaic-r
-;;  r:put "nr" world-height
-;;  r:put "nc" world-width
-;;
-;;  r:eval("library(matlab)")
-;;
-;;  r:put "z" map [[age] of ?] reverse sort patches
-;;
-;;  r:eval("grey.ramp <- grey((15:0)/16)")
-;;  r:eval("z <-matrix(z, nrow=nr, ncol=nc, byrow = TRUE)")
-;;  r:eval("z <- rot90(z)")
-;;
-;;  r:eval("z <- ifelse(z < 0, NA, z)")
-;;
-;;  r:eval("image(z, col = grey.ramp, asp = 1, xaxt = 'n', yaxt = 'n')")
-;;end
-;;
-;;to plot-size-freq-r
-;; r:put "size" fire-size-list
-;; r:eval("size <- unique(sort(size, decreasing = TRUE))")
-;; r:eval("N <- length(size)")
-;; r:eval("rnk <- 1:N")
-;;
-;; r:eval("plot(log(rnk/N) ~ log(size), las = 1, xlab = 'ln Size', ylab = 'ln Prop. rank', pch = 19)")
-;; ;; log in R is ln in Netlogo.
-;;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 260
 13
-730
-504
+728
+482
 -1
 -1
 1.8
@@ -236,7 +209,7 @@ fireFrequency
 fireFrequency
 0
 200
-10
+10.0
 5
 1
 NIL
@@ -280,7 +253,7 @@ largestFireSize
 largestFireSize
 0.01
 1
-1
+1.0
 0.01
 1
 NIL
@@ -346,9 +319,9 @@ PENS
 
 TEXTBOX
 266
-510
-592
-538
+496
+691
+524
 Colour represents vegetation age from light (young) to dark (old).
 11
 0.0
@@ -397,7 +370,7 @@ Ave size
 1.0
 true
 false
-"" "if ticks > 0 \n[plotxy elapsed-time mean fire-size-list]"
+"" "if ticks > 0\n[plotxy elapsed-time mean fire-size-list]"
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
@@ -431,7 +404,7 @@ min-size
 min-size
 1
 1000
-2
+2.0
 1
 1
 NIL
@@ -497,7 +470,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -797,9 +770,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -815,7 +787,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

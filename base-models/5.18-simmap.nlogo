@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -40,7 +40,10 @@ to setup
   if use-seed? [ random-seed rng-seed ]
   set color-list (list 16 26 46 66 86 96 106 116 126 136)
   set clusters []
+  go
+end
 
+to go
   init-patch-variables
   read-class-file
   setup-mrc
@@ -77,8 +80,8 @@ to read-class-file
     ]
     set class-CFD but-first class-CFD ;; throw away the zero
     let tot-rel-p last class-CFD
-    set class-CFD map [ ? / tot-rel-p ] class-CFD
-    set class-FD map [ ? / tot-rel-p ] class-FD
+    set class-CFD map [ f -> f / tot-rel-p ] class-CFD
+    set class-FD map [ f -> f / tot-rel-p ] class-FD
     file-close
   ] [ file-close ]
 end
@@ -126,7 +129,7 @@ to mark-habitat-patches
     ]
     ;; increment the patch-count and reset the set to mark
     set patch-count patch-count + 1
-    set patches-to-mark filter [[class] of ? < 0] patches-to-mark
+    set patches-to-mark filter [ ptch -> [class] of ptch < 0 ] patches-to-mark
     ;; add the current cluster to the list of all clusters
     set clusters lput current-cluster clusters
   ]
@@ -142,21 +145,21 @@ end
 to assign-habitat-patches-by-proportion
   ;; make a list of the target number of patches in each class
   let num-patches-set count patches with [class > 0]
-  let target-counts map [ ? * num-patches-set ] class-FD
+  let target-counts map [ f -> f * num-patches-set ] class-FD
   ;; iteratively assigning clusters in the percolation cluster
   ;; to a class, always adding to the class which is furthest
   ;; from its target count
   if sequentially-assign-clusters? [
-    set clusters reverse sort-by [count ?1 > count ?2] clusters
+    set clusters reverse sort-by [ [c1 c2] -> count c1 > count c2 ] clusters
   ]
-  foreach clusters [
+  foreach clusters [ C ->
     let biggest-shortfall max target-counts
     let biggest-shortfall-index position biggest-shortfall target-counts
-    ask ? [
+    ask C [
       set class biggest-shortfall-index
     ]
     ;; update the target counts to reflect assignment just made
-    set target-counts replace-item biggest-shortfall-index target-counts (biggest-shortfall - count ?)
+    set target-counts replace-item biggest-shortfall-index target-counts (biggest-shortfall - count C)
   ]
 end
 
@@ -184,8 +187,8 @@ end
 GRAPHICS-WINDOW
 297
 20
-707
-451
+705
+429
 -1
 -1
 2.0
@@ -281,7 +284,7 @@ rng-seed
 rng-seed
 0
 100
-50
+50.0
 1
 1
 NIL
@@ -338,7 +341,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -638,66 +641,11 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
-@#$#@#$#@
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
-<experiments>
-  <experiment name="experiment" repetitions="1" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="250"/>
-    <exitCondition>sum [ invasion-sites ] of patches = 0</exitCondition>
-    <metric>sum [ invasion-sites ] of patches</metric>
-    <enumeratedValueSet variable="long-range-dispersal?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="random-dispersal-probability" first="0" step="5.0E-4" last="0.0025"/>
-    <enumeratedValueSet variable="use-seed?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="rng-seed" first="10000" step="1" last="10099"/>
-    <enumeratedValueSet variable="disp-dist-stdev">
-      <value value="0.25"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="H">
-      <value value="0.5"/>
-      <value value="0.8"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="from-file?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="edge-displace?">
-      <value value="false"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="life-expectancy">
-      <value value="1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="max-invasion-sites-per-cell">
-      <value value="20"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="gradient?">
-      <value value="true"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="initial-invasion-sites">
-      <value value="10"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="disp-dist-mean">
-      <value value="0.1"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="smooth">
-      <value value="0"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="dispersal-distance-distribution">
-      <value value="&quot;exponential&quot;"/>
-    </enumeratedValueSet>
-    <enumeratedValueSet variable="sigma">
-      <value value="1"/>
-    </enumeratedValueSet>
-  </experiment>
-</experiments>
+@#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
 default
@@ -710,7 +658,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

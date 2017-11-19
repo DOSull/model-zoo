@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -110,7 +110,7 @@ to update-patch-states
     ;; stochastic update
     ask next-to-invade [ set p p + random-float-bnd (-1 * stochastic-shift) stochastic-shift ]
     ;; sort by the random-variable
-    set next-to-invade sort-by [[p] of ?1 < [p] of ?2] next-to-invade
+    set next-to-invade sort-by [ [patch1 patch2] -> [p] of patch1 < [p] of patch2 ] next-to-invade
   ]
   [
     set next-to-invade but-first next-to-invade
@@ -127,7 +127,7 @@ end
 ;; while maintaining it in sorted order by p value
 ;; ASSUMES that lst is already sorted by p values
 to-report insert-in-order [lst x]
-  let posn length filter [[p] of ? < [p] of x] lst
+  let posn length filter [ ptch -> [p] of ptch < [p] of x ] lst
   report (sentence (sublist lst 0 posn) x (sublist lst posn (length lst)))
 end
 
@@ -185,7 +185,7 @@ to tag-traps [poss-closes]
       ask clean-up [
         set pcolor grey - 2
       ]
-      set next-to-invade filter [[not invaded?] of ?] next-to-invade
+      set next-to-invade filter [ ?1 -> [not invaded?] of ?1 ] next-to-invade
     ]
   ]
 end
@@ -218,7 +218,7 @@ end
 
 to colour-by-time
   ask patches [
-    set pcolor scale-color blue time-invaded ticks -1
+    set pcolor scale-color red time-invaded ticks -1
   ]
 end
 
@@ -244,8 +244,8 @@ end
 GRAPHICS-WINDOW
 79
 10
-729
-361
+727
+339
 -1
 -1
 1.0
@@ -345,7 +345,7 @@ smoothing
 smoothing
 0
 100
-0
+0.0
 1
 1
 NIL
@@ -391,10 +391,10 @@ trapping?
 -1000
 
 TEXTBOX
-85
-366
-724
-396
+88
+347
+727
+377
 Set view updates to continuous or if it is set to 'on ticks' then make sure the speed slider is set towards the faster end of the range.  Otherwise, this model will run very slowly.
 12
 0.0
@@ -511,7 +511,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -809,9 +809,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -827,7 +826,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

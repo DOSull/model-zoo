@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -23,340 +23,250 @@
 ;;
 
 globals [
-  cluster-sizes       ;; list of sizes of each occupied cluster, length is cluster-count - 1
-  log-cluster-sizes   ;; log cluster size
-  cluster-count       ;; total number of occupied clusters
-  spanning-present?   ;; flag to denote presence of spanning cluster
-  mean-size           ;; mean size of occupied, non-spanning cluster
+  perimeter-set
 ]
 
 patches-own [
-  cluster-id ;; cluster ID assigned during tagging
-  occupied?  ;; the percolation process outcome
-  spanning?  ;; patch part of a spanning cluster?
+  r
+  eroded?
+  t-colonised
+  successor-patches
+  dla-hits
+  eden-hits
 ]
 
-;; initialise the lattice based on percolation threshold
+
 to setup
   clear-all
 
+  set perimeter-set nobody
+
   ask patches [
-    set occupied? false
-    set spanning? false
-    set cluster-id -1 ;; denotes no cluster membership yet
-    ;; now make the cluster
-    set pcolor black
-    if random-float 1 <= p [
-      set occupied? true
-      set pcolor white
-    ]
+    set r random-float 1
+    set eroded? false
+    set t-colonised -1
+    set dla-hits 0
+    set eden-hits 0
+    set successor-patches patches at-points [[0 1] [-1 0] [1 0]]
   ]
-  ;; initialise the globals
-  set cluster-sizes []
+
+  repeat smoothing [ diffuse r 0.05 ]
+
+  ask patches with [pycor = min-pycor] [
+    set eroded? true
+    set pcolor grey - 2
+    set t-colonised 1
+  ]
+
+  ask patches with [eroded?] [
+    set perimeter-set (patch-set perimeter-set successor-patches with [not eroded?])
+  ]
+  set perimeter-set sort-on [r] perimeter-set
+
   reset-ticks
 end
 
 to go
-  set spanning-present? false
+  if max map [ p -> [pycor] of p ] perimeter-set = max-pycor - 5 [stop]
 
-  identify-clusters
-  set mean-size typical-cluster-size
+  ; 1. DLA walker from plateau on hitting reduces r by dla-factor (gamma)
+  if dla-factor > 0 [dla-walker]
 
-  set log-cluster-sizes map [ ?1 -> log ?1 10 ] cluster-sizes
-  histogram log-cluster-sizes
-end
-
-;; color the largest cluster red
-to colour-largest
-  let largest-cluster-id (position (max cluster-sizes) cluster-sizes )
-  ask patches with [cluster-id = largest-cluster-id] [set pcolor red]
-end
-
-;; color spanning cluster (if present) green
-to colour-spanning
-  ifelse spanning-present? [
-    ask patches with [spanning?] [set pcolor green]
+  ; 2. Rnd site on eroded edge chosen and reduced by eden-factor (eta)
+  ask one-of perimeter-set [
+    set r r - eden-factor
+    set eden-hits eden-hits + 1
+    reposition-patch self
   ]
-  [
-    user-message("No spanning clusters identified on the lattice.")
-  ]
-end
 
+  ; 3. Weakest site on perimeter eroded
+  let new-site first perimeter-set
 
-;; this procedure tags occupied patches with cluster-ids based on
-;; their connection (orthogonal) to other occupied patches
-to identify-clusters
-  set cluster-count 0
-  ;; initialize a patch-sets of the occupied patches
-  ;; that need to be tagged with cluster-id
-  let all-to-tag patches with [occupied? and cluster-id = -1]
-  while [ any? all-to-tag ] [
-    ;; keep track of the current cluster for
-    ;; efficient testing if it is spanning at end
-    let current-cluster patch-set nobody
+  ;; If noise reduction conditions met, erode and update lists.
+  if [dla-hits] of new-site >= m-dla and [eden-hits] of new-site >= m-eden [
+    ask new-site [
+      set eroded? true
+      set pcolor grey - 2
+      set t-colonised ticks + 1
+    ]
 
-    ;; start with a randomly selected untagged patch
-    let patches-to-tag (patch-set one-of all-to-tag)
-    ;; and pick a random color for this cluster
-    let col (random 14) * 10 + (random 5) + 5
-    ;; now, while there are any remaining patches to tag
-    ;; iteratively tag occupied neighbors of the starting patch
-    while [ any? patches-to-tag ] [
-      ask patches-to-tag [
-        ;; tag and assign cluster ID
-        set cluster-id cluster-count ;; 0 will be the first cluster ID
-        set pcolor col  ;; this allows user to see progress
+    ;; remove the last-invaded
+    set perimeter-set but-first perimeter-set
+    ; insert the new possible sites while maintaining sort order
+    ask new-site [
+      ask successor-patches with [not eroded?] [
+        set perimeter-set insert-in-order perimeter-set self
       ]
-      ;; add them to the current-cluster
-      set current-cluster (patch-set current-cluster patches-to-tag)
-      ;; now get the next lot
-      set patches-to-tag (patch-set [neighbors4] of patches-to-tag) with [occupied? and cluster-id = -1]
     ]
-    ;; update the all-to-tag patch-set
-    set all-to-tag all-to-tag with [ cluster-id = -1 ]
-
-    ;; record size of this cluster
-    set cluster-sizes lput (count current-cluster) cluster-sizes
-    set cluster-count cluster-count + 1
-    check-for-spanning current-cluster
+    ; discard any that are ineligible because they have > 1 occupied neighbour
+    set perimeter-set filter [  -> [not eroded?] of ?1 ] perimeter-set
+    ;; Only tick if an erosion event occurs...
+    tick
   ]
-  wait 1 ;; wait a second so people can see the clusters!
-  ;; then restore the colours
-  ask patches with [occupied?] [ set pcolor white ]
 end
 
-;; check if the supplied patch-set c is a spanning cluster
-to check-for-spanning [c]
-  if count c >= min (list world-width world-height) [
-    if width c = world-width or height c = world-height [
-      ask c [set spanning? true]
-      set spanning-present? true
+;; reports a list with patch x inserted in lst of patches lst
+;; while maintaining it in sorted order by p value
+;; ASSUMES that lst is already sorted by p values
+to-report insert-in-order [lst x]
+  let posn length filter [ y -> [r] of y < [r] of x ] lst
+  report (sentence (sublist lst 0 posn) x (sublist lst posn (length lst)))
+end
+
+to reposition-patch [p]
+  set perimeter-set remove p perimeter-set
+  set perimeter-set insert-in-order perimeter-set p
+end
+
+to colour-field
+  let max-r max [r] of patches
+  ask patches with [not eroded?] [
+    set pcolor scale-color green (r / 4) max-r (- max-r)
+  ]
+end
+
+to colour-time
+  ask patches with [eroded?] [
+    set pcolor scale-color orange t-colonised (- ticks) ticks
+  ]
+end
+
+to dla-walker
+  let max-py max map [ p -> [pycor] of p ] perimeter-set
+  let start-walker-site nobody
+
+  ;; Start the walker within 10 rows of the front (based on max advancement)
+  ifelse max-py <= (max-pycor - 10)
+  [ set start-walker-site one-of patches with [pycor = max-py + 5 and not eroded?] ]
+  [ set start-walker-site one-of patches with [not eroded?] ]
+
+  ask start-walker-site [
+    let step 0
+    sprout 1 [
+      let walking? true
+      set heading 180
+      set hidden? true
+      while [walking?] [
+        set step step + 1
+        move-to (one-of neighbors4)
+        ;; Every 50 steps check whether the walker is more than 20 rows from the front
+        ;; if so, return to the start...
+        if step mod 200 = 0 [
+          if [pycor] of patch-here > max-py + 20
+          [ move-to start-walker-site ]
+        ]
+        if any? neighbors4 with [eroded?] [
+          ask patch-here [
+            set r r - dla-factor
+            set dla-hits dla-hits + 1
+            reposition-patch self
+          ]
+          set walking? false
+          die
+        ]
+      ]
     ]
   ]
-end
-
-;; reporters for width and height of a patch-set
-to-report width [p-set]
-  report max [pxcor] of p-set - min [pxcor] of p-set + 1
-end
-
-to-report height [p-set]
-  report max [pycor] of p-set - min [pycor] of p-set + 1
-end
-
-
-;; returns the proportion of the space
-;; occupied by the spanning cluster
-to-report proportion-spanning
-  ifelse spanning-present?
-  [ report count patches with [spanning?] / count patches ]
-  [ report 0 ]
-end
-
-;; reports mean size of clusters subject to some constraints (see below)
-to-report typical-cluster-size
-  ;; mean cluster size is calculated without the spanning cluster and without bkgd and is size weighted
-  ;; it is the typical size cluster that a rnd selected site will belong too
-  ifelse any? patches with [not spanning?] [
-    let non-spanning-occupied-patches sort (patches with [occupied? and not spanning?])
-    report mean map [ ?1 -> size-of-my-cluster ?1 ] non-spanning-occupied-patches
-  ]
-  [ report 0 ]
-end
-
-;; returns the size of the cluster of which ptch is a member
-to-report size-of-my-cluster [ptch]
-  report item ([cluster-id] of ptch) cluster-sizes
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-207
+210
 10
-665
-469
+986
+403
 -1
 -1
-2.0
+3.0
 1
 10
 1
 1
 1
 0
-0
+1
 0
 1
 0
-224
+255
 0
-224
-0
-0
+127
 1
-clusters-tagged
-100.0
+1
+1
+ticks
+200.0
+
+BUTTON
+31
+17
+98
+50
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 SLIDER
-25
-54
-197
-87
-p
-p
+8
+63
+196
+96
+dla-factor
+dla-factor
 0
+1.0
+0.5
+0.01
 1
-0.59274621
-0.001
+NIL
+HORIZONTAL
+
+SLIDER
+8
+101
+196
+134
+eden-factor
+eden-factor
+0
+1.0
+0.5
+0.01
 1
 NIL
 HORIZONTAL
 
 BUTTON
-66
-363
-198
-398
+104
+17
+167
+50
 NIL
-colour-largest
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-TEXTBOX
-675
-473
-827
-491
-Occupied patches in white
-12
-0.0
-1
-
-BUTTON
-66
-403
-198
-436
-NIL
-colour-spanning
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
-
-PLOT
-678
-10
-946
-227
-Cluster size distribution
-log10 (Cluster Size)
-Frequency
-0.0
-20.0
-0.0
-10.0
-true
-false
-"set-histogram-num-bars 100" "set-plot-x-range 0 5"
-PENS
-"default" 1.0 2 -16777216 true "" ""
-
-MONITOR
-99
-302
-197
-347
-clusters tagged
-cluster-count
-0
-1
-11
-
-MONITOR
-775
-235
-881
-280
-Mean cluster size
-mean-size
-2
-1
-11
-
-MONITOR
-888
-235
-945
-280
-p-frac
-proportion-spanning
-3
-1
-11
-
-BUTTON
-99
-95
-196
-128
-setup
-setup
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-101
-16
-197
-49
-set p-critical
-set p 0.59274621
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-TEXTBOX
-77
-224
-207
-293
-Note tagging can take some time!  Cells are coloured as they get tagged to show progress.
-11
-0.0
-1
-
-BUTTON
-99
-183
-196
-216
-tag
 go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+16
+148
+101
+181
+colour-time
+colour-time
 NIL
 1
 T
@@ -367,45 +277,115 @@ NIL
 NIL
 1
 
-TEXTBOX
-681
-235
-776
-338
-This plot is not very useful - a better option is available in the R-enabled version of this model
-11
+BUTTON
+109
+147
+194
+180
+NIL
+colour-field
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+17
+190
+189
+223
+smoothing
+smoothing
+0
+50
+15.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+17
+230
+189
+263
+m-eden
+m-eden
+0
+3
 0.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+18
+265
+190
+298
+m-dla
+m-dla
+0
+3
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+96
+377
+186
+422
+perimeter-length
+length perimeter-set
+0
+1
+11
+
+TEXTBOX
+20
+299
+191
+389
+The noise-factors will slow down the model A LOT by a factor of roughly (m-eden + 1) * (m-dla + 1), e.g 0 and 1 will halve the speed; 3 and 3 will reduce by 16!
+11
+15.0
 1
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model demonstrates site percolation and as discussed in Chapter 5 of
+This model is an implementation of the model described in
+
++   Stark CP 1994 Cluster growth modeling of plateau erosion. _Journal of Geophysical Research_ **99** 13957-13969.
+
+which combines _invasion percolation_, _diffusion-limited aggregation (DLA)_ and and _Eden growth_ process to simulate gullying erosion at a plateau edge.  The model is discussed in Chapter 5 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
-
-An alternative version of this model that uses the R-netlogo extension is available and provides a better plot of the cluster size distribution.
-
-## THINGS TO NOTICE
-
-The code comments give a good overview of how the model works.
-
-The most complicated procedure is the tagging of connected clusters of occupied patches in the `identify-clusters` procedure. This code (or variants of it) reappears in many of the models in chapter 5, so it is advisable to follow it carefully.
 
 ## HOW TO CITE
 
 If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
++   Stark CP 1994 Cluster growth modeling of plateau erosion. _Journal of Geophysical Research_ **99** 13957-13969.
 +   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-201 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -708,15 +688,6 @@ NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
-<experiments>
-  <experiment name="cluster-size-vs-p" repetitions="10" runMetricsEveryStep="false">
-    <go>go</go>
-    <timeLimit steps="1"/>
-    <metric>mean-size</metric>
-    <metric>prop-spanning</metric>
-    <steppedValueSet variable="p" first="0.5" step="0.001" last="0.7"/>
-  </experiment>
-</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default

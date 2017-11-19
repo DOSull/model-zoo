@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -42,100 +42,76 @@ to setup
   ]
 
   ;; The random model (site percolation)
-  if model = "random"
-  [
-   ask n-of (p * count patches) patches
-   [
+  if model = "random" [
+   ask n-of (p * count patches) patches [
      set occupied? true
      set pcolor white
    ]
   ]
 
   ;; This is random model but in larger blocks following Boswell
-  if model = "random blocky"
-  [
-
-
+  if model = "random blocky" [
      let N 0
-     while [N <= (p * count patches)]
-     [
-       ask one-of patches with [ not occupied? ]
-       [
-
+     while [N <= (p * count patches)] [
+       ask one-of patches with [ not occupied? ] [
          build-blocks self
-
-         ask block-set with [ not occupied? ]
-         [
+         ask block-set with [ not occupied? ] [
            set occupied? true
            set pcolor white
            set N N + 1
          ]
        ]
-
-     ]
+    ]
   ]
 
   ;; This is the heirarchical lsp model proposed by O'Neill et al. 1992
-  if model = "heirarchical"
-  [
-      divide-lsp
-      ask patches
-      [
-        ifelse h-occupied?
-        [
-          if random-float 1 <= p2A [set occupied? true]
-        ]
-        [
-          if random-float 1 <= p2B [set occupied? true]
-        ]
-      ]
-      ask patches with [occupied?] [set pcolor white]
+  if model = "heirarchical"  [
+    divide-lsp
+    ask patches [
+      ifelse h-occupied?
+      [ if random-float 1 <= p2A [set occupied? true] ]
+      [ if random-float 1 <= p2B [set occupied? true] ]
+    ]
+    ask patches with [occupied?] [set pcolor white]
   ]
 end
 
 
 to build-blocks [focal-patch]
-
   let loops (block-size - 1) / 2
 
-  ask focal-patch
-  [
+  ask focal-patch [
     set block-set (patch-set self)
-    repeat loops
-    [
-       set block-set (patch-set block-set [neighbors] of block-set)
+    repeat loops [
+      set block-set (patch-set block-set [neighbors] of block-set)
     ]
   ]
-
 end
 
 to divide-lsp
   let id 1
   let anchor (ceiling (L2 / 2) - 1)
 
-  ask patches with [ pxcor mod L2 = anchor and pycor mod L2 = anchor]
-  [
-      set block-set (patch-set self)
+  ask patches with [ pxcor mod L2 = anchor and pycor mod L2 = anchor] [
+    set block-set (patch-set self)
 
-      repeat (L2 / 2)
-      [
-        set block-set (patch-set block-set [neighbors] of block-set)
-      ]
+    repeat (L2 / 2) [
+      set block-set (patch-set block-set [neighbors] of block-set)
+    ]
 
-      ask block-set [
-        set h-id id
-      ]
-      if random-float 1 <= p1 [ask block-set [set h-occupied? true]]
-
-      set id id + 1
+    ask block-set [
+      set h-id id
+    ]
+    if random-float 1 <= p1 [ask block-set [set h-occupied? true]]
+    set id id + 1
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 214
 13
-674
-494
+672
+472
 -1
 -1
 1.8
@@ -192,7 +168,7 @@ L2
 L2
 1
 25
-25
+25.0
 2
 1
 NIL
@@ -207,7 +183,7 @@ block-size
 block-size
 1
 15
-9
+9.0
 2
 1
 NIL
@@ -306,7 +282,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -604,9 +580,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -622,7 +597,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,8 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [ gradient ]
-
 globals [
   circle
   occupied-patches
@@ -41,12 +39,12 @@ patches-own [
 to setup
   clear-all
   set centre-patch patch ((min-pxcor + max-pxcor) / 2) ((min-pycor + max-pycor) / 2)
-  set circle patches with [ceiling distance centre-patch = floor (world-width / 2)]
-  ask circle [set pcolor grey]
   ask patches [
     set occupied? false
     set t-colonised -1
   ]
+  set circle patches with [ceiling distance centre-patch = floor (world-width / 2)]
+  ask circle [set pcolor grey]
   ask centre-patch [
     set occupied? true
     set pcolor white
@@ -141,21 +139,23 @@ to-report initiate-walker-patch
 end
 
 to colour-by-time
-  ask occupied-patches
-  [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
+  let pivot ticks / 2
+  let low-t (- pivot)
+  let high-t ticks + pivot
+  ask occupied-patches [
+    ifelse t-colonised < pivot
+    [ set pcolor scale-color red t-colonised low-t pivot ]
+    [ set pcolor scale-color sky t-colonised high-t pivot ]
   ]
 end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 257
 10
-669
-443
-100
-100
+667
+421
+-1
+-1
 2.0
 1
 10
@@ -193,7 +193,7 @@ BUTTON
 174
 45
 NIL
-setup\n
+setup
 NIL
 1
 T
@@ -245,7 +245,7 @@ SWITCH
 184
 show-starts?
 show-starts?
-0
+1
 1
 -1000
 
@@ -258,7 +258,7 @@ start-radius-add
 start-radius-add
 2
 20
-15
+15.0
 1
 1
 NIL
@@ -287,7 +287,7 @@ CHOOSER
 walker-starts-method
 walker-starts-method
 "advancing circle" "buffer" "fixed circle"
-0
+2
 
 TEXTBOX
 10
@@ -324,7 +324,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -622,9 +622,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -640,7 +639,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

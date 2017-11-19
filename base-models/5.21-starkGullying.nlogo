@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -21,9 +21,6 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
 ;;
-
-extensions [gradient]
-;; __includes["5.x-r-clusters.nls"]
 
 globals [
   perimeter-set
@@ -66,12 +63,11 @@ to setup
   ]
   set perimeter-set sort-on [r] perimeter-set
 
-  ;; r:setPlotDevice
   reset-ticks
 end
 
 to go
-  if max map [[pycor] of ?] perimeter-set = max-pycor - 5 [stop]
+  if max map [ p -> [pycor] of p ] perimeter-set = max-pycor - 5 [stop]
 
   ; 1. DLA walker from plateau on hitting reduces r by dla-factor (gamma)
   if dla-factor > 0 [dla-walker]
@@ -94,10 +90,6 @@ to go
       set t-colonised ticks + 1
     ]
 
-;    set perimeter-set but-first perimeter-set ;; remove the last-invaded
-;    set perimeter-set (patch-set perimeter-set ([successor-patches with [not eroded?]] of new-site ))
-;    set perimeter-set sort-on [r] perimeter-set
-
     ;; remove the last-invaded
     set perimeter-set but-first perimeter-set
     ; insert the new possible sites while maintaining sort order
@@ -107,7 +99,7 @@ to go
       ]
     ]
     ; discard any that are ineligible because they have > 1 occupied neighbour
-    set perimeter-set filter [[not eroded?] of ?] perimeter-set
+    set perimeter-set filter [ p -> [not eroded?] of p ] perimeter-set
     ;; Only tick if an erosion event occurs...
     tick
   ]
@@ -117,7 +109,7 @@ end
 ;; while maintaining it in sorted order by p value
 ;; ASSUMES that lst is already sorted by p values
 to-report insert-in-order [lst x]
-  let posn length filter [[r] of ? < [r] of x] lst
+  let posn length filter [ y -> [r] of y < [r] of x ] lst
   report (sentence (sublist lst 0 posn) x (sublist lst posn (length lst)))
 end
 
@@ -129,18 +121,18 @@ end
 to colour-field
   let max-r max [r] of patches
   ask patches with [not eroded?] [
-    set pcolor gradient:scale [ [229 245 249] [153 216 201] [44 162 95] ]  r 0 max-r
+    set pcolor scale-color green (r / 4) max-r (- max-r)
   ]
 end
 
 to colour-time
   ask patches with [eroded?] [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
+    set pcolor scale-color orange t-colonised (- ticks) ticks
   ]
 end
 
 to dla-walker
-  let max-py max map [[pycor] of ?] perimeter-set
+  let max-py max map [ p -> [pycor] of p ] perimeter-set
   let start-walker-site nobody
 
   ;; Start the walker within 10 rows of the front (based on max advancement)
@@ -180,8 +172,8 @@ end
 GRAPHICS-WINDOW
 210
 10
-988
-425
+986
+403
 -1
 -1
 3.0
@@ -198,11 +190,11 @@ GRAPHICS-WINDOW
 255
 0
 127
-0
-0
+1
+1
 1
 ticks
-100.0
+200.0
 
 BUTTON
 31
@@ -311,7 +303,7 @@ smoothing
 smoothing
 0
 50
-25
+15.0
 1
 1
 NIL
@@ -326,7 +318,7 @@ m-eden
 m-eden
 0
 3
-0
+0.0
 1
 1
 NIL
@@ -341,7 +333,7 @@ m-dla
 m-dla
 0
 3
-0
+0.0
 1
 1
 NIL
@@ -393,7 +385,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -691,9 +683,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -709,7 +700,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
