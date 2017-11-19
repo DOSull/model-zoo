@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -119,7 +119,7 @@ to make-strategies
     (sky - 2) (sky + 2) (grey - 1) white
   )
   ;; text colors are black or white depending in brightness of the base color
-  let text-palette map [ifelse-value (? mod 10 < 5) [white] [black]] palette
+  let text-palette map [ ?1 -> ifelse-value (?1 mod 10 < 5) [white] [black] ] palette
 
   ;; now make 16 strategies
   create-strategies 16 [
@@ -153,7 +153,7 @@ end
 
 ;; report the number of bits different between two bit lists
 to-report bits-difference [c1 c2]
-  let x (map [abs (?1 - ?2)] c1 c2)
+  let x (map [ [b1 b2] -> abs (b1 - b2) ] c1 c2)
   report sum x
 end
 
@@ -247,8 +247,8 @@ end
 GRAPHICS-WINDOW
 304
 10
-954
-681
+952
+659
 -1
 -1
 8.0
@@ -331,7 +331,7 @@ p-mutate
 p-mutate
 0
 0.05
-0
+0.0
 0.001
 1
 NIL
@@ -353,7 +353,7 @@ INPUTBOX
 1036
 92
 C-C
-4
+2.0
 1
 0
 Number
@@ -364,7 +364,7 @@ INPUTBOX
 1096
 91
 C-D
-0
+1.0
 1
 0
 Number
@@ -375,7 +375,7 @@ INPUTBOX
 1036
 156
 D-C
-5
+3.0
 1
 0
 Number
@@ -386,7 +386,7 @@ INPUTBOX
 1095
 157
 D-D
-2
+0.0
 1
 0
 Number
@@ -400,7 +400,7 @@ payoff-memory
 payoff-memory
 1
 5
-1
+1.0
 1
 1
 NIL
@@ -534,7 +534,7 @@ SWITCH
 146
 cage-fight!?
 cage-fight!?
-0
+1
 1
 -1000
 
@@ -547,7 +547,7 @@ strat-1
 strat-1
 0
 15
-12
+4.0
 1
 1
 NIL
@@ -562,7 +562,7 @@ strat-2
 strat-2
 0
 15
-5
+7.0
 1
 1
 NIL
@@ -651,7 +651,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -949,9 +949,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -967,7 +966,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
