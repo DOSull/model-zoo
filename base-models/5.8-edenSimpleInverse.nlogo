@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals [
   perimeter-set
 ]
@@ -71,7 +73,7 @@ end
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
   ask patches [
-    set pcolor scale-color green t-colonised -1000 ticks
+    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised -1000 ticks
   ]
 end
 @#$#@#$#@

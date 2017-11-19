@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -282,8 +282,8 @@ to build-edge
 
   ; erode the edges in randomly order
   foreach edges
-  [
-   erode-edge ?
+  [ ?1 ->
+   erode-edge ?1
   ]
 
   ;; this is to catch patches isolate by the shore - otherwise if people get to them
@@ -338,10 +338,10 @@ end
 GRAPHICS-WINDOW
 203
 10
-600
-428
-64
-64
+598
+406
+-1
+-1
 3.0
 1
 3
@@ -382,7 +382,7 @@ rng-seed
 rng-seed
 0
 1000
-274
+274.0
 1
 1
 NIL
@@ -421,10 +421,10 @@ NIL
 1
 
 SLIDER
-633
-227
-805
-260
+615
+220
+787
+253
 r-high
 r-high
 0
@@ -436,10 +436,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-632
-375
-804
-408
+614
+368
+786
+401
 r-low
 r-low
 0
@@ -501,7 +501,7 @@ BUTTON
 185
 82
 go-year
-go \nwhile [(ticks + 1) mod 12 != 0] [go]
+go\nwhile [(ticks + 1) mod 12 != 0] [go]
 NIL
 1
 T
@@ -513,10 +513,10 @@ NIL
 1
 
 SLIDER
-632
-93
-804
-126
+614
+86
+786
+119
 r-humans
 r-humans
 0
@@ -528,10 +528,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1068
-437
-1147
-482
+1050
+430
+1129
+475
 NIL
 count groups
 0
@@ -539,55 +539,55 @@ count groups
 11
 
 TEXTBOX
-630
-10
-780
-29
+612
+3
+762
+22
 Parameters
 14
 0.0
 1
 
 TEXTBOX
-624
-17
-1189
-35
+606
+10
+1171
+28
 _________________________________________________________________________________________
 12
 0.0
 1
 
 SLIDER
-632
-55
-804
-88
+614
+48
+786
+81
 max-group-size
 max-group-size
 20
 50
-30
+30.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-634
-35
-784
-53
+616
+28
+766
+46
 Human demography
 12
 0.0
 1
 
 TEXTBOX
-632
-207
-782
-225
+614
+200
+764
+218
 Resource demography
 12
 0.0
@@ -619,50 +619,50 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-811
-35
-961
-53
+793
+28
+943
+46
 Resource exploitation
 12
 0.0
 1
 
 SLIDER
-809
-93
-983
-126
+791
+86
+965
+119
 hunt-kill-per-head
 hunt-kill-per-head
 1
 10
-5
+5.0
 0.1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-632
-297
-804
-330
+614
+290
+786
+323
 max-high-K
 max-high-K
 0.1
 10
-3
+3.0
 0.1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-631
-447
-804
-480
+613
+440
+786
+473
 max-low-K
 max-low-K
 0.01
@@ -674,40 +674,40 @@ NIL
 HORIZONTAL
 
 SLIDER
-809
-167
-981
-200
+791
+160
+963
+193
 hunt-party-size
 hunt-party-size
 5
 20
-6
+6.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-809
-204
-981
-237
+791
+197
+963
+230
 hunt-range
 hunt-range
 10
 60
-16
+16.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-808
-367
-980
-400
+790
+360
+962
+393
 nearby-range
 nearby-range
 1
@@ -719,20 +719,20 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-810
-401
-982
-457
+792
+394
+964
+450
 Applied on initialisation - how far from camp gathering is done.
 10
 15.0
 1
 
 SLIDER
-807
-432
-979
-465
+789
+425
+961
+458
 diffusion-rate
 diffusion-rate
 0
@@ -744,10 +744,10 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-811
-463
-1000
-481
+793
+456
+982
+474
 Low value resource diffuses
 10
 15.0
@@ -764,35 +764,35 @@ SIMMAP parameters
 1
 
 SLIDER
-810
-56
-982
-89
+792
+49
+964
+82
 resource-per-head
 resource-per-head
 0.1
 2
-1
+1.0
 0.1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-994
-34
-1144
-52
+976
+27
+1126
+45
 Search behaviour
 12
 0.0
 1
 
 SLIDER
-990
-53
-1161
-86
+972
+46
+1143
+79
 initial-search-tortuosity
 initial-search-tortuosity
 0
@@ -804,10 +804,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-990
-90
-1162
-123
+972
+83
+1144
+116
 search-adjust
 search-adjust
 0
@@ -819,10 +819,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-990
-126
-1162
-159
+972
+119
+1144
+152
 max-tortuosity
 max-tortuosity
 0.5
@@ -834,10 +834,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-990
-164
-1162
-197
+972
+157
+1144
+190
 min-tortuosity
 min-tortuosity
 0
@@ -849,10 +849,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-632
-262
-804
-295
+614
+255
+786
+288
 r-hi-sd
 r-hi-sd
 0
@@ -864,10 +864,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-631
-411
-804
-444
+613
+404
+786
+437
 r-lo-sd
 r-lo-sd
 0
@@ -879,40 +879,40 @@ NIL
 HORIZONTAL
 
 SLIDER
-808
-277
-979
-310
+790
+270
+961
+303
 hunt-memory-length
 hunt-memory-length
 1
 50
-15
+15.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-808
-240
-979
-273
+790
+233
+961
+266
 max-hunts-per-month
 max-hunts-per-month
 1
 10
-4
+4.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-813
-310
-873
-328
+795
+303
+855
+321
 for a person
 9
 15.0
@@ -924,7 +924,7 @@ BUTTON
 183
 121
 go-decade
-go \nwhile [(ticks + 1) mod 120 != 0] [go]
+go\nwhile [(ticks + 1) mod 120 != 0] [go]
 NIL
 1
 T
@@ -936,10 +936,10 @@ NIL
 1
 
 SWITCH
-987
-211
-1161
-244
+969
+204
+1143
+237
 relocate-near-hunting?
 relocate-near-hunting?
 0
@@ -947,10 +947,10 @@ relocate-near-hunting?
 -1000
 
 PLOT
-988
-250
-1195
-434
+970
+243
+1177
+427
 pop and res-collection
 NIL
 NIL
@@ -965,7 +965,7 @@ PENS
 "Pop" 1.0 0 -4539718 true "" "plot sum [pop] of groups"
 "Take" 1.0 0 -16777216 true "" "if ticks mod 12 = 0 [\n  plotxy ticks sum [hunt-take-to-date] of groups\n]"
 "Kill" 1.0 0 -2674135 true "" "if ticks mod 12 = 0 [\nplotxy ticks sum [hunt-kill-to-date] of groups]"
-"Local" 1.0 0 -12087248 true "" "if ticks mod 12 = 0 [ \nplotxy ticks sum [local-collected] of groups ]"
+"Local" 1.0 0 -12087248 true "" "if ticks mod 12 = 0 [\nplotxy ticks sum [local-collected] of groups ]"
 
 BUTTON
 43
@@ -985,25 +985,25 @@ NIL
 1
 
 SLIDER
-631
-167
-803
-200
+613
+160
+785
+193
 max-birth-rate-multiple
 max-birth-rate-multiple
 1
 5
-3
+3.0
 0.1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-632
-130
-804
-163
+614
+123
+786
+156
 r-humans-sd
 r-humans-sd
 0
@@ -1015,10 +1015,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-989
-437
-1060
-482
+971
+430
+1042
+475
 population
 sum [pop] of groups
 0
@@ -1036,10 +1036,10 @@ island-type
 2
 
 SLIDER
-809
-130
-982
-163
+791
+123
+964
+156
 hunt-take-per-head
 hunt-take-per-head
 0.01
@@ -1051,10 +1051,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-808
-331
-980
-364
+790
+324
+962
+357
 gather-per-head
 gather-per-head
 0
@@ -1066,10 +1066,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-633
-333
-805
-366
+615
+326
+787
+359
 min-sustainable-h
 min-sustainable-h
 0
@@ -1104,7 +1104,7 @@ min-viable-human-pop
 min-viable-human-pop
 0
 10
-5
+5.0
 1
 1
 NIL
@@ -1130,7 +1130,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -1428,9 +1428,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1468,7 +1467,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 1
 @#$#@#$#@

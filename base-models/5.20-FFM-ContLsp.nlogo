@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals [
   fire-size
   fire-size-list
@@ -65,11 +67,10 @@ to go
   ]
 
   ; local variables for color ramp limits (not actual max/min ages)
-  let max-age 2 * max [age] of patches
-  let min-age 0 - max-age
+  let max-age max [age] of patches
 
   ask patches [
-    set pcolor scale-color green age max-age min-age
+    set pcolor palette:scale-gradient [[247 252 245] [0 68 27]] age 0 max-age
     if flamm-model != "constant" [set flammability get-flamm age]
   ]
   spark

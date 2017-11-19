@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,9 +22,9 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [profiler]
+extensions [ palette ]
 
-globals [ palette ]
+globals [ color-palette ]
 
 breed [points point]    ;; these are the little circles in the middle of the polygons
 undirected-link-breed [tri-edges tri-edge]
@@ -35,7 +35,7 @@ points-own [voronoi-polygon]
 to setup
   clear-all
   ask patches [ set parent nobody ]
-  set palette [red orange yellow green blue sky violet brown]
+  set color-palette palette:scheme-colors "Qualitative" "Set2" 8
   set-default-shape points "circle 4"
   make-points
   ask patches [
@@ -53,7 +53,7 @@ end
 to make-points
   create-points 500 [
     set size 3
-    set color one-of palette
+    set color one-of color-palette
     setxy random-xcor random-ycor
     set voronoi-polygon patch-set nobody
   ]
@@ -61,7 +61,7 @@ end
 
 to assign-to-points ;; patch procedure
   ;; asign 'parent' to be the nearest point
-  let N-parents filter [? != nobody] ([parent] of neighbors4)
+  let N-parents filter [ prnt -> prnt != nobody ] ([parent] of neighbors4)
   ifelse length N-parents = 4 and length remove-duplicates N-parents = 1 [
     set parent one-of N-parents
   ]
@@ -91,22 +91,14 @@ to go
   ]
   tick
 end
-
-to profile
-profiler:start         ;; start profiling
-setup                  ;; set up the model
-profiler:stop          ;; stop profiling
-print profiler:report  ;; view the results
-profiler:reset         ;; clear the data
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 195
 10
-607
-443
-100
-100
+605
+421
+-1
+-1
 2.0
 1
 10
@@ -121,8 +113,8 @@ GRAPHICS-WINDOW
 100
 -100
 100
-0
-0
+1
+1
 1
 ticks
 100.0
@@ -181,7 +173,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -476,9 +468,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 setup
 @#$#@#$#@
@@ -509,7 +500,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

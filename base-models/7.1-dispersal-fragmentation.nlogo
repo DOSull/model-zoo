@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -21,8 +21,6 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
 ;;
-
-;;extensions [r]
 
 globals [
   cover
@@ -70,15 +68,18 @@ to setup
   while [space-remaining? and cover / area * 100 < percent-cover] [
     ifelse patch-shape = "square" ;; random 3 = 0
     [ make-square
-      set space-remaining? any? patches with [not sq-blocked?]]
+      set space-remaining? any? patches with [not sq-blocked?]
+    ]
     [ make-line
-      set space-remaining? any? patches with [not ew-blocked? or not ns-blocked?]]
+      set space-remaining? any? patches with [not ew-blocked? or not ns-blocked?]
+    ]
     set id id + 1
   ]
 
   let actual-cover cover / count patches * 100
   if actual-cover < percent-cover [
-    user-message (word "Actual cover is only " (precision actual-cover 1) "% which is less than requested")
+    user-message (word "Actual cover is only " (precision actual-cover 1)
+                       "% which is less than requested")
   ]
   set step-list []
 
@@ -87,19 +88,18 @@ to setup
   set n-exit 0
   set n-died 0
 
-  set cardinals map [? * 45] (n-values 8 [?] )
+  set cardinals map [ x -> x * 45 ] range 8
   if correlated?
   [
     let n-opt correl-angle / 90
-    set shift-list map [? - n-opt] n-values ((n-opt * 2 ) + 1) [?]
+    set shift-list map [ x -> x - n-opt ] range ((n-opt * 2 ) + 1)
   ]
 
   reset-ticks
 end
 
 to search
-  while [(n-success < n-walkers) and (n-released < 1e5)]  ;; stop in case setup means zero successes
-  [
+  while [(n-success < n-walkers) and (n-released < 1e5)] [
     set n-released n-released + 1
     make-walker
     ask turtles [ walk ]
@@ -108,20 +108,15 @@ to search
 end
 
 to make-walker
-  ask one-of patches with [habitat? = true]
-  [
+  ask one-of patches with [habitat? = true] [
     let focal-id patch-id
-    sprout 1
-    [
-      set color red
+    sprout 1 [
+      set color yellow
       set heading one-of cardinals
     ]
-
-
-    ask patches in-radius (object-size + 1) with [patch-id = focal-id]
-    [
+    ask patches in-radius (object-size + 1) with [patch-id = focal-id] [
       set start-id patch-id
-      set pcolor green
+      set pcolor lime
     ]
   ]
 end
@@ -203,10 +198,8 @@ end
 ;; ============
 ;; Code to make the landscape
 to make-region [x y]
-  foreach n-values x [?] [
-    let d-x ?
-    foreach n-values y [?] [
-      let d-y ?
+  foreach range x [ d-x ->
+    foreach range y [ d-y ->
       let mark-patch patch-at d-x d-y
       if mark-patch != nobody
       [
@@ -267,45 +260,35 @@ to mark
 end
 
 to block-squares
-  let offsets n-values (object-size + 2) [? - object-size]
-  foreach offsets [
-    let d-x ?
-    foreach offsets [
-      let d-y ?
-
+  let offsets map [ x -> x - object-size ] range (object-size + 2)
+  foreach offsets [ d-x ->
+    foreach offsets [ d-y ->
       let tag-patch patch-at d-x d-y
-        if tag-patch != nobody
-        [
+        if tag-patch != nobody [
           ask tag-patch [ set sq-blocked? true ]
         ]
-    ]
+     ]
   ]
 end
 
 to block-ew-lines
-  foreach n-values ((object-size ^ 2) + 2) [? - (object-size ^ 2)] [
-    let d-x ?
-    foreach n-values 3 [? - 1] [
-      let d-y ?
-        let tag-patch patch-at d-x d-y
-        if tag-patch != nobody
-        [
-          ask tag-patch [ set ew-blocked? true ]
-        ]
+  foreach map [ x -> x - (object-size ^ 2) ] range ((object-size ^ 2) + 2) [ d-x ->
+    foreach map [ x -> x - 1 ] range 3 [ d-y ->
+      let tag-patch patch-at d-x d-y
+      if tag-patch != nobody [
+        ask tag-patch [ set ew-blocked? true ]
+      ]
     ]
   ]
 end
 
 to block-ns-lines
-  foreach n-values ((object-size ^ 2) + 2) [? - (object-size ^ 2)] [
-    let d-y ?
-    foreach n-values 3 [? - 1] [
-      let d-x ?
-        let tag-patch patch-at d-x d-y
-        if tag-patch != nobody
-        [
-          ask tag-patch [ set ns-blocked? true ]
-        ]
+  foreach map [ x -> x - (object-size ^ 2) ] range ((object-size ^ 2) + 2) [ d-y ->
+    foreach map [ x -> x - 1 ] range 3 [ d-x ->
+      let tag-patch patch-at d-x d-y
+      if tag-patch != nobody [
+        ask tag-patch [ set ns-blocked? true ]
+      ]
     ]
   ]
 end
@@ -354,13 +337,12 @@ to-report get-correl-direction
 
   report item new-hd cardinals
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 225
 10
-635
-441
+633
+419
 -1
 -1
 4.0
@@ -409,7 +391,7 @@ object-size
 object-size
 1
 5
-1
+2.0
 1
 1
 NIL
@@ -424,7 +406,7 @@ percent-cover
 percent-cover
 0
 30
-26.4
+25.0
 0.1
 1
 NIL
@@ -466,7 +448,7 @@ n-walkers
 n-walkers
 0
 500
-500
+200.0
 10
 1
 NIL
@@ -522,7 +504,7 @@ step-length
 step-length
 0.5
 1.5
-1
+1.0
 0.01
 1
 NIL
@@ -559,7 +541,7 @@ max-steps
 max-steps
 100
 1000
-400
+400.0
 50
 1
 NIL
@@ -585,7 +567,7 @@ correl-angle
 correl-angle
 90
 270
-90
+90.0
 90
 1
 NIL
@@ -616,7 +598,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -914,9 +896,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -971,7 +952,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 1
 @#$#@#$#@

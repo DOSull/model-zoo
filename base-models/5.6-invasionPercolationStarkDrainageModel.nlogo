@@ -22,6 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
 
 globals [
   start-sites
@@ -159,14 +160,14 @@ end
 ;; Colour each patch by its p (underlying random field) value
 to colour-field
   ask patches with [not invaded?] [
-    set pcolor ((scale-color black  p min-field max-field) - black) * 0.4  + 6 + black
+    set pcolor palette:scale-gradient [[102 102 102] [204 204 204]] p min-field max-field
   ]
 end
 
 ;; Colour each patch by the time it was invaded
 to colour-by-time
   ask patches with [invaded? and (time-invaded != -1)] [
-    set pcolor scale-color red time-invaded 0 ticks
+    set pcolor palette:scale-scheme "Sequential" "YlGnBu" 9 time-invaded 0 ticks
   ]
 end
 
@@ -188,7 +189,7 @@ to trace-drainage
     ]
   ])
   ask patches [set pcolor black]
-  ask patches with [elastic? = true] [set pcolor blue + 2]
+  ask patches with [elastic?] [set pcolor blue + 2]
 end
 
 to pass-one

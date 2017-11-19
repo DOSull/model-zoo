@@ -153,9 +153,9 @@ to split
       let new-hunting-spots split-hunting-spots
       ; assign lower yielding spots to the smaller group
       let smallest-first sort-on [pop] (turtle-set self new-group)
-      (foreach new-hunting-spots smallest-first [
-        ask ?2 [ 
-          set my-hunting-spots ?1
+      (foreach new-hunting-spots smallest-first [ [nhs hs] -> 
+        ask hs [ 
+          set my-hunting-spots nhs
           ask my-hunting-spots [
             set owner myself
           ]
@@ -186,7 +186,7 @@ to-report split-hunting-spots
     set chunk-2 my-hunting-spots with [xcor <= x]
   ]
   ;; report smallest first so they can be allocated 'fairly'
-  report sort-by [sum [yield] of ?1 < sum [yield] of ?2] (list chunk-1 chunk-2)
+  report sort-by [ [x1 x2] -> sum [yield] of x1 < sum [yield] of x2] (list chunk-1 chunk-2)
 end
 
 ;; returns yield-weighted mean of x-y coords of spots supplied

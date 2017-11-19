@@ -65,7 +65,7 @@ to mark-habitat-patches [ps]
     ]
     ;; increment the patch-count and reset the set to mark
     set patch-count patch-count + 1
-    set patches-to-mark filter [[class] of ? < 0] patches-to-mark
+    set patches-to-mark filter [ x -> [class] of x < 0] patches-to-mark
     set clusters lput current-cluster clusters
   ]
   ;; make and store a list of each cluster as a patch-set
@@ -84,18 +84,18 @@ to assign-habitat-patches-by-proportion [ps p-high]
   let class-FD (list p-high (1 - p-high))
   ;; make a list of the target number of patches in each class
   let num-patches-set count ps with [class > 0]
-  let target-counts map [ ? * num-patches-set ] class-FD
+  let target-counts map [ x -> x * num-patches-set ] class-FD
   ;; iteratively assigning clusters in the percolation cluster
   ;; to a class, always adding to the class which is furthest
   ;; from its target count
-  foreach clusters [
+  foreach clusters [ c -> 
     let biggest-shortfall max target-counts
     let biggest-shortfall-index position biggest-shortfall target-counts
-    ask ? [ 
+    ask c [ 
       set class biggest-shortfall-index
     ]
     ;; update the target counts to reflect assignment just made
-    set target-counts replace-item biggest-shortfall-index target-counts (biggest-shortfall - count ?)
+    set target-counts replace-item biggest-shortfall-index target-counts (biggest-shortfall - count c)
   ]
 end
 
@@ -112,7 +112,7 @@ to assign-unassigned-to-habitat-patches [ps p-high]
     ;; required proportions - CFD is filtered on a random draw
     ;; to do this - this will work for any length class-CFD, 
     ;; provided last class-CFD = 1
-    [ set class length filter [? < random-float 1] class-CFD ]
+    [ set class length filter [x -> x < random-float 1] class-CFD ]
   ]
 end
 

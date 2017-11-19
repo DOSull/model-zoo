@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals
 [
   perimeter-set
@@ -44,7 +46,6 @@ to setup
   [ set occupied? false
     set t-colonised -1
     set attempts 0
-    set pcolor grey - 2
     ]
 
   let start-site nobody
@@ -107,18 +108,15 @@ end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  let pivot ticks / 2
   ask patches with [occupied?] [
-    ifelse t-colonised < pivot
-    [ set pcolor scale-color green t-colonised 0 pivot ]
-    [ set pcolor scale-color orange t-colonised ticks pivot ]
+    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 end
 
 to colour-by-visits
   let max-a max [attempts] of perimeter-set
   ask perimeter-set [
-    set pcolor scale-color blue attempts 0 max-a
+    set pcolor palette:scale-scheme "Sequential" "YlOrRd" 9 attempts 0 max-a
   ]
 end
 

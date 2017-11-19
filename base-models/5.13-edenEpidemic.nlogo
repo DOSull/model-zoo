@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals
 [
    perimeter-set
@@ -42,7 +44,6 @@ patches-own
 to setup
   clear-all
   ask patches [
-    set pcolor gray
     set occupied? false
     set immune? false
     set t-colonised -1
@@ -97,9 +98,8 @@ to go
 end
 
 to colour-by-time
-  ask patches with [occupied?]
-  [
-    set pcolor scale-color blue t-colonised 0 ticks
+  ask patches with [occupied?] [
+    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 
 end

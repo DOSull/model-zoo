@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals [
   perimeter-set
 ]
@@ -73,11 +75,8 @@ end
 
 ;; colour patches by the time they were colonised (approx Brewer PuGn)
 to colour-by-time
-  let pivot ticks / 2
   ask patches with [occupied?] [
-    ifelse t-colonised < pivot
-    [ set pcolor scale-color violet t-colonised 0 pivot ]
-    [ set pcolor scale-color green t-colonised ticks pivot ]
+    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 end
 @#$#@#$#@

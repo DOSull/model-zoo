@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals [
   perimeter-set
 ]
@@ -121,13 +123,13 @@ end
 to colour-field
   let max-r max [r] of patches
   ask patches with [not eroded?] [
-    set pcolor scale-color green (r / 4) max-r (- max-r)
+    set pcolor palette:scale-gradient [[255 255 204] [120 198 121]] r 0 max-r
   ]
 end
 
 to colour-time
   ask patches with [eroded?] [
-    set pcolor scale-color orange t-colonised (- ticks) ticks
+    set pcolor palette:scale-gradient [[153 52 4] [254 153 41] [255 255 229]] t-colonised 0 ticks
   ]
 end
 

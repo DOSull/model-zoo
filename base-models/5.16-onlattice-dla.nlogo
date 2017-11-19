@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals [
   circle
   occupied-patches
@@ -139,13 +141,8 @@ to-report initiate-walker-patch
 end
 
 to colour-by-time
-  let pivot ticks / 2
-  let low-t (- pivot)
-  let high-t ticks + pivot
   ask occupied-patches [
-    ifelse t-colonised < pivot
-    [ set pcolor scale-color red t-colonised low-t pivot ]
-    [ set pcolor scale-color sky t-colonised high-t pivot ]
+    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 end
 @#$#@#$#@

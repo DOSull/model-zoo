@@ -21,6 +21,7 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
 
+extensions [ palette ]
 
 patches-own [ lambda ]
 
@@ -83,7 +84,7 @@ to plot-intensity
 
  let max-lambda max [lambda] of patches
  ask turtles [ set color black ]
- ask patches [ set pcolor scale-color red lambda (1.2 * max-lambda) 0 ]
+  ask patches [ set pcolor palette:scale-gradient [[255 0 0] [255 255 0]] lambda (1.2 * max-lambda) 0 ]
 end
 
 
@@ -233,7 +234,7 @@ CHOOSER
 density-method
 density-method
 "smoothing" "quartic-kernel"
-1
+0
 
 @#$#@#$#@
 ## WHAT IS IT?

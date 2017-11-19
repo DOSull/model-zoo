@@ -103,8 +103,8 @@ end
 to show-debug-data [n-hunts h-spots p-spots]
   output-type who output-type ": " 
   output-type n-hunts output-type " "
-  output-type (map [[precision yield 1] of ?] reverse sort-on [yield] h-spots) output-type " " 
-  output-type (map [[precision yield 1] of ?] reverse sort-on [yield] p-spots) output-type " " 
+  output-type (map [ hs -> [precision yield 1] of hs ] reverse sort-on [yield] h-spots) output-type " " 
+  output-type (map [ ps -> [precision yield 1] of ps ] reverse sort-on [yield] p-spots) output-type " " 
   output-print ""
 end
 
@@ -193,16 +193,16 @@ end
 to-report pick-by-unfamiliarity [ps]
   ;; make same-ordered lists of the neighbouring patches 
   ;; and their unknownness 
-  let N sort-by [[unknownness] of ?1 > [unknownness] of ?2] ps
-  let N-u map [[unknownness] of ?] N
+  let N sort-by [ [ps1 ps2] -> [unknownness] of ps1 > [unknownness] of ps2 ] ps
+  let N-u map [ p -> [unknownness] of p ] N
   ;; use reduce (haha) to cumulate sum
-  let cum-N-u but-first reduce [lput (last ?1 + ?2) ?1] (sentence [[0]] N-u)
+  let cum-N-u but-first reduce [ [x y] -> lput (last x + y) x] (sentence [[0]] N-u)
    
   ;; then random number picks one out using list filter
   ifelse not empty? cum-N-u
   [
     let x (random-float last cum-N-u)
-    let pick length filter [x > ?] cum-N-u
+    let pick length filter [ y -> x > y ] cum-N-u
     report item pick N
   ]
   [  ;; allow back-tracking if stuck [GP]

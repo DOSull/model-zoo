@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals [
   last-invaded           ;; the most recently invaded patch
   next-to-invade         ;; list of the patches subject to invasion next
@@ -211,14 +213,14 @@ end
 
 ;; Colour each patch by its p (underlying random field) value
 to colour-field
-  ask patches with [invaded? = false] [
-    set pcolor scale-color orange p 0 1
+  ask patches with [not invaded?] [
+    set pcolor palette:scale-scheme "Sequential" "BuGn" 3 p 0 1
   ]
 end
 
 to colour-by-time
-  ask patches [
-    set pcolor scale-color red time-invaded ticks -1
+  ask patches with [time-invaded > -1] [
+    set pcolor palette:scale-scheme "Sequential" "YlOrRd" 9 time-invaded ticks -1
   ]
 end
 
@@ -262,8 +264,8 @@ GRAPHICS-WINDOW
 639
 0
 319
-0
-0
+1
+1
 1
 ticks
 100.0

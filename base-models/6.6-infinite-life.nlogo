@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -112,7 +112,7 @@ end
 
 ;; convenience reporter for mean-xy of a list of coords
 to-report mean-centre [list-of-coords]
-  report map [mean ?] transpose list-of-coords
+  report map [ x -> mean x ] transpose list-of-coords
 end
 
 ;; converts a list of coord pair lists
@@ -162,13 +162,13 @@ end
 ;; converts a lattice-coord pair to Netlogo world coords
 ;; at current scale
 to-report world-coords [xy]
-  report (map [current-scale * (?1 - ?2)] xy centre-xy)
+  report (map [ [pxy cxy] -> current-scale * (pxy - cxy) ] xy centre-xy)
 end
 
 ;; converts a world coordinate to a lattice coord
 ;; at current scale
 to-report lattice-coords [pxpy]
-  report (map [round (?1 / current-scale) + ?2] pxpy centre-xy)
+  report (map [ [pxy cxy] -> round (pxy / current-scale) + cxy ] pxpy centre-xy)
 end
 
 ;; TURTLE-PROCEDURE
@@ -181,10 +181,10 @@ end
 
 ;; hatch next gen turtles on every possible new location
 to create-next-gen
-  foreach get-candidate-spots [
+  foreach get-candidate-spots [ c-spot ->
     create-new-cells 1 [
       set color gray ;; this means you can see them when update is continuous
-      set lattice-site ?
+      set lattice-site c-spot
       set-world-xy
       set size max (list current-scale 0.24)
     ]
@@ -232,7 +232,7 @@ to-report neighbouring-lattice-sites; [coord-pair]
   ; retrieve lattice-x and y once for repeated use below
   let x lattice-x
   let y lattice-y
-  report map [list (x + item 0 ?) (y + item 1 ?)] neighbor-offsets
+  report map [ xy -> list (x + item 0 xy) (y + item 1 xy) ] neighbor-offsets
 end
 
 ;; report a list of lattice coordinates to test
@@ -241,18 +241,19 @@ end
 to-report get-candidate-spots
   let neighbouring-sites [neighbouring-lattice-sites] of cells
   ;; make list of lists into a single list of coord pairs
-  set neighbouring-sites reduce [sentence ?1 ?2] neighbouring-sites
+  set neighbouring-sites reduce [ [n1 n2] -> sentence n1 n2 ] neighbouring-sites
   ;; join to the current spots and remove duplicates
   report remove-duplicates sentence neighbouring-sites [lattice-site] of cells
 end
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 98
 16
-537
-476
-16
-16
+535
+454
+-1
+-1
 13.0
 1
 10
@@ -325,10 +326,10 @@ NIL
 1
 
 BUTTON
-542
-206
-616
-239
+544
+185
+618
+218
 NIL
 zoom-in
 NIL
@@ -342,10 +343,10 @@ NIL
 1
 
 BUTTON
-542
-245
-617
-278
+544
+224
+619
+257
 NIL
 zoom-out
 NIL
@@ -361,18 +362,18 @@ NIL
 TEXTBOX
 542
 20
-664
-145
+681
+120
 Netlogo will display cells outside the current zoomed area by 'wrapping' their coordinates.  This accounts for display glitches when zoomed in.
 11
 0.0
 1
 
 MONITOR
-542
-153
-628
-198
+544
+132
+630
+177
 NIL
 current-scale
 4
@@ -381,9 +382,9 @@ current-scale
 
 TEXTBOX
 544
-288
-656
-340
+278
+677
+330
 Zoom buttons only work when execution is stopped.
 11
 0.0
@@ -391,9 +392,9 @@ Zoom buttons only work when execution is stopped.
 
 BUTTON
 542
-341
+344
 605
-374
+377
 NIL
 pan
 T
@@ -408,9 +409,9 @@ NIL
 
 TEXTBOX
 546
-380
+383
 641
-449
+452
 Panning while go button is pressed will probably cause model to restart.
 11
 0.0
@@ -421,7 +422,7 @@ Panning while go button is pressed will probably cause model to restart.
 
 This model is an implementation of Conway's game of life.  See:
 
-+    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway�s new solitaire game �life�. _Scientific American_ **223**, 120�123.
++    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway's new solitaire game 'life'. _Scientific American_ **223**, 120-123.
 
 which allows for an 'infinitely extensible' world as discussed in Chapter 6 of
 
@@ -444,7 +445,7 @@ This approach requires that the `cell` breed turtles store their lattice locatio
 Conversion from Netlogo world coordinates to lattice coordinates is done by the world-coords reporter
 
     to-report world-coords [xy]
-      report (map [current-scale * (?1 - ?2)] xy centre-xy)
+      report (map [ [pxy cxy] -> current-scale * (pxy - cxy) ] xy centre-xy)
     end
 
 where the `map` function applies the scaling operation to each item in the supplied `xy` coord pair list after subtracting the current `centre-xy` coord pair global.  A convenience procedure `set-world-xy` is provided to allow a turtle's location to be set according to its current `lattice-site` and `current scale` of the model.
@@ -457,7 +458,7 @@ Because cell locations are stored as the `lattice-site` list it is necessary to 
       ; retrieve lattice-x and y once for repeated use below
       let x lattice-x
       let y lattice-y
-      report map [list (x + item 0 ?) (y + item 1 ?)] neighbor-offsets
+      report map [ xy -> list (x + item 0 xy) (y + item 1 xy) ] neighbor-offsets
     end
 
 The model works by first identifying all the possible new cell locations, which are the existing cell locations plus lattice locations neighbouring these.  This code is worth close inspection:
@@ -465,7 +466,7 @@ The model works by first identifying all the possible new cell locations, which 
     to-report get-candidate-spots
       let neighbouring-sites [neighbouring-lattice-sites] of cells
       ;; make list of lists into a single list of coord pairs
-      set neighbouring-sites reduce [sentence ?1 ?2] neighbouring-sites
+      set neighbouring-sites reduce [ [n1 n2] -> sentence n1 n2 ] neighbouring-sites
       ;; join to the current spots and remove duplicates
       report remove-duplicates sentence neighbouring-sites [lattice-site] of cells
     end
@@ -489,7 +490,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -787,9 +788,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -805,7 +805,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

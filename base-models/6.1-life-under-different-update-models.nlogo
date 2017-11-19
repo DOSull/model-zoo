@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,11 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-; Simple model to implement Game of Life CA
 
-;; extensions [r]
-
-; patch pcolor built-in used for current state
 patches-own [
   next-state ; the next state of the patch
   state
@@ -36,7 +32,6 @@ patches-own [
 ; equal to the density are initially alive
 to setup
   clear-all
-  ;;r:setPlotDevice
 
   if use-seed? [random-seed 0]
 
@@ -99,10 +94,8 @@ to asynchronous-update
     ]
   ]
   if update-mode = "async ordered" [
-    foreach sort patches [
-      ask ? [
-        update-state
-      ]
+    foreach sort patches [ p ->
+      ask p [ update-state ]
     ]
   ]
 end
@@ -134,10 +127,10 @@ end
 GRAPHICS-WINDOW
 205
 10
-623
-449
-25
-25
+621
+427
+-1
+-1
 8.0
 1
 10
@@ -235,10 +228,10 @@ update-mode
 3
 
 SWITCH
-69
-406
-181
-439
+76
+389
+188
+422
 use-seed?
 use-seed?
 0
@@ -276,7 +269,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -565,9 +558,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -583,7 +575,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

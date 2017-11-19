@@ -22,6 +22,8 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
+extensions [ palette ]
+
 globals
 [
   perimeter-set
@@ -117,12 +119,8 @@ end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  let pivot ticks * world-width / 2
-  ask patches with [occupied?]
-  [
-    ifelse t-colonised < pivot
-    [ set pcolor scale-color violet t-colonised 0 pivot ]
-    [ set pcolor scale-color green t-colonised (ticks * world-width) pivot ]
+  ask patches with [occupied?] [
+    set pcolor palette:scale-gradient [[227 26 28] [255 237 160]] t-colonised 0 (ticks * world-width)
   ]
 end
 
