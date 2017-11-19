@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -93,8 +93,8 @@ to go
   let target nobody
   ask foragers [
     let target-trees sort ([near-trees] of current-tree) with [yield > 0 and self != [current-tree] of myself]
-    let targets map [list [distance myself / yield] of ? ?] target-trees
-    set targets sort-by [item 0 ?1 < item 0 ?2] targets
+    let targets map [ tgt -> list [distance myself / yield] of tgt tgt ] target-trees
+    set targets sort-by [ [d-tgt1 d-tgt2] -> item 0 d-tgt1 < item 0 d-tgt2 ] targets
     set target item 1 item (random top-choices) targets
     ask target [
       create-step-with [current-tree] of myself [
@@ -120,20 +120,19 @@ end
 to size-rank-plot
   clear-plot
   let data sort [link-length] of links
-  let ranks reverse n-values length data [? + 1]
+  let ranks reverse (range 1 (length data + 1))
   set-plot-x-range floor ln last ranks ceiling ln first ranks
   set-plot-y-range floor ln first data ceiling ln last data
-  (foreach ranks data [
-      plotxy ln ?1 ln ?2
+  (foreach ranks data [ [rank dist] ->
+      plotxy ln rank ln dist
   ])
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 257
 10
-667
-441
+665
+419
 -1
 -1
 4.0
@@ -165,7 +164,7 @@ mean-yield
 mean-yield
 1
 50
-25
+25.0
 1
 1
 NIL
@@ -197,7 +196,7 @@ sd-yield
 sd-yield
 0
 50
-25
+25.0
 0.1
 1
 NIL
@@ -279,14 +278,14 @@ PENS
 
 SLIDER
 673
-408
+386
 798
-441
+419
 top-choices
 top-choices
 1
 50
-1
+1.0
 1
 1
 NIL
@@ -300,7 +299,7 @@ CHOOSER
 yield-distribution
 yield-distribution
 "exponential" "log-normal"
-1
+0
 
 TEXTBOX
 8
@@ -342,7 +341,7 @@ random-seed-value
 random-seed-value
 0
 1000
-1
+1.0
 1
 1
 NIL
@@ -375,7 +374,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -678,9 +677,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -696,7 +694,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -118,17 +118,17 @@ to update-stats
     set min-d min dists
     set mean-d mean dists
     ; root mean square distance is expected to equal sqrt(#steps) so calculate it
-    set rms-d sqrt mean map [? * ?] dists
+    set rms-d sqrt mean map [ x -> x * x ] dists
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 194
 10
-801
-638
-99
-99
+799
+616
+-1
+-1
 3.0
 1
 10
@@ -158,7 +158,7 @@ num-of-walkers
 num-of-walkers
 1
 500
-100
+100.0
 1
 1
 NIL
@@ -241,9 +241,9 @@ true
 true
 "" ""
 PENS
-"all walkers" 1.0 2 -3026479 true "" "if ticks mod plot-update-interval = 0 [\n  foreach dists [\n    plotxy ticks ?\n  ]\n]"
+"all walkers" 1.0 2 -3026479 true "" "if ticks mod plot-update-interval = 0 [\n  foreach dists [ ?1 ->\n    plotxy ticks ?1\n  ]\n]"
 "rms-dist" 1.0 0 -16777216 true "" "if ticks mod plot-update-interval = 0 [\n  foreach dists [\n    plotxy ticks rms-d\n  ]\n]"
-"expected" 1.0 0 -2674135 true "" "if ticks mod plot-update-interval = 0 [\n  ifelse type-of-walk = \"correlated directions\" [\n    ;; These alternative lines use an adjustment for the RMS dist for \n    ;; correlated walks from \n    ;; Bovet & Benhamou, J. theor. Biol. (1988) 131, 419-433\n    ;; itself derived from \n    ;; Random Flight with Multiple Partial Correlations, C. M. Tchen\n    ;; J. Chem. Phys. 20, 214 (1952); doi:10.1063/1.1700381 \n    ;; which shows that for large #ticks RMS-D = sqrt[(1+r)/(1-r)ticks]\n    ;; where r is a correlation angle between walk steps\n    ;; ONLY RELEVANT to the correlated case, so not used in general\n    let r 1 / exp (((stdev-angle * pi / 180) ^ 2) / 2) \n    ;plotxy ticks sqrt ((1 + r) / (1 - r) * ticks)\n    ;; Note that this is approximate: there is an additional correction\n    ;; required for low turn angles\n    ;; It is unclear whether the second term is in r^2 or r; see\n    ;; Hsin-i Wu, Bai-Lian Li, Timothy A. Springer, William H. Neill, \n    ;; Modelling animal movement as a persistent random walk in two dimensions: expected magnitude of net displacement\n    ;; Ecol Mod, 132(1-2), 115-124 DOI: 10.1016/S0304-3800(00)00309-4.\n    plotxy ticks sqrt (((1 + r) / (1 - r) * ticks) - ((2 * r * r * (1 - (r ^ ticks))) / (1 - r) / (1 - r)))\n  ]\n  [\n    plotxy ticks sqrt ticks\n  ]\n]"
+"expected" 1.0 0 -2674135 true "" "if ticks mod plot-update-interval = 0 [\n  ifelse type-of-walk = \"correlated directions\" [\n    ;; These alternative lines use an adjustment for the RMS dist for\n    ;; correlated walks from\n    ;; Bovet & Benhamou, J. theor. Biol. (1988) 131, 419-433\n    ;; itself derived from\n    ;; Random Flight with Multiple Partial Correlations, C. M. Tchen\n    ;; J. Chem. Phys. 20, 214 (1952); doi:10.1063/1.1700381\n    ;; which shows that for large #ticks RMS-D = sqrt[(1+r)/(1-r)ticks]\n    ;; where r is a correlation angle between walk steps\n    ;; ONLY RELEVANT to the correlated case, so not used in general\n    let r 1 / exp (((stdev-angle * pi / 180) ^ 2) / 2)\n    ;plotxy ticks sqrt ((1 + r) / (1 - r) * ticks)\n    ;; Note that this is approximate: there is an additional correction\n    ;; required for low turn angles\n    ;; It is unclear whether the second term is in r^2 or r; see\n    ;; Hsin-i Wu, Bai-Lian Li, Timothy A. Springer, William H. Neill,\n    ;; Modelling animal movement as a persistent random walk in two dimensions: expected magnitude of net displacement\n    ;; Ecol Mod, 132(1-2), 115-124 DOI: 10.1016/S0304-3800(00)00309-4.\n    plotxy ticks sqrt (((1 + r) / (1 - r) * ticks) - ((2 * r * r * (1 - (r ^ ticks))) / (1 - r) / (1 - r)))\n  ]\n  [\n    plotxy ticks sqrt ticks\n  ]\n]"
 
 MONITOR
 983
@@ -298,7 +298,7 @@ stdev-angle
 stdev-angle
 0
 90
-22
+22.0
 1
 1
 NIL
@@ -358,7 +358,7 @@ hundreds
 hundreds
 100
 2500
-500
+500.0
 100
 1
 NIL
@@ -373,7 +373,7 @@ seed-value
 seed-value
 0
 1000
-573
+573.0
 1
 1
 NIL
@@ -388,7 +388,7 @@ mean-step-length
 mean-step-length
 0.1
 5
-1
+1.0
 0.1
 1
 NIL
@@ -403,7 +403,7 @@ plot-update-interval
 plot-update-interval
 1
 100
-20
+20.0
 1
 1
 NIL
@@ -416,7 +416,7 @@ SWITCH
 364
 show-tracks?
 show-tracks?
-1
+0
 1
 -1000
 
@@ -528,7 +528,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -826,9 +826,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -844,7 +843,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

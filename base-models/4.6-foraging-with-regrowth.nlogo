@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -48,16 +48,16 @@ to setup
   ask patches [
     set current-yield 0
     set timing random 12
-    set in-range other patches in-radius range
+    set in-range other patches in-radius vision-range
   ]
   repeat world-width / 2 [
     ask patches [
       set timing [timing] of one-of neighbors4
     ]
   ]
-  (foreach (sort-on [timing] patches) (n-values count patches [?]) [
-     ask ?1 [
-       set timing ?2
+  (foreach (sort-on [timing] patches) (range count patches) [ [p t] ->
+     ask p [
+       set timing t
      ]
   ])
   ask patches with [timing > count patches - n-steps] [
@@ -69,7 +69,7 @@ to setup
     ]
     sprout-spots 1 [
       set color orange
-      set size 0.5
+      set size 0.8
       set shape "circle"
     ]
     set visited sort spots
@@ -106,7 +106,7 @@ to go
       [
         sprout-spots 1 [
           set color orange
-          set size 0.5
+          set size 0.8
           set shape "circle"
           set target self
         ]
@@ -115,8 +115,8 @@ to go
     ]
     if length visited > n-steps [
       let to-die length visited - n-steps
-      foreach sublist visited (length visited - to-die) length visited [
-        ask ? [ die ]
+      foreach sublist visited (length visited - to-die) length visited [ trail ->
+        ask trail [ die ]
       ]
       set visited reverse sort-on [who] spots
     ]
@@ -144,8 +144,8 @@ end
 GRAPHICS-WINDOW
 193
 10
-623
-461
+621
+439
 -1
 -1
 7.0
@@ -162,14 +162,14 @@ GRAPHICS-WINDOW
 59
 0
 59
-0
-0
+1
+1
 1
 ticks
 100.0
 
 BUTTON
-123
+97
 10
 186
 43
@@ -186,7 +186,7 @@ NIL
 1
 
 BUTTON
-122
+97
 48
 185
 81
@@ -203,7 +203,7 @@ NIL
 1
 
 BUTTON
-122
+96
 124
 185
 157
@@ -220,7 +220,7 @@ NIL
 1
 
 BUTTON
-121
+96
 87
 185
 120
@@ -245,7 +245,7 @@ n-steps
 n-steps
 50
 1000
-200
+200.0
 50
 1
 NIL
@@ -256,11 +256,11 @@ SLIDER
 163
 184
 196
-range
-range
+vision-range
+vision-range
 1
 20
-20
+20.0
 1
 1
 NIL
@@ -288,7 +288,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -591,9 +591,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -609,7 +608,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

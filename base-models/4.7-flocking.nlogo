@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -50,7 +50,7 @@ to setup
 
   ask patches [
     set pcolor white
-    set locale (patch-set self (patches in-radius range))
+    set locale (patch-set self (patches in-radius near-range))
   ]
   set-default-shape turtles "default"
   set-default-shape tails "line"
@@ -213,8 +213,8 @@ to-report inner-ring
   let pie-angle 360 / sectors-to-check
   ;; two item list of min-max headings for current pie-slice
   ;; from - to + half the pie-slice angle
-  let range-headings map [? * pie-angle] [-0.5 0.5]
-  let in-cone-candidates other local-flockers with [in-field-of-view? myself self range (view-angle / 2)]
+  let range-headings map [ i -> i * pie-angle ] [-0.5 0.5]
+  let in-cone-candidates other local-flockers with [in-field-of-view? myself self near-range (view-angle / 2)]
   repeat sectors-to-check [
     ;; note use of towards to determine heading to the candidate
     let candidates in-cone-candidates with [between? range-headings norm-heading (180 + towards myself)]
@@ -223,7 +223,7 @@ to-report inner-ring
       set ring fput (first sort-on [distance myself] candidates) ring
     ]
     ;; update range-headings by adding pie-angle to both entries
-    set range-headings map [? + pie-angle] range-headings
+    set range-headings map [ theta -> theta + pie-angle ] range-headings
   ]
   report ring
 end
@@ -270,8 +270,8 @@ end
 GRAPHICS-WINDOW
 185
 10
-620
-466
+618
+444
 -1
 -1
 17.0
@@ -318,7 +318,7 @@ directional-noise
 directional-noise
 0
 30
-0
+0.0
 2.5
 1
 NIL
@@ -399,7 +399,7 @@ tail-length
 tail-length
 0
 10
-5
+5.0
 1
 1
 NIL
@@ -414,7 +414,7 @@ view-angle
 view-angle
 5
 360
-240
+240.0
 5
 1
 NIL
@@ -429,7 +429,7 @@ sectors-to-check
 sectors-to-check
 2
 12
-6
+6.0
 1
 1
 NIL
@@ -607,8 +607,8 @@ SLIDER
 106
 802
 139
-range
-range
+near-range
+near-range
 preferred-distance
 5
 1.55
@@ -671,7 +671,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -969,9 +969,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -987,7 +986,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

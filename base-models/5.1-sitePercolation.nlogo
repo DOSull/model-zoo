@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -56,13 +56,13 @@ to setup
   reset-ticks
 end
 
-to tag
+to go
   set spanning-present? false
 
   identify-clusters
   set mean-size typical-cluster-size
 
-  set log-cluster-sizes map [log ? 10] cluster-sizes
+  set log-cluster-sizes map [ x -> log x 10 ] cluster-sizes
   histogram log-cluster-sizes
 end
 
@@ -159,7 +159,7 @@ to-report typical-cluster-size
   ;; it is the typical size cluster that a rnd selected site will belong too
   ifelse any? patches with [not spanning?] [
     let non-spanning-occupied-patches sort (patches with [occupied? and not spanning?])
-    report mean map [size-of-my-cluster ?] non-spanning-occupied-patches
+    report mean map [ ?1 -> size-of-my-cluster ?1 ] non-spanning-occupied-patches
   ]
   [ report 0 ]
 end
@@ -172,8 +172,8 @@ end
 GRAPHICS-WINDOW
 207
 10
-667
-491
+665
+469
 -1
 -1
 2.0
@@ -213,9 +213,9 @@ HORIZONTAL
 
 BUTTON
 66
-334
+363
 198
-369
+398
 NIL
 colour-largest
 NIL
@@ -240,9 +240,9 @@ Occupied patches in white
 
 BUTTON
 66
-374
+403
 198
-407
+436
 NIL
 colour-spanning
 NIL
@@ -275,9 +275,9 @@ PENS
 
 MONITOR
 99
-273
+302
 197
-318
+347
 clusters tagged
 cluster-count
 0
@@ -342,9 +342,9 @@ NIL
 
 TEXTBOX
 77
-195
+224
 207
-264
+293
 Note tagging can take some time!  Cells are coloured as they get tagged to show progress.
 11
 0.0
@@ -352,11 +352,11 @@ Note tagging can take some time!  Cells are coloured as they get tagged to show 
 
 BUTTON
 99
-154
+183
 196
-187
-NIL
+216
 tag
+go
 NIL
 1
 T
@@ -405,7 +405,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -703,9 +703,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -730,7 +729,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

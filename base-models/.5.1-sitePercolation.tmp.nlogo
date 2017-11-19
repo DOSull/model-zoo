@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -20,153 +20,298 @@
 ;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
+;;
 
 globals [
-  latest-stop ;;
-  turn-angles ;; list of the change of heading between locations
-  number-of-steps
+  cluster-sizes       ;; list of sizes of each occupied cluster, length is cluster-count - 1
+  log-cluster-sizes   ;; log cluster size
+  cluster-count       ;; total number of occupied clusters
+  spanning-present?   ;; flag to denote presence of spanning cluster
+  mean-size           ;; mean size of occupied, non-spanning cluster
 ]
 
-;; use a breed to record the locations at which walk stopped
-breed [locations location]
-
-;; and links to join them at the chosen aggregation level
-directed-link-breed [intervals interval]
-
-intervals-own [
-  divisor
-  turn-angle
+patches-own [
+  cluster-id ;; cluster ID assigned during tagging
+  occupied?  ;; the percolation process outcome
+  spanning?  ;; patch part of a spanning cluster?
 ]
 
-
+;; initialise the lattice based on percolation threshold
 to setup
   clear-all
 
-  ask patches [ set pcolor white ]
-  set number-of-steps 4000
-  set turn-angles []
-
-  create-locations 1 [
-    initialize-location
-  ]
-  ; make more locations...
-  repeat number-of-steps [
-    ; get the last placed location to make a new one
-    ask latest-stop [
-      let turn random-normal 0 stdev-angle
-      set turn-angles lput turn turn-angles
-      set heading heading + turn
-      ;; make a new location at the current coordinates
-      ;; new location will move to the next walk location
-      make-new-location
+  ask patches [
+    set occupied? false
+    set spanning? false
+    set cluster-id -1 ;; denotes no cluster membership yet
+    ;; now make the cluster
+    set pcolor black
+    if random-float 1 <= p [
+      set occupied? true
+      set pcolor white
     ]
   ]
+  ;; initialise the globals
+  set cluster-sizes []
   reset-ticks
 end
 
-to initialize-location
-  set shape "circle"
-  set color orange
-  set size 0.7
-  set latest-stop self ;; just created, hence 'latest'
+to go
+  set spanning-present? false
+
+  identify-clusters
+  set mean-size typical-cluster-size
+
+  set log-cluster-sizes map [ ?1 -> log ?1 10 ] cluster-sizes
+  histogram log-cluster-sizes
 end
 
-to make-new-location
-  hatch 1 [
-    initialize-location
-    ;; now move to the next spot in the walk
-    fd 1
+;; color the largest cluster red
+to colour-largest
+  let largest-cluster-id (position (max cluster-sizes) cluster-sizes )
+  ask patches with [cluster-id = largest-cluster-id] [set pcolor red]
+end
+
+;; color spanning cluster (if present) green
+to colour-spanning
+  ifelse spanning-present? [
+    ask patches with [spanning?] [set pcolor green]
+  ]
+  [
+    user-message("No spanning clusters identified on the lattice.")
   ]
 end
 
 
-to aggregate-walk
-  ; rub out any previously displayed links
-  ask intervals [ die ]
-  ;; step through the locations at a spacing
-  ;; given by aggregation-length
-  ;; build lists of the locations at the aggregation-length spacing
-  ;; one leaving out the last, the other leaving out the first
-  let waypoints sort locations with [who mod aggregation-length = 0]
-  (foreach (but-last waypoints) (but-first waypoints) [ [posn1 posn2] ->
-    ask posn1 [
-      face posn2
-      create-interval-to posn2 [
-        set color blue
-        set thickness 0.7
+;; this procedure tags occupied patches with cluster-ids based on
+;; their connection (orthogonal) to other occupied patches
+to identify-clusters
+  set cluster-count 0
+  ;; initialize a patch-sets of the occupied patches
+  ;; that need to be tagged with cluster-id
+  let all-to-tag patches with [occupied? and cluster-id = -1]
+  while [ any? all-to-tag ] [
+    ;; keep track of the current cluster for
+    ;; efficient testing if it is spanning at end
+    let current-cluster patch-set nobody
+
+    ;; start with a randomly selected untagged patch
+    let patches-to-tag (patch-set one-of all-to-tag)
+    ;; and pick a random color for this cluster
+    let col (random 14) * 10 + (random 5) + 5
+    ;; now, while there are any remaining patches to tag
+    ;; iteratively tag occupied neighbors of the starting patch
+    while [ any? patches-to-tag ] [
+      ask patches-to-tag [
+        ;; tag and assign cluster ID
+        set cluster-id cluster-count ;; 0 will be the first cluster ID
+        set pcolor col  ;; this allows user to see progress
       ]
+      ;; add them to the current-cluster
+      set current-cluster (patch-set current-cluster patches-to-tag)
+      ;; now get the next lot
+      set patches-to-tag (patch-set [neighbors4] of patches-to-tag) with [occupied? and cluster-id = -1]
     ]
-  ])
-  ;; now determine turn angles for each aggregated interval
-  ask intervals [ set turn-angle subtract-angles ([heading] of end2) ([heading] of end1) ]
-  tick
+    ;; update the all-to-tag patch-set
+    set all-to-tag all-to-tag with [ cluster-id = -1 ]
+
+    ;; record size of this cluster
+    set cluster-sizes lput (count current-cluster) cluster-sizes
+    set cluster-count cluster-count + 1
+    check-for-spanning current-cluster
+  ]
+  wait 1 ;; wait a second so people can see the clusters!
+  ;; then restore the colours
+  ask patches with [occupied?] [ set pcolor white ]
 end
 
-;; reports the right-turn angle required to
-;; change from heading b to heading a
-to-report subtract-angles [a b]
-  ifelse a > b
-  [ ;; a is to right of b
-    ; but if difference exceeds 180
-    ; turn smaller angle left to get there
-    if (a - b) > 180 [ report a - b - 360 ]
+;; check if the supplied patch-set c is a spanning cluster
+to check-for-spanning [c]
+  if count c >= min (list world-width world-height) [
+    if width c = world-width or height c = world-height [
+      ask c [set spanning? true]
+      set spanning-present? true
+    ]
   ]
-  [ ;; a is to left of b
-    ; logic of previous section is reversed
-    if (b - a) > 180 [ report a - b + 360 ]
+end
+
+;; reporters for width and height of a patch-set
+to-report width [p-set]
+  report max [pxcor] of p-set - min [pxcor] of p-set + 1
+end
+
+to-report height [p-set]
+  report max [pycor] of p-set - min [pycor] of p-set + 1
+end
+
+
+;; returns the proportion of the space
+;; occupied by the spanning cluster
+to-report proportion-spanning
+  ifelse spanning-present?
+  [ report count patches with [spanning?] / count patches ]
+  [ report 0 ]
+end
+
+;; reports mean size of clusters subject to some constraints (see below)
+to-report typical-cluster-size
+  ;; mean cluster size is calculated without the spanning cluster and without bkgd and is size weighted
+  ;; it is the typical size cluster that a rnd selected site will belong too
+  ifelse any? patches with [not spanning?] [
+    let non-spanning-occupied-patches sort (patches with [occupied? and not spanning?])
+    report mean map [ ?1 -> size-of-my-cluster ?1 ] non-spanning-occupied-patches
   ]
-  ; not a special case just report the difference
-  report a - b
+  [ report 0 ]
+end
+
+;; returns the size of the cluster of which ptch is a member
+to-report size-of-my-cluster [ptch]
+  report item ([cluster-id] of ptch) cluster-sizes
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-155
+207
 10
-766
-622
+665
+469
 -1
 -1
-3.0
+2.0
 1
 10
 1
 1
 1
 0
-1
-1
-1
--100
-100
--100
-100
-1
+0
+0
 1
 0
-ticks
+224
+0
+224
+0
+0
+1
+clusters-tagged
 100.0
 
 SLIDER
-6
-51
-142
-84
-stdev-angle
-stdev-angle
-3
-60
-25.0
+25
+54
+197
+87
+p
+p
+0
 1
+0.59274621
+0.001
 1
 NIL
 HORIZONTAL
 
 BUTTON
-77
-14
-140
-47
+66
+363
+198
+398
 NIL
+colour-largest
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+675
+473
+827
+491
+Occupied patches in white
+12
+0.0
+1
+
+BUTTON
+66
+403
+198
+436
+NIL
+colour-spanning
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+PLOT
+678
+10
+946
+227
+Cluster size distribution
+log10 (Cluster Size)
+Frequency
+0.0
+20.0
+0.0
+10.0
+true
+false
+"set-histogram-num-bars 100" "set-plot-x-range 0 5"
+PENS
+"default" 1.0 2 -16777216 true "" ""
+
+MONITOR
+99
+302
+197
+347
+clusters tagged
+cluster-count
+0
+1
+11
+
+MONITOR
+775
+235
+881
+280
+Mean cluster size
+mean-size
+2
+1
+11
+
+MONITOR
+888
+235
+945
+280
+p-frac
+proportion-spanning
+3
+1
+11
+
+BUTTON
+99
+95
+196
+128
+setup
 setup
 NIL
 1
@@ -179,12 +324,12 @@ NIL
 1
 
 BUTTON
-28
-151
-139
-184
-NIL
-aggregate-walk
+101
+16
+197
+49
+set p-critical
+set p 0.59274621
 NIL
 1
 T
@@ -195,110 +340,59 @@ NIL
 NIL
 1
 
-PLOT
-778
-10
-1111
-219
-Turn Angles
-Turn Angle
-Relative Frequency
--180.0
-180.0
+TEXTBOX
+77
+224
+207
+293
+Note tagging can take some time!  Cells are coloured as they get tagged to show progress.
+11
 0.0
-10.0
-true
-true
-"clear-plot" "clear-plot"
-PENS
-"agg-turn-angles" 1.0 1 -16777216 true "" "if ticks > 0 [\nset-histogram-num-bars 18\nhistogram [remainder turn-angle 180] of intervals\n]"
-"base-turn-angles" 1.0 0 -2674135 true "" "plot-pen-up\nplotxy plot-x-min plot-y-min\nplot-pen-down\nlet t-angles turn-angles\nlet breaks map [ ?1 -> ?1 * 20 - 160 ] n-values 18 [ ?1 -> ?1 ]\nforeach breaks [ ?1 ->\n  let mx ?1\n  let cnt length filter [ ??1 -> ??1 < mx ] t-angles / aggregation-length\n  set t-angles filter [ ??1 -> ??1 >= mx ] t-angles\n  plotxy (?1 - 10) cnt\n ]"
+1
 
-PLOT
-778
-231
-1111
-457
-Aggregated Step Lengths
-Length
-Frequency
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" "clear-plot"
-PENS
-"default" 1.0 1 -16777216 true "" "if ticks > 0 [\nlet ll [link-length] of intervals\nset-plot-x-range floor min ll ceiling max ll\nset-histogram-num-bars 20\nhistogram ll\n]"
-
-SLIDER
-5
-110
-141
-143
-aggregation-length
-aggregation-length
-1
-100
-20.0
-1
-1
+BUTTON
+99
+183
+196
+216
+tag
+go
 NIL
-HORIZONTAL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+681
+235
+776
+338
+This plot is not very useful - a better option is available in the R-enabled version of this model
+11
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model is discussed in Chapter 5 of
+This model demonstrates site percolation and as discussed in Chapter 5 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
-and is intended to demonstrate the effect of aggregating consecutive steps of a correlated random walk on the distribution of step-by-step turn angles.
+You should consult that book for more information and details of the model.
 
-When random walk turn angles are correlated over short time periods, the 'acceleration' in movement of a correlated random walk relative to a simple random walk falls away rapidly with time. This is because over relatively short numbers of steps, the turn angles effectively become random, as the correlation from step to step is lost. This effect is demonstrated in this model.
-
-## HOW TO USE IT
-
-Clicking the `setup` button creates a 2000 step correlated random walk.  Steps in the walk are unit length, and the heading of the walk changes at each step according to a normal distribution, mean 0 and standard deviation set by the `st-dev-angle` parameter.
-
-Now clicking `aggregate-walk` will show a walk based on sequences of walk steps aggregated into intervals as specified by the `aggregation-length` parameter setting.  The resulting aggregated walk will be displayed, and the associated turn angle distribution will be shown.
+An alternative version of this model that uses the R-netlogo extension is available and provides a better plot of the cluster size distribution.
 
 ## THINGS TO NOTICE
 
-This model makes use of a turtle breed `locations` to store all the locations along a random walk of 2000 steps.  A directed link breed is used to display aggregated `intervals` and perform calculations on them, which enables the walk to be re-aggregated to different `aggregation-length` settings as required.
+The code comments give a good overview of how the model works.
 
-The `setup` procedure makes a multistep correlated random walk by creating a `location` turtle at 0 0 and then repeatedly `hatches` a copy of the most recently created location which is then stored in the `latest-stop` global variable.  The newly hatched `location` then changes its heading and moves forward a step, and becomes the new `latest-stop`.
-
-This creates a 2000 step correlated random walk marked out by `location` turtles.
-
-When the `aggregate` button is pressed a series of `interval` _directed-links_ are made between `locations` at the specified `aggregation-length` spacing. This is done by making two sets of _waypoint_ `locations` at the required spacing. This code
-
-    let waypoints sort locations with [who mod aggregation-length = 0]
-
-makes a sorted list of all the locations with a `who` ID divisible by the `aggregation-length` without remainder, e.g., for aggregation length 13, this would be
-
-    [ location 0 location 13 location 26 ... location 3978 location 3991 ]
-
-A `foreach` loop steps through this list paired with itself, but with the last and first items removed, i.e., the lists
-
-    [ location 0 location 13 location 26 ... location 3978 ]
-    [ location 13 location 26 location 39 ... location 3991 ]
-
-using the `but-last` and `but-first` reporters, so that
-
-    (foreach (but-last waypoints) (but-first waypoints) [ [posn1 posn2]
-      ask posn1 [
-        face posn2
-        create-interval-to posn2 [ ...
-
-will pick up locations 0 and 13 at first iteration, then 13 and 26, then 26 and 39 and so on. These pairs become the start and end nodes of an `interval` directed link, which effectively records the turn angles and distances in the aggregated walk, and also displays it.
-
-There are other ways to accomplish such stepping through the aggregated walk at the specified interval. This approach makes use of NetLogo list creation, manipulation and iteration in ways that it is useful to develop some familiarity with.
-
-## THINGS TO TRY
-
-Experiment with the `aggregation-length` setting and observe how even low sinuosity walks (those with `st-dev-angle` set to <10) begin to appear similar to simple random walks when a high `aggregation-length` is used.
+The most complicated procedure is the tagging of connected clusters of occupied patches in the `identify-clusters` procedure. This code (or variants of it) reappears in many of the models in chapter 5, so it is advisable to follow it carefully.
 
 ## HOW TO CITE
 
@@ -311,7 +405,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-201 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -614,6 +708,15 @@ NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="cluster-size-vs-p" repetitions="10" runMetricsEveryStep="false">
+    <go>go</go>
+    <timeLimit steps="1"/>
+    <metric>mean-size</metric>
+    <metric>prop-spanning</metric>
+    <steppedValueSet variable="p" first="0.5" step="0.001" last="0.7"/>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
