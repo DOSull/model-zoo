@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -94,8 +94,8 @@ end
 GRAPHICS-WINDOW
 81
 10
-491
-441
+489
+419
 -1
 -1
 2.0
@@ -206,7 +206,7 @@ You should consult Chapter 3 of that book for more information and details of th
 
 This model does not use the `particle-type` patch variable approach of the previous three interacting particle system models [basic contact process](https://github.com/DOSull/model-zoo/blob/master/base-models/3.4-BasicContactProcess2D.nlogo), [competing contact process](https://github.com/DOSull/model-zoo/blob/master/base-models/3.5-CompetingContactProcess2D.nlogo), and [grass-bushes-trees succession](https://github.com/DOSull/model-zoo/blob/master/base-models/3.6-simple-grass-brush-trees.nlogo).
 
-Instead, we use the patch `pcolor` to store the current particle type. This is accompanied with a `beats?` reporter to express the `red` > `yellow` > `blue` > `red` succession rule in a nice 'Netlogo-esque':
+Instead, we use the patch `pcolor` to store the current particle type. This is accompanied with a `beats?` reporter to express the `red` > `yellow` > `blue` > `red` succession rule in a nice 'Netlogo-esque' way:
 
     to-report beats? [target-patch]
       if pcolor = red [
@@ -248,7 +248,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -546,9 +546,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -564,7 +563,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

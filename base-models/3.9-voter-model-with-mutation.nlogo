@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -79,7 +79,7 @@ to reorganise-states
     ]
   ]
   clear-output
-  output-print reduce [(word ?1 "\n" ?2)] lput "" sort [who] of states
+  output-print reduce [ [s1 s2] -> (word s1 "\n" s2) ] lput "" sort [who] of states
 end
 
 
@@ -91,7 +91,7 @@ to update-state
     stop ;; don't waste time testing for other choices
   ]
   if choice = 2 [ ;; non-local update
-    set my-state [my-state] of random-other-patch
+    set my-state [my-state] of one-of patches with [ not (self = myself) ]
     stop
   ]
   if choice = 3 [ ;; mutation
@@ -114,17 +114,6 @@ to-report get-weighted-choice
 end
 
 
-;; report a random patch other than the specified one
-;; for some reason, this is quicker than one-of other patches
-to-report random-other-patch
-  let p self
-  while [p = self] [ ;; try again
-    set p one-of patches
-  ]
-  report p
-end
-
-
 ;; plotting code if needed
 ;to r-plot-world
 ;  reorganise-states
@@ -141,8 +130,8 @@ end
 GRAPHICS-WINDOW
 156
 10
-565
-440
+563
+418
 -1
 -1
 3.0
@@ -208,7 +197,7 @@ initial-n-states
 initial-n-states
 2
 16
-6
+6.0
 1
 1
 NIL
@@ -299,7 +288,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 2 -16777216 false "" "if enable-plot? [\nforeach sort turtles [\nset-plot-pen-color [color] of ?\nplotxy ticks count patches with [my-state = ?]\n]\n]"
+"default" 1.0 2 -16777216 false "" "if enable-plot? [\nforeach sort turtles [ ?1 ->\nset-plot-pen-color [color] of ?1\nplotxy ticks count patches with [my-state = ?1]\n ]\n]"
 
 SWITCH
 575
@@ -650,9 +639,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -668,7 +656,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
