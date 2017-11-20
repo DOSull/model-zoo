@@ -17,3 +17,8 @@ Models are being slowly updated, to add more information about how they work and
 A 'frozen' final release of these folders compatible with NetLogo 5.3 was created on 18 November, 2017, and is found here.  
 
 The most current code in `base-models` and `using-R` aims to be compatible with the current version of NetLogo.
+
+## Current status
+Models in `base-models` should work with NetLogo 6.x.
+
+Models in `using-R` have not yet been updated from NetLogo 5.x. Hope to get to this soon!
