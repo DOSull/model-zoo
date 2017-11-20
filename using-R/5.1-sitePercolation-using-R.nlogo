@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,7 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions[r profiler]
+extensions[r]
 
 globals [
   cluster-size        ;; list of size of each occupied cluster, length is cluster-count - 1
@@ -65,14 +65,14 @@ to setup
   reset-ticks
 end
 
-to tag
+to go
   set spanning-present? false
 
   identify-clusters
   tag-largest-cluster
   set mean-size typical-cluster-size
 
-  set log-cluster-size map [log ? 10] cluster-size ;-occupied
+  set log-cluster-size map [ cs -> log cs 10 ] cluster-size ;-occupied
   histogram log-cluster-size
 end
 
@@ -131,7 +131,7 @@ to identify-clusters
         set spanning-present? true
       ]
     ]
-    set all-to-tag filter [[cluster-id] of ? = -1] all-to-tag
+    set all-to-tag filter [ tt -> [cluster-id] of tt = -1 ] all-to-tag
     tick
   ]
   ;; restore the colours
@@ -159,7 +159,7 @@ to-report typical-cluster-size
   ;; mean cluster size is calcualted without the spanning cluster and without bkgd and is size weighted
   ;; basically the typical size cluster that a rnd selected site will belong too
   ;; so make a list of the cluster-size of each occupied, non-spanning cluster patch one entry per patch
-  let weighted-list map [item ([cluster-id] of ?) cluster-size] sort (patches with [occupied? and not spanning?])
+  let weighted-list map [ ptch -> item ([cluster-id] of ptch) cluster-size ] sort (patches with [occupied? and not spanning?])
   ;; mean of this list is the required weighted cluster size mean
   report mean weighted-list
 end
@@ -169,7 +169,7 @@ to r-hist-cs
   let s reverse sort cluster-size
   r:put "s" s
 
-  let cs map [count-gte s ?] remove-duplicates s
+  let cs map [ x -> count-gte s x ] remove-duplicates s
   r:put "cs" cs
 
   r:eval("s <- unique(s)")
@@ -178,7 +178,7 @@ end
 
 ;; reports the number of items in list lst that are >= x
 to-report count-gte [lst x]
-  report length filter [? >= x] lst
+  report length filter [ y -> y >= x ] lst
 end
 
 ;; plot lattice in R
@@ -186,7 +186,7 @@ to lattice-to-R
   r:put "nr" world-height
   r:put "nc" world-width
 
-  r:put "z" map [[occupied?] of ?] sort patches
+  r:put "z" map [ ptch -> [occupied?] of ptch ] sort patches
   r:eval("z <-matrix(z, nrow=nr, ncol=nc)")
   r:eval("image(z, col = c('black', 'white'), asp = 1)")
 end
@@ -198,7 +198,7 @@ to largest-to-r
   r:put "nr" world-height
   r:put "nc" world-width
 
-  r:put "z" map [[r-num-code] of ?] sort patches
+  r:put "z" map [ ptch -> [r-num-code] of ptch ] sort patches
   r:eval("z <-matrix(z, nrow=nr, ncol=nc)")
   r:eval("image(z, col = c('black', 'white', 'red'), asp = 1)")
 end
@@ -211,22 +211,12 @@ to code-for-r
     if occupied? = true and largest? = true [set r-num-code 2]
   ]
 end
-
-
-to profile
-  setup                  ;; set up the model
-  profiler:start         ;; start profiling
-  tag                    ;; run something you want to measure
-  profiler:stop          ;; stop profiling
-  print profiler:report  ;; view the results
-  profiler:reset         ;; clear the data
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-670
-491
+668
+469
 -1
 -1
 2.0
@@ -459,8 +449,8 @@ BUTTON
 154
 194
 187
-NIL
 tag
+go
 NIL
 1
 T
@@ -484,43 +474,19 @@ This plot is not very useful - the R-size-dist option is better
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model is an implementation of Conway's game of life.  See:
-
-+    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway�s new solitaire game �life�. _Scientific American_ **223**, 120�123.
-
-This is an example model referenced in Chapter 1 of
+This model demonstrates site percolation and as discussed in Chapter 5 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
 
-## HOW IT WORKS
-
-This section could explain what rules the agents use to create the overall behavior of the model.
-
-## HOW TO USE IT
-
-This section could explain how to use the model, including a description of each of the items in the interface tab.
+An alternative version of this model that uses the R-netlogo extension is available and provides a better plot of the cluster size distribution.
 
 ## THINGS TO NOTICE
 
-This section could give some ideas of things for the user to notice while running the model.
+The code comments give a good overview of how the model works.
 
-## THINGS TO TRY
-
-This section could give some ideas of things for the user to try to do (move sliders, switches, etc.) with the model.
-
-## EXTENDING THE MODEL
-
-This section could give some ideas of things to add or change in the procedures tab to make the model more complicated, detailed, accurate, etc.
-
-## NETLOGO FEATURES
-
-This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab.  It might also point out places where workarounds were needed because of missing features.
-
-## RELATED MODELS
-
-This section could give the names of models in the NetLogo Models Library or elsewhere which are of related interest.
+The most complicated procedure is the tagging of connected clusters of occupied patches in the `identify-clusters` procedure. This code (or variants of it) reappears in many of the models in chapter 5, so it is advisable to follow it carefully.
 
 ## HOW TO CITE
 
@@ -533,7 +499,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -831,9 +797,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -843,7 +808,7 @@ NetLogo 5.3
     <timeLimit steps="1"/>
     <metric>mean-size</metric>
     <metric>prop-spanning</metric>
-    <steppedValueSet variable="p" first="0.5" step="0.001" last="0.7"/>
+    <steppedValueSet variable="p" first="0.5" step="0.001" last="0.68"/>
   </experiment>
 </experiments>
 @#$#@#$#@
@@ -858,7 +823,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

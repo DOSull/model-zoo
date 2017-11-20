@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,7 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [gradient r]
+extensions [palette r]
 
 patches-own
 [
@@ -82,7 +82,7 @@ to plot-intensity
  ]
 
  ask patches [
-   set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ] lambda max-lambda 0
+   set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207]] lambda max-lambda 0
  ]
 
 end
@@ -206,17 +206,17 @@ to plot-K
 
 
 ;  ;; combine results into a multidimensional list for plotting
-  let ripley (map [(list ?1 ?2 ?3)] r k theo)
+  let ripley (map [ [ri ki theoretical] -> (list ri ki theoretical) ] r k theo)
 ;
 ;  ;; plot the results
   clear-plot
   foreach ripley
-  [
+  [ rkt ->
     set-current-plot "Ripley's K"
     set-current-plot-pen "K(r)"
-    plotxy (item 0 ?) (item 1 ?)
+    plotxy (item 0 rkt) (item 1 rkt)
     set-current-plot-pen "theo"
-    plotxy (item 0 ?) (item 2 ?)
+    plotxy (item 0 rkt) (item 2 rkt)
   ]
 
 end
@@ -226,14 +226,12 @@ to-report xy-bounds-check [cx cy]
   report cx > 0 and cx <= max-pxcor and cy > 0 and cy <= max-pycor
 
 end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-720
-541
+718
+519
 -1
 -1
 5.0
@@ -265,7 +263,7 @@ n
 n
 1
 1000
-300
+301.0
 1
 1
 NIL
@@ -297,7 +295,7 @@ resolution
 resolution
 1
 200
-100
+100.0
 1
 1
 NIL
@@ -400,7 +398,7 @@ n-clusters
 n-clusters
 0
 100
-10
+10.0
 1
 1
 NIL
@@ -476,7 +474,7 @@ smooth
 smooth
 1
 50
-50
+50.0
 1
 1
 NIL
@@ -490,7 +488,7 @@ CHOOSER
 cluster-type
 cluster-type
 "matern" "thomas"
-0
+1
 
 SLIDER
 18
@@ -508,12 +506,12 @@ NIL
 HORIZONTAL
 
 BUTTON
-348
-595
-472
-628
+758
+21
+882
+54
 remove 'parents'
-ask turtles with [component != \"offspring-1\"] \n [die]
+ask turtles with [component != \"offspring-1\"]\n [die]
 NIL
 1
 T
@@ -527,44 +525,11 @@ NIL
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model is an implementation of Conway's game of life.  See:
-
-+    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway�s new solitaire game �life�. _Scientific American_ **223**, 120�123.
-
-This is an example model referenced in Chapter 1 of
+This model is an implementation of complete spatial randomness (CSR) or the _independent random process_ for a spatial point pattern and is discussed in Chapter 2 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
-
-
-## HOW IT WORKS
-
-(what rules the agents use to create the overall behavior of the model)
-
-## HOW TO USE IT
-
-(how to use the model, including a description of each of the items in the Interface tab)
-
-## THINGS TO NOTICE
-
-(suggested things for the user to notice while running the model)
-
-## THINGS TO TRY
-
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
-
-## EXTENDING THE MODEL
-
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
-
-## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
 
 ## HOW TO CITE
 
@@ -577,7 +542,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -875,9 +840,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -893,7 +857,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

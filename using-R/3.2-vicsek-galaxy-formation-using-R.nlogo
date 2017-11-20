@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -90,7 +90,7 @@ end
 
 ;; R plotting code
 to r-plot-world
-  let z map [[get-value] of ?] sort patches
+  let z map [ p -> [get-value] of p ] sort patches
   r:put "z" z
   r:put "nc" world-width
   r:put "nr" world-height
@@ -108,8 +108,8 @@ end
 GRAPHICS-WINDOW
 210
 10
-620
-441
+618
+419
 -1
 -1
 4.0
@@ -141,7 +141,7 @@ A
 A
 -1
 5
-4
+3.2
 0.1
 1
 NIL
@@ -236,10 +236,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-38
-399
-148
-432
+49
+386
+159
+419
 NIL
 r-plot-world
 NIL
@@ -277,20 +277,24 @@ The code in this model is straightforward, but it uses some common 'tricks' pick
 
 + the `random-choices` global makes for a simple way to generate a random value that is either +1 or -1
 + the `next-x` patch variable is used so that all patches can determine their next value simultaneously and then update synchronously
-+ in the `update-display` procedure note how the maximum and minimum `x` values are determined outside the `ask patches` block.  This is because the same range of values is applied to scale the colour of all patches, and it slows the model down a lot if you do this calculation every time for each patch (i.e., inside the `ask patches` block). In other words, this code
++ in the `update-display` procedure note how the maximum and minimum `x` values are determined outside the `ask patches` block.  This is because the same range of values is applied to scale the colour of all patches, and it slows the model down a lot if you do this calculation every time for each patch (i.e., inside the `ask patches` block). 
 
 
-      let mn-x min [x] of patches
-      let mx-x max [x] of patches
-      ask patches [
-        set pcolor scale-color black x mx-x mn-x
-      ]
+The last point is worth emphasizing.  It means that the code
+
+    let mn-x min [x] of patches
+    let mx-x max [x] of patches
+    ask patches [
+      set pcolor scale-color black x mx-x mn-x
+    ]
 
 is much quicker than the more intuitive
 
-      ask patches [
-        set pcolor scale-color black x (max [x] of patches) (min [x] of patches)
-      ]
+    ask patches [
+      set pcolor scale-color black x (max [x] of patches) (min [x] of patches)
+    ]
+
+You will see this elsewhere in the models in the 'zoo'.
 
 ## HOW TO CITE
 
@@ -304,7 +308,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -602,9 +606,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -620,7 +623,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

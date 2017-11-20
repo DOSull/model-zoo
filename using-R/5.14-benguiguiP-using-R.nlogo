@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,7 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [gradient r]
+extensions [palette r]
 __includes["5.x-r-clusters.nls"]
 
 globals
@@ -123,14 +123,14 @@ end
 to colour-by-time
   ask patches with [occupied?]
   [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
+    set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
   ]
 end
 
 to colour-by-visits
   ask perimeter-set
   [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  attempts 0 m
+    set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207] ]  attempts 0 m
   ]
 end
 
@@ -151,8 +151,8 @@ end
 GRAPHICS-WINDOW
 210
 10
-620
-441
+618
+419
 -1
 -1
 2.0
@@ -270,7 +270,7 @@ m
 m
 0
 20
-20
+20.0
 1
 1
 NIL
@@ -354,7 +354,7 @@ BUTTON
 176
 221
 NIL
-colour-by-visits\n
+colour-by-visits
 NIL
 1
 T
@@ -374,7 +374,7 @@ N
 N
 500
 5000
-2500
+2500.0
 50
 1
 NIL
@@ -406,7 +406,7 @@ n-slices
 n-slices
 1
 12
-6
+6.0
 1
 1
 NIL
@@ -421,7 +421,7 @@ max-time-slice
 max-time-slice
 500
 10000
-2748
+2748.0
 500
 1
 NIL
@@ -456,7 +456,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -754,9 +754,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -772,7 +771,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

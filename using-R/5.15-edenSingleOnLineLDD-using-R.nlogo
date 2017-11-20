@@ -22,7 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [r gradient]
+extensions [r palette]
 __includes["5.x-r-clusters.nls"]
 
 globals
@@ -171,7 +171,7 @@ end
 to colour-by-time
   ask patches with [occupied?]
   [
-    set pcolor gradient:scale [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
+    set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
   ]
 end
 

@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person 
 ;; obtaining a copy of this software and associated documentation 
@@ -62,7 +62,7 @@ to r-density-plot
 end
 
 to r-rms-d-plot
-  let tick-vals n-values (ticks + 1) [?] 
+  let tick-vals range (ticks + 1) 
   r:put "tickvals" tick-vals
   r:eval("t <- tickvals")
   ask one-of turtles [
@@ -84,7 +84,7 @@ to r-rms-d-plot
 end
 
 to r-rms-d-log-plot
-  let tick-vals but-first n-values (ticks + 1) [?] 
+  let tick-vals but-first range (ticks + 1) 
   r:put "tickvals" tick-vals
   r:put "dmax" max [sqrt (real_x ^ 2 + real_y ^ 2)] of turtles
   r:eval("t <- tickvals")

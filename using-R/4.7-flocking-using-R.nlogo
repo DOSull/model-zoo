@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -59,7 +59,7 @@ to setup
 
   ask patches [
     set pcolor white
-    set locale (patch-set self (patches in-radius range))
+    set locale (patch-set self (patches in-radius near-range))
   ]
   set-default-shape turtles "default"
   set-default-shape tails "line"
@@ -96,8 +96,8 @@ to update-tail
     ]
     set my-tail fput latest my-tail
     ;; now kill any tail turtles surplus to the current tail-length requirement
-    foreach sublist my-tail (min list tail-length length my-tail) (length my-tail) [
-      ask ? [ die ]
+    foreach sublist my-tail (min list tail-length length my-tail) (length my-tail) [ t ->
+      ask t [ die ]
     ]
     ;; finally update my-tail
     ;; this avoids it filling up with dead tail turtles
@@ -204,13 +204,13 @@ to-report inner-ring
   let ring []
   let pie-angle 360 / sectors-to-check
   let range-headings list 0 pie-angle
-  let in-cone-candidates other local-flockers with [in-field-of-view? myself self range (view-angle / 2)]
+  let in-cone-candidates other local-flockers with [in-field-of-view? myself self near-range (view-angle / 2)]
   repeat sectors-to-check [
     let candidates in-cone-candidates with [between? range-headings norm-heading (180 + (pie-angle / 2) + towards myself)]
     if any? candidates [
       set ring fput (first sort-on [distance myself] candidates) ring
     ]
-    set range-headings map [? + pie-angle] range-headings
+    set range-headings map [ rh -> rh + pie-angle ] range-headings
   ]
   report ring
 end
@@ -254,8 +254,8 @@ end
 
 ;; sends a snapshot to R of the current flock
 to snapshot-R
-  r:put "mx" map [[xcor] of ?] sort flockers
-  r:put "my" map [[ycor] of ?] sort flockers
+  r:put "mx" map [ f -> [xcor] of f ] sort flockers
+  r:put "my" map [ f -> [ycor] of f ] sort flockers
   r:put "x_min" min-pxcor
   r:put "x_max" max-pxcor
   r:put "y_min" min-pycor
@@ -268,9 +268,9 @@ to snapshot-R
   ask flockers [
     let memory-x (list xcor)
     let memory-y (list ycor)
-    foreach my-tail [
-      let x-inc [speed * dx] of ?
-      let y-inc [speed * dy] of ?
+    foreach my-tail [ t ->
+      let x-inc [speed * dx] of t
+      let y-inc [speed * dy] of t
       set memory-x lput (last memory-x - x-inc) memory-x
       set memory-y lput (last memory-y - y-inc) memory-y
     ]
@@ -290,17 +290,17 @@ to triangulate
 ;  let guardzone-x2 sort flockers with [xcor > max-pxcor]
 ;  let guardzone-y1 sort flockers with [ycor < min-pycor]
 ;  let guardzone-y2 sort flockers with [ycor > max-pycor]
-  let ids (sentence (map [[who] of ?] sort flockers))
+  let ids (sentence (map [ f -> [who] of f ] sort flockers))
 ;                    (map [[who] of ?] guardzone-x1)
 ;                    (map [[who] of ?] guardzone-x2)
 ;                    (map [[who] of ?] guardzone-y1)
 ;                    (map [[who] of ?] guardzone-y2))
-  let x (sentence (map [[xcor] of ?] sort flockers))
+  let x (sentence (map [ f -> [xcor] of f ] sort flockers))
 ;                  (map [[xcor] of ? + world-width] guardzone-x1)
 ;                  (map [[xcor] of ? - world-width] guardzone-x2)
 ;                  (map [[xcor] of ?] guardzone-y1)
 ;                  (map [[xcor] of ?] guardzone-y2))
-  let y (sentence (map [[ycor] of ?] sort flockers))
+  let y (sentence (map [ f -> [ycor] of f ] sort flockers))
 ;                  (map [[ycor] of ?] guardzone-x1)
 ;                  (map [[ycor] of ?] guardzone-x2)
 ;                  (map [[ycor] of ? + world-height] guardzone-y1)
@@ -314,26 +314,24 @@ to triangulate
   r:eval("pp <- ppp(x,y,window=owin(c(min_x,max_x),c(min_y,max_y)))")
   r:eval("dt <- deldir(pp)")
   ask flockers [ set flock-mates (turtle-set nobody) ]
-  let froms map [? - 1] r:get "dt$delsgs[,5]"
-  let tos map [? - 1] r:get "dt$delsgs[,6]"
-  (foreach froms tos [
-      if ?1 != ?2 [
-        ask flocker item ?1 ids [
-          if distance flocker item ?2 ids < range [
-            set flock-mates (turtle-set flock-mates (flocker item ?2 ids))
+  let froms map [ f -> f - 1 ] r:get "dt$delsgs[,5]"
+  let tos map [ t -> t - 1 ] r:get "dt$delsgs[,6]"
+  (foreach froms tos [ [f t] ->
+      if f != t [
+        ask flocker item f ids [
+          if distance flocker item t ids < near-range [
+            set flock-mates (turtle-set flock-mates (flocker item t ids))
           ]
         ]
       ]
   ])
 end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 185
 10
-620
-466
+618
+444
 -1
 -1
 17.0
@@ -461,7 +459,7 @@ tail-length
 tail-length
 0
 10
-5
+5.0
 1
 1
 NIL
@@ -476,7 +474,7 @@ view-angle
 view-angle
 5
 360
-205
+205.0
 5
 1
 NIL
@@ -491,7 +489,7 @@ sectors-to-check
 sectors-to-check
 2
 12
-6
+6.0
 1
 1
 NIL
@@ -652,7 +650,7 @@ CHOOSER
 flock-mates-method
 flock-mates-method
 "near" "lattice" "delaunay"
-2
+0
 
 TEXTBOX
 810
@@ -669,11 +667,11 @@ SLIDER
 106
 802
 139
-range
-range
+near-range
+near-range
 preferred-distance
 5
-1
+1.0
 0.1
 1
 NIL
@@ -726,7 +724,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-2018 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -1024,9 +1022,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -1042,7 +1039,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

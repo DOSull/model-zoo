@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person 
 ;; obtaining a copy of this software and associated documentation 
@@ -32,7 +32,7 @@ to cluster-to-r [grey-levels]
   r:put "nr" world-height
   r:put "nc" world-width
   
-  r:put "z" map [[t-colonised] of ?] reverse sort patches
+  r:put "z" map [ p -> [t-colonised] of p ] reverse sort patches
   
   r:put "n" grey-levels
   
@@ -51,7 +51,7 @@ to cluster-to-r-bw
   r:put "nr" world-height
   r:put "nc" world-width
   
-  r:put "z" map [[t-colonised] of ?] reverse sort patches
+  r:put "z" map [ p -> [t-colonised] of p ] reverse sort patches
   
   r:eval("z <- (matrix(z, nrow=nr, ncol=nc, byrow = TRUE))")
   r:eval("z <- rot90(z)")
@@ -67,7 +67,7 @@ to cluster-ts-to-r
   r:put "nr" world-height
   r:put "nc" world-width
   
-  r:put "z.raw" map [[t-colonised] of ?] reverse sort patches
+  r:put "z.raw" map [ p -> [t-colonised] of p ] reverse sort patches
   ; r:put "max.z" max [occupied?] of patches
   
   r:eval("grey.ramp <- grey((0:7)/8)")
@@ -80,11 +80,11 @@ to cluster-ts-to-r
   r:put "n.col" mf-cols 
   r:eval("par(mfrow=c(3, n.col))")    
   
-  let slices n-values n-slices [(? + 1) * floor(max-time-slice / n-slices)]
+  let slices n-values n-slices [ i -> (i + 1) * floor(max-time-slice / n-slices)]
   
   foreach slices
-  [
-    r:put "t" ?
+  [ slice -> 
+    r:put "t" slice
     r:eval("z <- ifelse(z.raw < 0 | z.raw > t, NA, z.raw)")
     r:eval("image(z, col = grey.ramp, asp = 1, xaxt = 'n', yaxt = 'n', main = paste('Time = ', t))")
   ]
@@ -94,7 +94,7 @@ to edge-to-r
   r:put "nr" world-height
   r:put "nc" world-width
   
-  r:put "z" map [[member? ? perimeter-set  ] of ?] reverse sort patches
+  r:put "z" map [ p -> [member? p perimeter-set] of p ] reverse sort patches
   r:eval("z <-matrix(z, nrow=nr, ncol=nc)")
   
   r:eval("image(z, col = c('white', 'black'), asp = 1, xaxt = 'n', yaxt = 'n')")
