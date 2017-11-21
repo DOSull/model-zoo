@@ -44,12 +44,11 @@ patches-own [
   NX                     ;; the four diagonal neighbours
 ]
 
+
 to setup
   clear-all
 
-  ifelse gradient? = false
-  [ random-field ]
-  [ gradient-field ]
+  random-field
 
   set min-field min [p] of patches
   set max-field max [p] of patches
@@ -67,25 +66,34 @@ to setup
     set invaded? true
     set pcolor grey
   ]
+  reset-ticks
+
   ;; max-x maintains for each pycor the max invaded pxcor in that row
   set max-x (sentence max-pxcor n-values (max-pycor - 1) [min-pxcor] max-pxcor)
+
   ;; max-y and min-y maintain for each pxcor the region inside the invading cluster
   set max-y n-values world-width [min-pycor]
   set min-y n-values world-width [max-pycor]
-  set next-to-invade sort patches with [pxcor = 0 and pycor > min-pycor and pycor < max-pycor] with-min [p]
-  set last-invaded first next-to-invade
 
-  reset-ticks
+  set next-to-invade sort patches with [pxcor = 0 and pycor > min-pycor and pycor < max-pycor] with-min [p]
+
+  set last-invaded first next-to-invade
+  set next-to-invade but-first next-to-invade
+  ask last-invaded [set pcolor violet]
   update-patch-states
 end
 
+
 to go
-  ;; only check for completion
+  ask last-invaded [set pcolor white]
+
+  ;; check for completion
   if [pxcor] of last-invaded = max-pxcor [stop]
 
-  ask last-invaded [set pcolor white]
   ;; invade the next patch
   set last-invaded first next-to-invade
+  ;; remove the last-invaded
+  set next-to-invade but-first next-to-invade
   update-patch-states
 
   ; check for traps?
@@ -95,35 +103,33 @@ to go
   tick
 end
 
+
 ;; do book keeping on patch state variables
 to update-patch-states
   ask last-invaded [
-    set time-invaded ticks
-    set pcolor red
+    set pcolor violet
     set invaded? true
+    set time-invaded ticks
     update-extent-lists pxcor pycor
   ]
-  ;; remove the last-invaded
   ifelse stochastic? [
-    ;; update the list of next patches to invade
-    set next-to-invade but-first next-to-invade ;; remove the last-invaded
     ;; add any uninvaded possible successors of the last-invaded
-    set next-to-invade (patch-set next-to-invade ([possible-successors] of last-invaded) with [not invaded?])
+    set next-to-invade (patch-set next-to-invade ([possible-successors] of last-invaded) with [not member? self next-to-invade and not invaded?])
     ;; stochastic update
     ask next-to-invade [ set p p + random-float-bnd (-1 * stochastic-shift) stochastic-shift ]
     ;; sort by the random-variable
     set next-to-invade sort-by [ [patch1 patch2] -> [p] of patch1 < [p] of patch2 ] next-to-invade
   ]
   [
-    set next-to-invade but-first next-to-invade
     ; insert the new possible sites while maintaining sort order
     ask last-invaded [
-      ask possible-successors with [not invaded?] [
+      ask possible-successors with [not member? self next-to-invade and not invaded?] [
         set next-to-invade insert-in-order next-to-invade self
       ]
     ]
   ]
 end
+
 
 ;; reports a list with patch x inserted in list of patches lst
 ;; while maintaining it in sorted order by p value
@@ -132,6 +138,7 @@ to-report insert-in-order [lst x]
   let posn length filter [ ptch -> [p] of ptch < [p] of x ] lst
   report (sentence (sublist lst 0 posn) x (sublist lst posn (length lst)))
 end
+
 
 ;; NOTE dependency on x,y coord 0 0 at origin...
 to update-extent-lists [x y]
@@ -152,6 +159,7 @@ to update-extent-lists [x y]
     set min-y replace-item x min-y y
   ]
 end
+
 
 ;; tagging the traps associated with possible closure sites
 to tag-traps [poss-closes]
@@ -179,18 +187,15 @@ to tag-traps [poss-closes]
       set this-trap next-this-trap
     ]
     ifelse escaped? [ ;; then undo the tagging
-      ask clean-up [
-        set invaded? false
-      ]
+      ask clean-up [ set invaded? false ]
     ]
     [ ;; else colour grey and remove from the next-to-invade list
-      ask clean-up [
-        set pcolor grey - 2
-      ]
-      set next-to-invade filter [ ?1 -> [not invaded?] of ?1 ] next-to-invade
+      ask clean-up [ set pcolor cyan - 2 ]
+      set next-to-invade filter [ ptch -> [not invaded?] of ptch ] next-to-invade
     ]
   ]
 end
+
 
 ;; reports seed locations for possible traps arising from
 ;; the current last-invaded and the supplied list of neighbouring
@@ -211,12 +216,14 @@ to-report trap-seed-patches [sites]
   report trap-seeds
 end
 
+
 ;; Colour each patch by its p (underlying random field) value
 to colour-field
   ask patches with [not invaded?] [
-    set pcolor palette:scale-scheme "Sequential" "BuGn" 3 p 0 1
+    set pcolor palette:scale-scheme "Sequential" "Blues" 3 p 0 1
   ]
 end
+
 
 to colour-by-time
   ask patches with [time-invaded > -1] [
@@ -224,20 +231,11 @@ to colour-by-time
   ]
 end
 
+
 to random-field
   ask patches [set p random-float 1]
 end
 
-;; the gradient is a Gaussian with mean a function of the ycor (0 to 1) with SD 5
-to gradient-field
-   ask patches [
-     set p random-normal (pycor / max-pycor) 1
-   ]
-   let scalar-p abs min [p] of patches
-   ask patches [
-     set p p + scalar-p
-   ]
-end
 
 to-report random-float-bnd [a b]
   report random-float (b - a) + a
@@ -264,8 +262,8 @@ GRAPHICS-WINDOW
 639
 0
 319
-1
-1
+0
+0
 1
 ticks
 100.0
@@ -371,10 +369,10 @@ NIL
 1
 
 MONITOR
-738
-364
-828
-409
+754
+317
+844
+362
 invasion-front
 length next-to-invade
 0
@@ -382,10 +380,10 @@ length next-to-invade
 11
 
 SWITCH
-740
-282
-854
-315
+756
+235
+870
+268
 trapping?
 trapping?
 0
@@ -403,10 +401,10 @@ Set view updates to continuous or if it is set to 'on ticks' then make sure the 
 1
 
 BUTTON
-739
-238
-860
-271
+755
+191
+876
+224
 colour-by-time
 colour-by-time
 NIL
@@ -420,21 +418,10 @@ NIL
 1
 
 SWITCH
-745
-161
-853
-194
-gradient?
-gradient?
-1
-1
--1000
-
-SWITCH
-745
-60
-862
-93
+758
+56
+875
+89
 stochastic?
 stochastic?
 1
@@ -442,10 +429,10 @@ stochastic?
 -1000
 
 SLIDER
-745
-21
-878
-54
+758
+17
+891
+50
 stochastic-shift
 stochastic-shift
 0
@@ -457,10 +444,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-741
-202
-859
-235
+757
+155
+875
+188
 NIL
 colour-field
 NIL
@@ -474,20 +461,20 @@ NIL
 1
 
 TEXTBOX
-748
-94
-898
-149
+761
+90
+911
+145
 Note: this GREATLY slows the process, esp. if there is no trapping.  Go and get a coffee.
 11
 15.0
 1
 
 TEXTBOX
-742
-323
-892
-353
+758
+276
+908
+306
 Will run a lot slower with trapping OFF.
 11
 15.0
@@ -501,6 +488,39 @@ This model simulates _invasion percolation_ as discussed in Chapter 5 of
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
+
+## INVASION PERCOLATION
+
+Invasion percolation (IP) is a much less well known form of percolation than site percolation as portrayed in previou Chapter 5 models.
+
+The process is as follows:
+
++ a grid is initialized with random values
++ the location with the lowest value on the left hand edge of the space is designated the *invasion front*
++ non-invaded locations adjacent to the front to the right or above and below cells in the front are invasible, and the site with the lowest value is invaded, and added to the front 
+
+The last step is repeated until the invasion front reaches the right hand edge of the space.
+
+One wrinkle is *trapping* when a set of grid cells are cut off from a path to the right hand edge. If trapped locations are not identified then a model run can take a very long time while trapped locations are invaded, with no prospect of the invasion front reaching the right hand edge from such starting points. This is controlled in the model with the **trapping?** switch.  It is recommended this switch generally be set **on**.
+
+It may help to understand the process if you change the world dimensions to 160 wide by 80 high and the patch size to 4, then run the model with the update set to 'On ticks'.  If necessary slow it down.  You might also stop it occasionally and enter
+
+    (foreach next-to-invade range length next-to-invade [[x i] -> ask x [set plabel i]])
+
+This will label all the patches in the 'queue' to be invaded next (from lowest value to highest). You will notice that the lower ones tend to be close to the current tip of the invasion (in red). This is because other locations in the queue have been 'paths not taken' previously and hence are likely to be in the higher range of the random field values.  This dynamic is what gives the process its characteristic multiple branching structure.
+
+## THINGS TO NOTICE
+
+The complicated part of this model is associated with detecting traps. The basic algorithm above is operated by maintaing a queue `next-to-invade`.  This is a list of patches next to already invaded patches (strictly north, south or east of invaded patches), that is kept ordered by the randomly generated `p` values assigned during model setup. Maintenance of the queue order is managed by the `insert-in-order` procedure.  By this mains the basic operation is
+
+    while not at right edge [
+      invade first patch in next-to-invade-list
+      add newly identified N/S/E neighbours of invasion to next-to-invade
+    ]
+
+The complication is trap detection.  Honestly, I have a hard time figuring it all out.  **YOU SHOULD ALWAYS DOCUMENT CODE WHEN YOU ARE WRITING IT!** But here is my thinking...
+
+**COMING SOON...**
 
 ## HOW TO CITE
 
