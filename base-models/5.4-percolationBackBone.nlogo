@@ -22,8 +22,6 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-breed [nodes node]
-
 patches-own [
   time-tag   ;; used during 'burning' to record distance
   occupied?  ;; patch is occupied by percolation
@@ -139,6 +137,7 @@ to find-backbone
   [
     user-message("No spanning cluster - stopping.")
   ]
+  ask turtles [ die ]
 end
 
 ;; reports a cell near one end of one of the edges
@@ -442,7 +441,7 @@ More recent work by
 
 proposes alternative algorithms. The latter has similarities to the code in our model 5.5. The former makes use of circuit analysis methods and departs substantially from the 'burning' procedure of the Hermann approach.
 
-Here we have remained fairly true to that inspiration.
+Here we have remained fairly true to the methods in Hermann et al. and Porto et al.
 
 The reporter `shortest-paths source targets pset` is key. This reporter returns all the patches that lie on all the shortest paths between a `source` patch and the first patch in the set of `targets` reached by burning, subject to the constraint that the patches must all be members of the supplied patch-set `pset`. The reporter works by 'burning' successive patches connected to the current `fire-front` and marking them with the time elapsed to reach them. When one or more of the `targets` has been reached, 'reverse burning' back to the source constrained to only patches closer to the source identifies the shortest paths.
 

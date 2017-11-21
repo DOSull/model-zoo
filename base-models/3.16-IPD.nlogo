@@ -23,7 +23,7 @@
 ;;
 
 
-extensions [profiler]
+extensions [palette]
 
 globals [
   rewards ;; a list of the returns to CC CD DC DD from
@@ -77,7 +77,6 @@ to setup
 
   ;; create players
   ask patches [
-    set pcolor grey
     sprout-players 1 [
       set shape "big-square"
       ifelse cage-fight!? [
@@ -112,19 +111,17 @@ end
 ;; lists of choices, which also store color, text-color,
 ;; and (in the 'who') an index number
 to make-strategies
-  let palette (list
-    black (violet - 2) (violet + 2) (red - 2)
-    (red + 3) brown orange (yellow - 2)
-    yellow (green - 3) (green - 1) (green + 2)
-    (sky - 2) (sky + 2) (grey - 1) white
-  )
+  let strategy-palette (sentence palette:scheme-colors "Qualitative" "Set1" 9
+                                 palette:scheme-colors "Qualitative" "Pastel1" 7)
+  ;; sort from darkest to lightest
+  set strategy-palette sort-by [ [c1 c2] -> sum c1 < sum c2 ] strategy-palette
   ;; text colors are black or white depending in brightness of the base color
-  let text-palette map [ ?1 -> ifelse-value (?1 mod 10 < 5) [white] [black] ] palette
+  let text-palette map [ c -> ifelse-value (mean c < 160) [white] [black] ] strategy-palette
 
   ;; now make 16 strategies
   create-strategies 16 [
     set choices strategy-from-number who
-    set color item who palette
+    set color item who strategy-palette
     set label-color item who text-palette
     set hidden? true
   ]
@@ -153,20 +150,23 @@ end
 
 ;; report the number of bits different between two bit lists
 to-report bits-difference [c1 c2]
-  let x (map [ [b1 b2] -> abs (b1 - b2) ] c1 c2)
-  report sum x
+  report sum (map [ [b1 b2] -> abs (b1 - b2) ] c1 c2)
 end
 
 
 ;; color and label turtles based on their current strategy
 to update-display
   ask players [
-    ;; color is that of the player's my-strategy turtle
+    ifelse random 10 < 3 and any? (other N5 with [ not (my-strategy = [my-strategy] of myself) ] ) [
+      set label [who] of my-strategy
+      set label-color [label-color] of my-strategy
+    ]
+    [ set label "" ]
+    ;; color is that of the player's strategy
     set color [color] of my-strategy
-    set label [who] of my-strategy
-    set label-color [label-color] of my-strategy
   ]
 end
+
 
 to initialize-game-previous-plays
   set previous-plays (list (one-of [choices] of [my-strategy] of player-1)
@@ -238,10 +238,9 @@ to update-strategy
   [ set my-strategy [my-strategy] of max-one-of N5 [sum recent-payoffs] ]
 end
 
-
+;; change to a linked strategy (i.e. one that is a single bit different
 to mutate
   set my-strategy one-of [link-neighbors] of my-strategy
-  ask my-games [ initialize-game-previous-plays ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -253,7 +252,7 @@ GRAPHICS-WINDOW
 -1
 8.0
 1
-6
+8
 1
 1
 1
@@ -348,45 +347,45 @@ TEXTBOX
 1
 
 INPUTBOX
-976
+1037
 32
-1036
+1087
 92
 C-C
-2.0
+4.0
 1
 0
 Number
 
 INPUTBOX
-1040
+1091
 31
-1096
+1141
 91
 C-D
-1.0
+0.0
 1
 0
 Number
 
 INPUTBOX
-976
-96
-1036
-156
+1037
+95
+1087
+155
 D-C
-3.0
+5.0
 1
 0
 Number
 
 INPUTBOX
-1041
+1092
 97
-1095
+1142
 157
 D-D
-0.0
+2.0
 1
 0
 Number
@@ -407,9 +406,9 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-968
+1019
 10
-1127
+1178
 28
 Pay off matrix, me-them
 11
@@ -417,41 +416,41 @@ Pay off matrix, me-them
 1
 
 TEXTBOX
-966
+985
 39
-981
+1038
 57
-R
+(R)eward
 11
 0.0
 1
 
 TEXTBOX
-1101
-39
-1116
+1147
+38
+1198
 57
-S
+(S)ucker
 11
 0.0
 1
 
 TEXTBOX
-965
-104
-980
-122
-T
-11
-0.0
-1
-
-TEXTBOX
-1100
-102
-1115
+961
+101
+1033
 120
-P
+(T)emptation
+11
+0.0
+1
+
+TEXTBOX
+1146
+101
+1223
+119
+(P)unishment
 11
 0.0
 1
@@ -547,7 +546,7 @@ strat-1
 strat-1
 0
 15
-4.0
+15.0
 1
 1
 NIL
@@ -562,7 +561,7 @@ strat-2
 strat-2
 0
 15
-7.0
+2.0
 1
 1
 NIL
@@ -574,7 +573,7 @@ BUTTON
 1133
 664
 color-cooperativity
-ask players [\n  set color scale-color green sum [choices] of my-strategy -1 5\n  ]
+ask players [\n  set color palette:scale-scheme \"Divergent\" \"PRGn\" 5 sum [choices] of my-strategy 4 0\n  ]
 NIL
 1
 T
@@ -596,7 +595,7 @@ See Chapter 3 of
 
 for a brief discussion.
 
-**NOTE that this model is substantial different from the one released at first publication. In particular, here players compete with all four neighbors every round, and it is the one-to-one games which 'remember' the previous play. The original model is available at the [github repository] (http://github.com/DOSull/model-zoo/blob/master/as-released/base-models/3.16-IPD.nlogo).
+***NOTE*** that this model is substantially different from the one released at first publication. In particular, here players compete with all four neighbors every round, and it is the one-to-one games which 'remember' the previous play. The original model is available at the [github repository] (http://github.com/DOSull/model-zoo/blob/master/as-released/base-models/3.16-IPD.nlogo).
 
 ## THINGS TO NOTICE
 

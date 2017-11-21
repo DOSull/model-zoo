@@ -23,10 +23,10 @@
 ;;
 
 globals [
-  fire-front
-  fire-size
-  forest-color
-  s ; stores the random-seed for behaviour space experiments
+  fire-front     ; the latest round of burning patches
+  fire-size      ; total aread burned by the current fire
+  forest-color   ;
+  s              ; stores the random-seed for behaviour space experiments
 ]
 
 to setup
@@ -42,36 +42,35 @@ to setup
   reset-ticks
 end
 
+
+;; a whole fire
 to go
-  if ticks = 0 [
-    ignite-fire
+  ask patches with [shade-of? orange pcolor] [set pcolor forest-color]
+  ignite-fire
+  while [any? fire-front] [
+    advance-fire
+    tick
   ]
-  ifelse any? fire-front [
-    fire-spread
-  ]
-  [ stop ]
-  tick
+  wait 0.1
+  reset-ticks
 end
 
 
 to ignite-fire
   set fire-size 0
   ask one-of patches with [pcolor = forest-color] [
-    set pcolor red
+    set pcolor orange + 2
     set fire-front patch-set self
   ]
 end
 
-to fire-spread
+to advance-fire
+  ask fire-front [set pcolor pcolor - 4]
   ;; Empty set of patches for the next 'round' of the fire
   let new-fire-front patch-set nobody
-
-  ask fire-front [
-    ask neighbors4 with [pcolor = forest-color] [
-      set new-fire-front (patch-set new-fire-front self)
-    ]
-  ]
-  ask new-fire-front [set pcolor red]
+  ;; advance into neighboring patches that are forested
+  set new-fire-front ((patch-set [neighbors4] of fire-front) with [pcolor = forest-color])
+  ask new-fire-front [set pcolor orange + 2]
   set fire-front new-fire-front
 end
 @#$#@#$#@
@@ -120,10 +119,10 @@ NIL
 1
 
 MONITOR
-104
-225
-175
-270
+101
+273
+172
+318
 Size
 count patches with [pcolor = red]
 0
@@ -131,28 +130,28 @@ count patches with [pcolor = red]
 11
 
 SLIDER
-18
-182
-190
-215
+15
+230
+187
+263
 p
 p
-0
-1
-0.59
+0.25
+0.75
+0.57
 .01
 1
 NIL
 HORIZONTAL
 
 BUTTON
+74
 115
-115
-178
+179
 148
-NIL
+one-fire
 go
-T
+NIL
 1
 T
 OBSERVER
@@ -163,13 +162,13 @@ NIL
 1
 
 BUTTON
-116
-73
+74
+156
 179
-106
-step
+189
+repeat-fires
 go
-NIL
+T
 1
 T
 OBSERVER
@@ -187,6 +186,10 @@ This model is a simple percolation-based model of fire spread (or any other cont
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
+
+## THINGS TO NOTICE
+
+This model has been reorganised slightly so you can trigger a single fire or let it repeatedly produce one fire after another in the same system. There is a good opportunity here to see how the NetLogo screen update method can be used to advantage. In 'continuous' mode, the fires appear rapidly and continuously. In 'ticks' mode you see how the fires spread. The marked difference in the apparent speed of the model is entirely due to how NetLogo is handling screen updates. An important lesson in paying attention to this aspect of model design!
 
 ## HOW TO CITE
 
@@ -497,7 +500,8 @@ NetLogo 6.0.2
   <experiment name="nshells-expt" repetitions="50" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <metric>ticks</metric>
+    <exitCondition>not any? fire-front and any? patches with [shade-of? orange pcolor]</exitCondition>
+    <metric>count patches with [shade-of? orange pcolor]</metric>
     <steppedValueSet variable="p" first="0.5" step="0.01" last="0.75"/>
   </experiment>
 </experiments>

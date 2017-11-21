@@ -238,7 +238,7 @@ CHOOSER
 mode
 mode
 "avoid-other" "seek-like"
-0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -283,7 +283,7 @@ The code that determines how many neighbours of the 'other' type are present at 
 
     let others-there [neighbours-with-state [other-state] of myself] of target
 
-Why `myself` and not simply `self`?  The reason is that the patch invoking this code (the current location) is the one for which the `other-colour` reporter must be run, and inside the `[] of` block, which refers to the `target` patch, `self` would refer to the `target` patch, which is not what we want.  The `myself` keyword allows us to refer back to the patch that is asking the `target` patch to report this result.
+Why `myself` and not simply `self`?  The reason is that the patch invoking this code (the current location) is the one for which the `other-state` reporter must be run, and inside the `[] of` block, which refers to the `target` patch, `self` would refer to the `target` patch, which is not what we want.  The `myself` keyword allows us to refer back to the patch that is asking the `target` patch to report this result.
 
 It would probably be clearer to do it like this
 

@@ -34,23 +34,28 @@ patches-own [
 to setup
   clear-all
 
+  ;; randomly set patches occupied (white)
+  ;; or not (black)
   ask patches [
-    set occupied? false
-    set pcolor black
-
-    if random-float 1 <= p [
+    ifelse random-float 1 <= p [
       set occupied? true
       set pcolor white
     ]
+    [
+      set occupied? false
+      set pcolor black
+    ]
   ]
-  place-ant
+  ;; place ants
+  place-ants
 
   reset-ticks
 end
 
-to place-ant
+;; put requested number of ants in occupied patches
+to place-ants
   ;; place the ant
-  ask n-of ants patches with [occupied? = true] [
+  ask n-of number-of-ants patches with [occupied?] [
     sprout 1 [
       set size 2
       set shape "circle"
@@ -67,29 +72,22 @@ end
 
 to move
   ask turtles [
-      let new-loc patch-here
-
-      ; if blind -> select one of N4 and move if occupied
-      if antBehaviour = "blind" [
-        let n one-of neighbors4
-        if [occupied?] of n [
-          set new-loc n
-        ]
+    ; if blind, then blindly select one of N4 and move if occupied
+    if antBehaviour = "blind" [
+      let target one-of neighbors4
+      if [occupied?] of target [
+        move-to target
       ]
-      ; if myopic -> select one of occupied N4
-      if antBehaviour = "myopic" [
-        if any? neighbors4 with [occupied?] [
-          set new-loc one-of neighbors4 with [occupied?]
-        ]
-      ]
-      if new-loc != patch-here [
-        move-to new-loc
-        ask new-loc [
-          set pcolor red + 3
-        ]
-      ]
-      set dist-covered distance start-cell
     ]
+    ; if myopic, then select one of occupied N4
+    if antBehaviour = "myopic" [
+      if any? neighbors4 with [occupied?] [
+        move-to one-of neighbors4 with [occupied?]
+      ]
+    ]
+    set pcolor red + 3
+    set dist-covered distance start-cell
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -152,10 +150,10 @@ NIL
 1
 
 TEXTBOX
-739
-514
-962
-559
+737
+484
+960
+529
 Occupied patches in white\nAnts in red. \nVisited patches in pink.
 12
 0.0
@@ -242,8 +240,8 @@ SLIDER
 294
 195
 327
-ants
-ants
+number-of-ants
+number-of-ants
 1
 200
 200.0
@@ -266,9 +264,9 @@ TEXTBOX
 743
 283
 1027
-326
-Note that an alternative version of this model that uses the R-netlogo extension to produce more complete plots.
-11
+328
+Note that an alternative version of this model is available that uses the R-netlogo extension to produce more complete plots.
+12
 0.0
 1
 
@@ -286,6 +284,29 @@ This is model is discussed in Chapter 5 of
 You should consult that book for more information and details of the model.
 
 Note that an alternative version of this model that uses the R-netlogo extension to produce more complete plots is also available.
+
+## THINGS TO NOTICE
+
+This model is fairly self-explanatory. There are two possible types of ant. Blind ants select a random neighbouring cell without checking to see if it is `occupied?` or not:
+
+    let target one-of neighbors4
+    if [occupied?] of target [
+      move-to target
+    ]
+
+By contrast myopic ants only choose among known `occupied?` patches:
+
+    if any? neighbors4 with [occupied?] [
+      move-to one-of neighbors4 with [occupied?]
+    ]
+
+Note how in this case, it is necessary to first check if any patches that meet the requirement are available, otherwise there will be an error when the ant tries to move to `nobody`.
+
+## THINGS TO TRY
+
+What would happen if ants could not retrace their steps?  Try coding this restriction into the model.
+
+Another thing to try would be to measure `dist-covered` in Manhattan distance (i.e. total orthogonal distance in both directions).  How could that be coded?  Consider how the calculation must account for the toroidal 'wrapped' NetLogo world.
 
 ## HOW TO CITE
 

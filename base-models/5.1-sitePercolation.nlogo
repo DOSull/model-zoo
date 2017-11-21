@@ -87,7 +87,7 @@ end
 ;; their connection (orthogonal) to other occupied patches
 to identify-clusters
   set cluster-count 0
-  ;; initialize a patch-sets of the occupied patches
+  ;; initialize a patch-set of the occupied patches
   ;; that need to be tagged with cluster-id
   let all-to-tag patches with [occupied? and cluster-id = -1]
   while [ any? all-to-tag ] [
@@ -159,7 +159,7 @@ to-report typical-cluster-size
   ;; it is the typical size cluster that a rnd selected site will belong too
   ifelse any? patches with [not spanning?] [
     let non-spanning-occupied-patches sort (patches with [occupied? and not spanning?])
-    report mean map [ ?1 -> size-of-my-cluster ?1 ] non-spanning-occupied-patches
+    report mean map [ ptch -> size-of-my-cluster ptch ] non-spanning-occupied-patches
   ]
   [ report 0 ]
 end
@@ -392,7 +392,13 @@ An alternative version of this model that uses the R-netlogo extension is availa
 
 The code comments give a good overview of how the model works.
 
-The most complicated procedure is the tagging of connected clusters of occupied patches in the `identify-clusters` procedure. This code (or variants of it) reappears in many of the models in chapter 5, so it is advisable to follow it carefully.
+The most complicated procedure is the tagging of connected clusters of occupied patches in the `identify-clusters` procedure. This code (or variants of it) reappears in many of the models in chapter 5, so it is advisable to follow it carefully. The essence of the process is picking an occupied patch at random then successively growing the cluster to which that patch belongs by identifying its occupied `neighbors4` that have not been associated with a previously identified cluster. This is done by repeatedly applying
+
+    set patches-to-tag (patch-set [neighbors4] of patches-to-tag) with [occupied? and cluster-id = -1]
+
+where the `patch-set [neighbors4] of` operation conveniently handles duplicate entries that might otherwise occur if we stepped through `patches-to-tag` one at a time finding `neighbors4`.
+
+When this process runs out of new patches to add to the growing cluster, we have found the end of it and can measure its size, increment the cluster identifier, and so on. This process is repeated until all occupied patches have been labelled.
 
 ## HOW TO CITE
 
