@@ -25,62 +25,74 @@
 extensions [ palette ]
 
 globals [
-  perimeter-set
+  perimeter
 ]
 
 patches-own [
   t-colonised
   attempts
-  occupied?
 ]
 
 to setup
   clear-all
 
   ask patches [
-    set occupied? false
+    set t-colonised -1
     set pcolor red
   ]
-  ask patches with [distancexy (max-pxcor / 2) (max-pycor / 2) >= wound-size] [
-    set occupied? true
+  ask patches with [distancexy (min-pxcor + world-width / 2) (min-pycor + world-height / 2) >= wound-size] [
+    set t-colonised 0
     set pcolor black
   ]
-  set perimeter-set patches with [not occupied? and any? neighbors4 with [occupied?]]
+  set perimeter patches with [t-colonised = -1 and any? neighbors4 with [t-colonised > -1]]
 
   reset-ticks
 end
 
 to go
-  if not any? perimeter-set [ stop ]
-  ask one-of perimeter-set [
+  if not any? perimeter [
+    colour-by-time
+    stop
+  ]
+
+  ask get-next-occupied [
   ;; if m = 0 then this is the classical Eden process as per Eden 1961,
   ;; otherwise it's the noise-reduced form
     set attempts attempts + 1
 
     if attempts >= m [
-      set occupied? true
       set pcolor black
-      set t-colonised ticks
-
-      let new-edge-cells neighbors4 with [occupied? = false]
-      ;; rebuilds the perimeter-list with the new candidates added and the newly colonised patch removed
-      set perimeter-set (patch-set (other perimeter-set) new-edge-cells)
+      set t-colonised ticks + 1
+      update-perimeter
     ]
   ]
   tick
 end
 
+
+to-report get-next-occupied
+  report one-of perimeter
+end
+
+
+to update-perimeter
+  ;; rebuilds the perimeter with new candidates added
+  ;; and the newly colonised patch removed
+  set perimeter (patch-set perimeter neighbors4) with [t-colonised = -1]
+end
+
+
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
   ask patches [
-    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised -1000 ticks
+    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-224
+203
 12
-632
+611
 421
 -1
 -1
@@ -105,9 +117,9 @@ ticks
 100.0
 
 BUTTON
-110
+113
 18
-177
+190
 51
 setup
 setup
@@ -122,9 +134,9 @@ NIL
 1
 
 PLOT
-644
+623
 16
-877
+856
 253
 Perimeter length
 Time
@@ -137,29 +149,12 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter-set"
-
-BUTTON
-58
-201
-179
-234
-colour-by-time
-colour-by-time
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
+"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter"
 
 SLIDER
-26
+19
 275
-198
+191
 308
 m
 m
@@ -172,34 +167,34 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-45
-320
-195
-362
-If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961).
-10
+21
+313
+196
+361
+If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961)
+12
 0.0
 1
 
 SLIDER
-23
+16
 379
-195
+188
 412
 wound-size
 wound-size
 5
 world-width / 2
-70.0
+100.0
 5
 1
 NIL
 HORIZONTAL
 
 BUTTON
-101
+112
 100
-178
+189
 133
 go 1000
 repeat 1000 [go]
@@ -214,10 +209,10 @@ NIL
 1
 
 BUTTON
-102
-144
-165
-177
+112
+139
+188
+172
 NIL
 go
 T

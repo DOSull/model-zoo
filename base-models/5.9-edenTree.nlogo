@@ -25,57 +25,63 @@
 extensions [ palette ]
 
 globals [
-  perimeter-set
+  perimeter
 ]
 
 patches-own [
   t-colonised
   attempts
-  occupied?
 ]
 
 to setup
   clear-all
   ask patches [
-    set occupied? false
     set t-colonised -1
   ]
-  ask patch (max-pxcor / 2) (max-pycor / 2) [
-    set occupied? true
-    set pcolor white
-    set t-colonised 0
-    set perimeter-set neighbors4
-  ]
+  set perimeter patch-set nobody
   reset-ticks
 end
 
 to go
   ;; initiate the growth
-  if not any? perimeter-set [stop]
-  ask one-of perimeter-set [
+  if ticks > 0 and not any? perimeter [
+    colour-by-time
+    stop
+  ]
+
+  ask get-next-occupied [
     ;; m controls noise-reduction (m = 0 is off)
     set attempts attempts + 1
 
     if attempts >= m [
-      set occupied? true
       set pcolor white
       set t-colonised ticks
-
-      let new-edge-cells neighbors4 with [occupied? = false]
-
-      ;; rebuilds the perimeter-set with the new candidates added and the newly colonised patch removed
-      set perimeter-set (patch-set (other perimeter-set) new-edge-cells)
-
-      ;; remove all perimeter-set members with more than one occupied neighbour
-      set perimeter-set (perimeter-set with [count neighbors4 with [occupied? = true] = 1])
     ]
+    update-perimeter
   ]
   tick
 end
 
+
+to-report get-next-occupied
+  ifelse ticks = 0
+  [ report patch (min-pxcor + world-width / 2) (min-pycor + world-height / 2) ]
+  [ report one-of perimeter ]
+end
+
+
+;; NOTE THAT THIS IS A PATCH procedure
+to update-perimeter
+  ;; rebuilds the perimeter-set with the new candidates added and the newly colonised patch removed
+  set perimeter (patch-set perimeter neighbors4) with [t-colonised = -1]
+  ;; remove all perimeter-set members with more than one occupied neighbour
+  set perimeter (perimeter with [count neighbors4 with [t-colonised > -1] = 1])
+end
+
+
 ;; colour patches by the time they were colonised (approx Brewer PuGn)
 to colour-by-time
-  ask patches with [occupied?] [
+  ask patches with [t-colonised > -1] [
     set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 end
@@ -157,24 +163,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter-set"
-
-BUTTON
-32
-93
-153
-126
-colour-by-time
-colour-by-time
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
+"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter"
 
 SLIDER
 12
@@ -195,9 +184,9 @@ TEXTBOX
 17
 187
 189
-229
-If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961).
-10
+232
+If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961)
+12
 0.0
 1
 
@@ -221,6 +210,10 @@ If you mention this model in a publication, please include these citations for t
 +   Dhar D and Ramaswamy R 1985 Classical diffusion on Eden trees. _Physical Review Letters_ **54** 1346–1349.
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 +   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+## THINGS TO NOTICE
+
+The difference from the simple Eden process in this model is that invasion can only occur into sites with only one previously occupied neighbour.  This change is reflected in the `update-perimeter` procedure.
 
 ## COPYRIGHT AND LICENSE
 

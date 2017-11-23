@@ -24,86 +24,104 @@
 
 extensions [ palette ]
 
-globals
-[
-  perimeter-set
-  p-length
-  p-length-list
+globals [
+  interfaces ;; a list of patch-pairs, where first is in the tumor, second is a non-tumor neighbor
 ]
 
-patches-own
-[
+patches-own [
   t-colonised
-  attempts
-  occupied?
 ]
 
 to setup
-    clear-all
-    ask patches [
-      set occupied? false
-      set t-colonised -1
+  clear-all
+  ask patches [
+    set t-colonised -1
+  ]
+  set interfaces []
+  ;; initialise the tumor
+  ask patch (min-pxcor + world-width / 2) (min-pycor + world-height / 2) [
+    set t-colonised 0
+    set pcolor white
+    ask neighbors4 [
+      update-interfaces (list myself self)
     ]
-    ask patch (max-pxcor / 2) (max-pycor / 2) [
-      set occupied? true
-      set t-colonised 0
-      set perimeter-set neighbors4
-      set pcolor white
-    ]
-    reset-ticks
+  ]
+  reset-ticks
 end
 
 to go
-  ;; initiate the spread dynamic
-  ifelse any? perimeter-set [
-    let target-cell one-of perimeter-set
+  ifelse length interfaces > 0 [
+    let interface one-of interfaces
 
     ;; grow into new site?
-    ifelse random-float 1 <= g [
-      ask target-cell [
-        set occupied? true
-        set pcolor white
-        set t-colonised ticks
-
-        let new-edge-cells neighbors4 with [not occupied?]
-
-        ;; rebuilds the perimeter-list with the new candidates added and the newly colonised patch removed
-        set perimeter-set (patch-set (other perimeter-set) new-edge-cells)
-      ]
-    ]
-    [ ;; afflicted cell recovers?
-      let recover-set [neighbors4 with [occupied?]] of target-cell
-      if any? recover-set [
-        let recover-cell one-of recover-set
-        ask recover-cell [
-          set occupied? false
-          set t-colonised -1
-          set pcolor black
-          if count ([neighbors4 with [occupied?]] of recover-cell) > 1 [
-            set perimeter-set (patch-set recover-cell perimeter-set)
-          ]
-        ]
-      ]
-    ]
+    ifelse random-float 1 < g
+    [ infect interface ticks + 1]
+    [ recover interface ]
+    set interfaces filter [ i -> active? i ] interfaces
     tick
   ]
   [
-    user-message ("Spread has stopped!")
-    stop
+    colour-by-time
+    ;stop
   ]
 end
 
+to infect [i t]
+  ask last i [
+    set pcolor white
+    set t-colonised t
+    ask neighbors4 [
+      update-interfaces (list myself self)
+    ]
+  ]
+end
+
+to recover [i]
+  ask first i [
+    set pcolor black
+    set t-colonised -1
+    ask neighbors4 [
+      update-interfaces (list self myself)
+    ]
+  ]
+end
+
+
+to update-interfaces [i]
+  ifelse active? i
+  [ set interfaces fput i interfaces ]
+  [ set interfaces remove i interfaces ]
+end
+
+;; an interface is only active if EITHER one OR
+;; the OTHER item is occupied, i.e. only ONE of them,
+;; i.e. XOR
+to-report active? [interface]
+  report ([occupied?] of item 0 interface) xor ([occupied?] of item 1 interface)
+end
+
+to-report occupied?
+  report t-colonised > -1
+end
+
+
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied? = true] [
+  ask patches with [t-colonised > -1] [
     set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 end
 
+
+
+
 ;; highlight the perimeter cells only
 to colour-edge
   ask patches [set pcolor black]
-  ask perimeter-set [set pcolor red]
+  foreach map [ x -> last x ] interfaces [ p ->
+    ask p [ set pcolor yellow ]
+  ]
+;  ask perimeter [set pcolor yellow]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -134,9 +152,9 @@ ticks
 100.0
 
 BUTTON
-78
+124
 40
-145
+191
 73
 setup
 setup
@@ -151,9 +169,9 @@ NIL
 1
 
 BUTTON
-81
+124
 79
-144
+190
 112
 go
 go
@@ -172,7 +190,7 @@ PLOT
 10
 895
 247
-Perimeter length
+Number of active interfaces
 Time
 Length
 0.0
@@ -181,14 +199,14 @@ Length
 10.0
 true
 false
-"" "if ticks > 0\n[ plotxy ticks count perimeter-set ]"
+"" ""
 PENS
-"default" 1.0 0 -16777216 true "" ""
+"default" 1.0 0 -16777216 true "" "if ticks > 0\n[ plotxy ticks length interfaces ]"
 
 BUTTON
-56
+68
 128
-177
+189
 161
 colour-by-time
 colour-by-time
@@ -203,9 +221,9 @@ NIL
 1
 
 BUTTON
-65
+67
 170
-173
+187
 203
 colour-edge
 colour-edge
@@ -226,10 +244,10 @@ SLIDER
 262
 g
 g
-0
+0.45
 1
-0.5
-.01
+1.0
+.001
 1
 NIL
 HORIZONTAL
@@ -251,6 +269,10 @@ g / (1 - g)
 This is a simulation of the model described in:
 
 +   Williams T and Bjerknes R 1972 Stochastic model for abnormal clone spread through epithelial basal layer. _Nature_ **236** 19–21.
+
+A clearer description on which the current implementation is based is provided in
+
++   Ferreira Jr SC 2003 Williams and Bjerknes model with growth limitation. _Physica A: Statistical Mechanics and its Applications_ **317**(3) 565–580.
 
 This is an example model referenced in Chapter 5 of
 

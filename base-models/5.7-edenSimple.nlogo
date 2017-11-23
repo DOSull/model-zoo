@@ -25,69 +25,67 @@
 extensions [ palette ]
 
 globals [
-  perimeter-set
+  perimeter
   at-edge?
 ]
 
 patches-own [
   t-colonised
   attempts
-  occupied?
 ]
 
 to setup
   clear-all
-  ask patches [
-    set occupied? false
-    set t-colonised -1
-  ]
-  ask patch (max-pxcor / 2) (max-pycor / 2) [
-    set occupied? true
-    set t-colonised 1
-    set perimeter-set neighbors4
-    set pcolor white
-  ]
+  ask patches [ set t-colonised -1 ]
+  set perimeter patch-set nobody
+  set at-edge? false
   reset-ticks
 end
 
+
 to go
-  ;; initiate the growth
-  if at-edge? = true [stop]
-
-  ask one-of perimeter-set [
-    ;; if m = 0 then this is the classical Eden process as per Eden 1961, otherwise it's the noise-reduced form
+  if at-edge? [
+    colour-by-time
+    stop
+  ]
+  ask get-next-occupied [
     set attempts attempts + 1
-
-    if attempts >= m [
-      set occupied? true
+    if attempts > m [
       set pcolor white
-      set t-colonised ticks + 1
-
-      let new-edge-cells neighbors4 with [occupied? = false]
-      ;; rebuilds the perimeter-list with the new candidates added and the newly colonised patch removed
-      set perimeter-set (patch-set (other perimeter-set) new-edge-cells)
-      test-edge
+      set t-colonised ticks
+      update-perimeter
+      set at-edge? pxcor = min-pxcor + 1 or pxcor = max-pxcor - 1 or
+               pycor = min-pycor + 1 or pycor = max-pycor - 1
     ]
   ]
   tick
 end
 
-;; colour patches by the time they were colonised (dark [old] to light [young])
+
+;; PATCH procedure
+to update-perimeter
+  set perimeter (patch-set perimeter neighbors4) with [t-colonised = -1]
+end
+
+
+to-report get-next-occupied
+  ifelse ticks = 0
+  [ report patch (min-pxcor + world-width / 2) (min-pycor + world-height / 2) ]
+  [ report one-of perimeter ]
+end
+
+
+;; colour patches by the time they were colonised
 to colour-by-time
-  ask patches with [occupied?] [
-    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised -1000 ticks
+  ask patches with [t-colonised >= 0] [
+    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 end
 
 ;; highlight the perimeter cells only
 to colour-edge
   ask patches [set pcolor black]
-  ask perimeter-set [set pcolor yellow]
-end
-
-to test-edge
-  set at-edge? pxcor = min-pxcor + 2 or pxcor = max-pxcor - 2 or
-               pycor = min-pycor + 2 or pycor = max-pycor - 2
+  ask perimeter [set pcolor yellow]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -115,7 +113,7 @@ GRAPHICS-WINDOW
 0
 1
 ticks
-30.0
+500.0
 
 BUTTON
 29
@@ -167,7 +165,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter-set ;last p-length-list"
+"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter"
 
 BUTTON
 40
@@ -187,9 +185,9 @@ NIL
 1
 
 BUTTON
-46
+40
 139
-154
+160
 172
 colour-edge
 colour-edge
@@ -219,12 +217,12 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-28
+22
 227
-178
-272
-If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961).
-11
+194
+286
+If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961)
+12
 0.0
 1
 
@@ -246,6 +244,16 @@ A noise-reduced variant, as discussed in
 is also supported.
 
 An alternative version of this model that does not require the R-netlogo extension is also available.
+
+## THINGS TO NOTICE
+
+This models uses `patch-set` called `perimeter` to manage the set of patches adjacent to the advancing invasion/occupation/infection. This avoids repeated `ask patches with [any? neighbors4 with [t-colonised > -1] and t-colonised = -1]` calls which would run slowly.
+
+To highlight similarities among the various Eden processes, the code has been written similarly in each case such that the major change among them is in one of two procedures, either `get-next-occupied` or `update-perimeter`. Note that the latter procedure is a patch procedure that can only be run by a patch, since it invokes the `neighbors4` reporter.
+
+## THINGS TO TRY
+
+Most of the obvious things you might try already have been, and appear in the next several models, as different variations on the Eden process theme!
 
 ## HOW TO CITE
 

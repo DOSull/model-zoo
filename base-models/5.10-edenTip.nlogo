@@ -25,81 +25,86 @@
 extensions [ palette ]
 
 globals [
-  perimeter-set
-  perimeter-tip-set
+  perimeter
+  perimeter-tips
+  at-edge?
 ]
 
 patches-own [
   t-colonised
   attempts
-  occupied?
   n-occupied-N4  ; number of occupied neighbors4 - keepinging track of this helps efficiency
 ]
 
 to setup
   clear-all
   ask patches [
-    set occupied? false
     set t-colonised -1
     set n-occupied-N4 0
   ]
-  ask patch (max-pxcor / 2) (max-pycor / 2) [
-    set pcolor white
-    set t-colonised 0
-    set perimeter-set neighbors4
-    set perimeter-tip-set perimeter-set
-    ask neighbors4 [
-      set n-occupied-N4 n-occupied-N4 + 1
-    ]
-  ]
+  set perimeter patch-set nobody
+  set perimeter-tips patch-set nobody
+  set at-edge? false
   reset-ticks
 end
 
 to go
-  if not any? perimeter-set or not any? perimeter-tip-set [stop]
-  ;; can only expand into perimeter patches with only *one* occupied nearest nhb
-  let new-site nobody
-  ifelse random-float 1 < (R / (1 + R))
-  [ set new-site one-of perimeter-tip-set ]
-  [ set new-site one-of perimeter-set ]
+  if at-edge? [
+    colour-by-time
+    stop
+  ]
 
-  ask new-site [
-    ;; if m = 0 then this is the classical Eden process as per Eden 1961, otherwise it's the noise-reduced form
-    ifelse attempts >= m [
-      set occupied? true
+  ask get-next-occupied [
+    ;; if m = 0 then this is the classical Eden process as per Eden 1961
+    ;; otherwise it's the noise-reduced form
+    set attempts attempts + 1
+    if attempts >= m [
       set pcolor white
       set t-colonised ticks
-      ask neighbors4 [ set n-occupied-N4 n-occupied-N4 + 1 ]
-      rebuild-perimeter
-      rebuild-perimeter-tips
     ]
-    [
-      set attempts attempts + 1
-    ]
+    update-perimeter
+    set at-edge? pxcor = min-pxcor + 1 or pxcor = max-pxcor - 1
+                   or pycor = min-pycor + 1 or pycor = max-pycor - 1
   ]
   tick
 end
 
-to rebuild-perimeter
-  let new-perimeter-cells (neighbors4 with [not occupied?])
-  set perimeter-set (patch-set (other perimeter-set) new-perimeter-cells)
+to-report get-next-occupied
+  ifelse ticks = 0
+  [ report patch (min-pxcor + world-width / 2) (min-pycor + world-height / 2) ]
+  [ ;; pick from either tips or the perimeter
+    ;; as R -> 0 tends to simple Eden because
+    ;; selection will always be from simple perimeter
+    ifelse random-float 1 < (R / (1 + R))
+    [ report one-of perimeter-tips ]
+    [ report one-of perimeter ]
+  ]
 end
 
-to rebuild-perimeter-tips
-  set perimeter-tip-set perimeter-set with [n-occupied-N4 = 1]
+
+to update-perimeter
+  ask neighbors4 [ set n-occupied-N4 n-occupied-N4 + 1 ]
+  set perimeter (patch-set perimeter neighbors4)  with [t-colonised = -1]
+  set perimeter-tips perimeter with [n-occupied-N4 = 1]
 end
+
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied?] [
+  ask patches with [t-colonised > -1] [;[occupied?] [
     set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
+end
+
+to colour-perimeter
+  ask patches [set pcolor black]
+  ask perimeter [set pcolor violet]
 end
 
 ;; highlight the perimeter-tip cells only
 to colour-tips
   ask patches [set pcolor black]
-  ask perimeter-tip-set [set pcolor red]
+  ask perimeter-tips [set pcolor yellow]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -127,7 +132,7 @@ GRAPHICS-WINDOW
 0
 1
 ticks
-100.0
+500.0
 
 BUTTON
 70
@@ -179,7 +184,8 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter-set"
+"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter"
+"pen-1" 1.0 0 -2674135 true "" "plotxy ticks count perimeter-tips"
 
 BUTTON
 48
@@ -196,13 +202,13 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 BUTTON
-57
-144
-165
-177
+46
+183
+164
+216
 colour-tips
 colour-tips
 NIL
@@ -213,7 +219,7 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 SLIDER
 21
@@ -234,26 +240,43 @@ TEXTBOX
 40
 268
 190
-310
-If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961).
-10
+328
+If m = 0 then there is no 'noise-reduction' and the model is as per Eden (1961)
+12
 0.0
 1
 
 SLIDER
-30
-388
-202
-421
+19
+354
+191
+387
 R
 R
 0
-200
-23.0
+99
+19.0
 1
 1
 NIL
 HORIZONTAL
+
+BUTTON
+47
+142
+167
+175
+NIL
+colour-perimeter
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -267,6 +290,14 @@ as discussed in Chapter 5 of
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 An alternative version of this model that uses the R-netlogo extension is available and can produce more useful plots and snapshots of the model.
+
+## THINGS TO NOTICE
+
+In this variant, cells on the perimeter with only one occupied neighbor are designated 'tips'.  With probability `R / (1 + R)` the next occupied site will be a tip, otherwise it will be any site on the perimeter. 
+
+With `R` set to 0 the model becomes the simple Eden process (model 5.7), while as `R` &rarr; &infin; it transitions to the Eden tree (model 5.9). 
+
+This model runs a lot more slowly than either of those other Eden processes, because the `perimeter` patch-set grows much larger than in either case. Why is this?
 
 ## HOW TO CITE
 

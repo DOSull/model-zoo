@@ -148,17 +148,19 @@ end
 
 ;; Colour each patch by its p (underlying random field) value
 to colour-field
-  let mx max [p] of patches
-  let mn min [p] of patches
-  ask patches with [not invaded?] [
-    set pcolor palette:scale-scheme "Sequential" "Oranges" 9 p mx mn
+  let ramp palette:scheme-colors "Sequential" "Greens" 9
+  let background patches with [not invaded?]
+  let mx max [p] of background
+  let mn min [p] of background
+  ask background [
+    set pcolor palette:scale-gradient (list item 1 ramp item 3 ramp) p mn mx
   ]
 end
 
 
 ;; Colour each patch by the time it was invaded
 to colour-by-time
-  ask patches with [invaded? and (time-invaded != -1)] [
+  ask patches with [invaded?] [
     set pcolor palette:scale-scheme "Sequential" "Blues" 9 time-invaded ticks 0
   ]
 end
@@ -228,7 +230,7 @@ GRAPHICS-WINDOW
 0
 1
 ticks
-100.0
+500.0
 
 BUTTON
 26
@@ -309,9 +311,9 @@ length next-to-invade
 
 TEXTBOX
 595
-805
+793
 748
-939
+927
 Make sure that view updates is set to continuous (otherwise the model will appear to run very slowly).\nNote the model is computationally expensive in any case so be patient!
 12
 0.0
