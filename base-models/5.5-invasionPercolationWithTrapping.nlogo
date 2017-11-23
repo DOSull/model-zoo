@@ -33,6 +33,7 @@ globals [
 
   min-field
   max-field
+  color-ramp-ends
 ]
 
 patches-own [
@@ -49,6 +50,8 @@ to setup
   clear-all
 
   random-field
+  let pal palette:scheme-colors "Sequential" "Blues" 3
+  set color-ramp-ends (list first pal last pal)
 
   set min-field min [p] of patches
   set max-field max [p] of patches
@@ -220,7 +223,7 @@ end
 ;; Colour each patch by its p (underlying random field) value
 to colour-field
   ask patches with [not invaded?] [
-    set pcolor palette:scale-scheme "Sequential" "Blues" 3 p 0 1
+    set pcolor palette:scale-gradient color-ramp-ends p 0 1
   ]
 end
 

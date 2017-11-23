@@ -25,100 +25,82 @@
 extensions [ palette ]
 
 globals [
-  start-sites
-  basins
-  sources
-  sinks
+  basins                 ;; list of patch-sets each a drainage basin at end of run
   last-invaded           ;; the most recently invaded patch
   next-to-invade         ;; list of the patches subject to invasion next
-
-  max-field
-  min-field
-
-  ;; for drainage tracing via the FFM
-  start-cell
-  end-cells
-  c
-  front
 ]
 
 patches-own [
   invaded?               ;; patch has been invaded
   time-invaded           ;; the time step when invasion occurred
   p                      ;; U[0~1]
-  possible-successors    ;; the 3 NSE neighbours
-  ;;possible-predecessors  ;; the 3 NSW neighbours
+  possible-successors    ;; 3 NSE neighbours
+  possible-predecessors  ;; 3 NSW neighbours
+  n-occupied-neighbors   ;; num of occupied neighbours4 - invaded sites can have only one occupied neighbour
 
-  ;; for drainage tracing
-  t1
-  t2
-  elastic?
-  basin-set?
-  basin-id
-  n-occ-nbrs
+  d-source               ;; forward pass distance from source, used in drainage tracing
+  elastic?               ;; main branch of a basin
+  basin-id               ;; id of the basin to which site belongs
 ]
+
 
 to setup
   clear-all
   reset-ticks
 
-  set max-field 0
-  set min-field 1e6
   set basins []
-  set sources []
-  set sinks []
 
   ask patches [
     ifelse field-dist = "uniform"
       [ set p random-float 1]
-      [ set p random-normal 100 20 ]
-
-    if p > max-field [set max-field p]
-    if p < min-field [set min-field p]
+      [ set p random-normal 0.5 0.1 ]
 
     set invaded? false
     set time-invaded -1
 
-    ifelse pxcor = max-pxcor
-    ;; no successors to sites at the far edge
-    [ set possible-successors patch-set nobody ]
-    [ ifelse pxcor = min-pxcor
-      ;; only one successor to sites at the source edge
-      [ set possible-successors patches at-points [[1 0]] ]
-      ;; all others have 3 successors N, S and E
-      [ set possible-successors patches at-points [[1 0] [0 1] [0 -1]] ]
-    ]
-    set t1 -1
-    set t2 -1
+    ifelse pxcor = min-pxcor
+    ;; only one successor to sites at the source edge
+    [ set possible-successors patches at-points [[1 0]] ]
+    ;; all others have 3 successors N, S and E
+    [ set possible-successors patches at-points [[1 0] [0 1] [0 -1]] ]
+
+    set possible-predecessors patches at-points [[-1 0] [0 1] [0 -1]]
+
+    set d-source -1
     set elastic? false
-    set n-occ-nbrs 0
+    set n-occupied-neighbors 0
   ]
   repeat smoothing [ diffuse p 0.05 ]
 
   ;; tag and mark left, top and bottom edges as 'invaded'
-  set start-sites patches with [pxcor = min-pxcor and pycor mod 2 = 0]
-  ask start-sites [
+  let n-basins 0
+  ask patches with [pxcor = min-pxcor and pycor mod 2 = 0] [
     set invaded? true
     set pcolor grey
     ask neighbors4 [
-      set n-occ-nbrs n-occ-nbrs + 1
+      set n-occupied-neighbors n-occupied-neighbors + 1
     ]
+    set basin-id n-basins
+    set n-basins n-basins + 1
+    set d-source 0
   ]
-
-  ;; every second patch on the left edge is a potential start site.
-  let start-candidates (patch-set [possible-successors] of patches with [invaded?])
-  set next-to-invade sort-by [ [?1 ?2] -> [p] of ?1 < [p] of ?2 ] start-candidates
+  set basins range n-basins
+  set next-to-invade sort-on [p] (patch-set [possible-successors] of patches with [invaded?])
 
   set last-invaded first next-to-invade
   update-patch-states
 end
 
-to go
-  ;; only check for completion
-  if stop-first? and [pxcor] of last-invaded = max-pxcor - 1 [stop]
-  if length next-to-invade = 0 [stop]
 
-  ask last-invaded [set pcolor white]
+to go
+  ask last-invaded [set pcolor sky]
+  ;; check for completion
+  if stop-first? and [pxcor] of last-invaded = max-pxcor - 1 [
+    ;; build the basins and stop
+    set basins map [ id -> patches with [invaded? and basin-id = id ] ] basins
+    stop
+  ]
+  if length next-to-invade = 0 [stop]
 
   ;; invade the next patch
   set last-invaded first next-to-invade
@@ -127,15 +109,20 @@ to go
   tick
 end
 
+
 ;; do book keeping on patch state variables
 to update-patch-states
   ask last-invaded [
     set time-invaded ticks
-    set pcolor red
+    set pcolor violet
     set invaded? true
     ask neighbors4 [
-      set n-occ-nbrs n-occ-nbrs + 1
+      set n-occupied-neighbors n-occupied-neighbors + 1
     ]
+    ;; propagate the basin-id from the predecessor this must have come from
+    let predecessor one-of possible-predecessors with [invaded?]
+    set basin-id [basin-id] of predecessor
+    set d-source [d-source] of predecessor + 1
   ]
   ;; remove the last-invaded
   set next-to-invade but-first next-to-invade
@@ -145,9 +132,10 @@ to update-patch-states
       set next-to-invade insert-in-order next-to-invade self
     ]
   ]
-  ; discard any that are ineligible because they have > 1 occupied neighbour
-  set next-to-invade filter [ ?1 -> [n-occ-nbrs] of ?1 <= 1 ] next-to-invade
+  ; discard any now ineligible because they have > 1 occupied neighbour
+  set next-to-invade filter [ ptch -> [n-occupied-neighbors] of ptch <= 1 ] next-to-invade
 end
+
 
 ;; reports a list with patch x inserted in lst of patches lst
 ;; while maintaining it in sorted order by p value
@@ -157,120 +145,61 @@ to-report insert-in-order [lst x]
   report (sentence (sublist lst 0 posn) x (sublist lst posn (length lst)))
 end
 
+
 ;; Colour each patch by its p (underlying random field) value
 to colour-field
+  let mx max [p] of patches
+  let mn min [p] of patches
   ask patches with [not invaded?] [
-    set pcolor palette:scale-gradient [[102 102 102] [204 204 204]] p min-field max-field
+    set pcolor palette:scale-scheme "Sequential" "Oranges" 9 p mx mn
   ]
 end
+
 
 ;; Colour each patch by the time it was invaded
 to colour-by-time
   ask patches with [invaded? and (time-invaded != -1)] [
-    set pcolor palette:scale-scheme "Sequential" "YlGnBu" 9 time-invaded 0 ticks
+    set pcolor palette:scale-scheme "Sequential" "Blues" 9 time-invaded ticks 0
   ]
 end
+
 
 ;; This identifies the drainage paths - basically the elastic backbone of each
 ;; of the clusters present on the lattice
 to trace-drainage
-  identify-basins
-  (foreach basins sources sinks [ [?1 ?2 ?3] ->
-    let this-basin ?1
-    set start-cell ?2
-    set end-cells ?3
-    pass-one
-    ask end-cells [
-      let end-cell self
-      pass-two end-cell
-      ask this-basin with [t1 != -1 and t2 != -1] [
-        set elastic? true
-      ]
+  ;; Only perform the calculation if we haven't already done it
+  if not any? patches with [elastic?] [
+    ;; sinks are (potentially more than one) patches with max pxcor in each basin
+    let sinks map [ x -> x with-max [pxcor] ] basins
+    reverse-pass sinks
+  ]
+  ask patches [
+    ifelse invaded? [
+      ifelse elastic?
+      [ set pcolor sky ]
+      [ set pcolor sky - 3 ]
     ]
-  ])
-  ask patches [set pcolor black]
-  ask patches with [elastic?] [set pcolor blue + 2]
-end
-
-to pass-one
-  initiate start-cell 1
-  spread 1
-end
-
-to pass-two [end-cell]
-  initiate end-cell 2
-  spread 2
-end
-
-to initiate [start-location pass ]
-  set c 0
-  ask start-location [
-    if pass = 1 [ set t1 c ]
-    if pass = 2 [ set t2 c ]
-    set front patch-set self
+    [ set pcolor black ]
   ]
 end
 
-to spread [ pass ]
-  while [ any? front ]
-  [
-    set c c + 1
-    new-shell pass
-  ]
-end
 
-to new-shell [pass]
-  ;; Empty set of patches for the next 'round' of the invasion
-  let new-front patch-set nobody
-  ask front [
-    if pass = 1 [
-      ask neighbors4 with [invaded? and t1 = -1] [
-        set new-front ( patch-set new-front self)
-        set t1 c
+;; reverse pass identifies elastic backbone by
+;; finding cells starting at sinks that are on the
+;; shortest path back to sources in that basin
+to reverse-pass [snks]
+  foreach snks [ snk ->
+    ;; note that snk may be multiple sites
+    ask snk [
+      let shell patch-set self
+      while [ any? shell ] [
+        let prev-shell (patch-set [neighbors4 with [d-source = [d-source] of myself - 1]] of shell)
+        ask prev-shell [
+          set elastic? true ;; must be in the elastic backbone
+        ]
+        set shell prev-shell
       ]
     ]
-    if pass = 2 [
-      let my-t1 t1
-      ask neighbors4 with [t1 != -1 and t1 < my-t1] [
-        set new-front ( patch-set new-front self)
-        set t2 c
-      ]
-    ]
-  ]
-  set front new-front
-end
-
-to identify-basins
-  let basin-count 0
-  ;; tag all patches less than the cut-off as counted
-  ask patches [ set basin-set? not invaded? ]
-
-  let all-to-tag sort patches with [not basin-set?]
-  let to-recolour patch-set all-to-tag
-  while [ length all-to-tag > 0 ] [
-    let col random 140
-    let this-basin patch-set nobody
-    set basin-count basin-count + 1
-    ;; start with a randomly selected untagged patch
-    let patches-to-tag (patch-set one-of all-to-tag)
-
-    while [ any? patches-to-tag ] [
-      ask patches-to-tag [
-        ;; tag as counted and mark for statistical purposes
-        set basin-set? true
-        set basin-id basin-count
-        set pcolor col ;; for progress visualization
-      ]
-      set this-basin (patch-set this-basin patches-to-tag)
-      set patches-to-tag (patch-set [neighbors4] of patches-to-tag) with [not basin-set?]
-    ]
-    set basins lput this-basin basins
-    set sources lput (this-basin with [member? self start-sites]) sources
-    set sinks lput (this-basin with-max [pxcor]) sinks
-    set all-to-tag filter [ x -> not [basin-set?] of x ] all-to-tag
-  ]
-  ask to-recolour [
-    set pcolor white
   ]
 end
 @#$#@#$#@
@@ -458,7 +387,7 @@ CHOOSER
 field-dist
 field-dist
 "uniform" "Gaussian"
-1
+0
 
 TEXTBOX
 11
@@ -476,7 +405,7 @@ BUTTON
 714
 104
 colour-basins
-foreach basins [ ?1 ->\nlet x one-of [3 5 7]\nask ?1 [set pcolor basin-id * 10 + x]\n ]
+foreach basins [ b ->\nlet x one-of [3 5 7]\nask b [set pcolor basin-id * 10 + x]\n ]
 NIL
 1
 T
@@ -499,6 +428,27 @@ as discussed in in Chapter 5 of
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
+
+## THINGS TO NOTICE
+
+Note that the terminology sources and sinks used here reflects the invasion percolation process not the way that drainage basins would usually be labelled.
+
+This model combines elements of the previous two.  
+
+Multiple invasion percolation clusters without trapping (model 5.4) are sourced from the left hand edge of the space.  Each is considered a drainage basin. These could be detected using the cluster identification method in model 5.1, but in this case, because we are growing the clusters from source sites on the left hand edge of the space, we build the basins as we grow them by assigning each source a `basin-id` and propagating this forward as successor sites are identified:
+
+    let predecessor one-of possible-predecessors with [invaded?]
+    set basin-id [basin-id] of predecessor
+
+When the model run is complete, we find the basins using the `basin-id` values of the source patches which were entered into the `basins` list during initialisation.
+
+    set basins map [ id -> patches with [invaded? and basin-id = id ] ] basins
+
+When the model has run `trace-drainage` uses the backbone detection method of model 5.3 to identify the longest branch of each basin. Because of the simpler structure of the clusters in this case (there are no loops) the forward-backward burn method of the algorithm is easier to follow in this model. Again, since we are building the clusters by invasion percolation, we can accumulate the forward pass distance from source sites `d-source` as the cluster grows
+
+    set d-source [d-source] of predecessor + 1
+
+Thus we only need to run the backward pass from the sink locations, which occurs in the `reverse-pass` procedure.
 
 ## HOW TO CITE
 
