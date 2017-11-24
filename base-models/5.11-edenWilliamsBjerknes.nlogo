@@ -51,6 +51,7 @@ end
 
 to go
   ifelse length interfaces > 0 [
+    ;; pick an active interface of the tumor
     let interface one-of interfaces
 
     ;; grow into new site?
@@ -66,27 +67,37 @@ to go
   ]
 end
 
+;; handles updates associated with new infection site
+;; on the interface i at time t
 to infect [i t]
   ask last i [
     set pcolor white
     set t-colonised t
     ask neighbors4 [
+      ;; interfaces are tumor-not tumor order
       update-interfaces (list myself self)
     ]
   ]
 end
 
+;; handles updates when an infection site recovers
+;; on the interface i
 to recover [i]
   ask first i [
     set pcolor black
     set t-colonised -1
     ask neighbors4 [
+      ;; interfaces are tumor-not tumor
+      ;; in this case it is the neighbor
+      ;; (self) that may be infected
       update-interfaces (list self myself)
     ]
   ]
 end
 
-
+;; updates the interfaces list
+;; by adding if the two patches in interface i are different
+;; by removing if they are the same
 to update-interfaces [i]
   ifelse active? i
   [ set interfaces fput i interfaces ]
