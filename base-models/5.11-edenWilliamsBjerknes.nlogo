@@ -280,6 +280,20 @@ This is an example model referenced in Chapter 5 of
 
 You should consult that book for more information and details of the model.
 
+##
+
+The Ferreira paper noted above clarifies that the basis for selection of new sites of infection or recovery is the interface between infected and uninfected sites.  Each such interface has equal chance of being the next location where model updating occurs.  This requires a different approach than the previous examples of Eden processes, because a patch-set stores only one instance of each patch, whereas a potential 'target' patch might have more than one infected neighbor, and hence be involved in more than one interface.
+
+Therefore, in this model, the mechanism relies on a list of patch-pairs named `interfaces` for its operation. When a new interface is selected for updating, with probability `g` the second item in the pair will be occupied (infected) and all four of its `neighbors4` have to be considered as potential additions to or removals from the interfaces list.
+
+If tumor growth does not occur (with probability `1 - g`) then the first item in the patch pair will recover and again all its neighbors have to be considered for potential addition to or removal from the `interfaces` list. 
+
+These updates are handled by the `infect` and `recover` procedures mainly to keep the `go` procedure 'clean' and easy to read.
+
+## THINGS TO NOTICE
+
+The advantage in growth rate of tumor cells in this model (see Ferreira 2003 for details) is given by the `kappa` monitor.  When the growth rate is set to 1, this is `kappa` is &infin; and the model becomes very much like the simple Eden process (model 5.7).  At lower growth rates you will find that a large proportion of infections die out.  To explore this effect it is recommended that you press the **go** button and then use the **setup** button to initiate new runs.  You will find that you have to press **setup** several times before an infection will 'take'.
+
 ## HOW TO CITE
 
 If you mention this model in a publication, please include these citations for the model itself and for NetLogo
