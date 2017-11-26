@@ -24,128 +24,99 @@
 
 extensions [ palette ]
 
-globals
-[
-  perimeter-set
-  p-length
-  p-length-list
-  n-occupied
-  max-height
+globals [
+  perimeter
 ]
 
 breed [counters counter]
-counters-own [hgt]
+counters-own [height]
 
-patches-own
-[
+patches-own [
   t-colonised
   attempts
-  occupied?
 ]
 
 to setup
-    clear-all
+  clear-all
 
-    ask patches with [pycor = 0]
-    [sprout-counters 1 [set hgt 0 ht]]
+  set perimeter nobody
+  ask patches [ set t-colonised -1 ]
 
-    set n-occupied 0
-
-    ask patches [
-      set pcolor grey - 2
-      set occupied? false
-      set t-colonised -1
-    ]
-
-    let start-sites patches with [pycor = 0]
-
-    set perimeter-set nobody
-
-    ask start-sites [
-      let f-site self
-      set occupied? true
-      set t-colonised 0
-      set perimeter-set (patch-set perimeter-set neighbors4)
-      set pcolor white
-      set n-occupied n-occupied + 1
-      ask counters with [xcor = ([pxcor] of f-site)] [set hgt hgt + 1]   ;; f-site = myself
-    ]
-
-    set max-height 1
-    reset-ticks
+  ask patches with [pycor = 0] [
+    sprout-counters 1 [set height 0 ht]
+    let f-site self
+    set t-colonised 0
+    set perimeter (patch-set perimeter neighbors4)
+    set pcolor white
+    ask counters with [xcor = ([pxcor] of myself)] [set height height + 1]
+  ]
+  reset-ticks
 end
 
 to go
   ;; initiate the growth
-  if max-height > max-pycor - 2 [stop]
+  if max [height] of counters > max-pycor - 1 [
+    colour-by-time
+    stop
+  ]
 
   let t 0
   repeat world-width [
-    ask one-of perimeter-set
-    [
-      ;; if m = 0 then this is the classical Eden process as per Eden 1961, otherwise it's the noise-reduced form
-
+    ask get-next-colonised [
       set attempts attempts + 1
 
-      if attempts >= m
-      [
-        let new-site self
-        set occupied? true
-        set n-occupied n-occupied + 1
+      if attempts >= m [
         set pcolor white
         set t-colonised (ticks * world-width) + t
+        update-perimeter
 
-        let new-edge-cells neighbors4 with [occupied? = false]
-
-        ;; rebuilds the perimeter-list with the new candidates added and the newly colonised patch removed
-        set perimeter-set (patch-set (other perimeter-set) new-edge-cells)
-
-        ;; update the counters etc. -> rather arcane as need to make sure we have the uppermost
+        ;; update the counters etc. Need to ensure we have the uppermost
         ;; patch irrespective of holes etc.
-        let f-counter counters with [xcor = ([pxcor] of new-site)]
-        let h max [hgt] of f-counter     ;; list to number
-
-        if h < ([pycor] of new-site) + 1
-          [ ask f-counter [ set hgt ([pycor] of new-site) + 1 ] ]
-
-        if pycor + 1 > max-height [set max-height pycor + 1]
+        let column-counter one-of counters with [pxcor = ([pxcor] of myself)]
+        ask column-counter [ set height max (list pycor [pycor] of myself) + 1 ]
       ]
     ]
-    set p-length count perimeter-set
     set t t + 1
   ]
   tick
 end
 
+to-report get-next-colonised
+  report one-of perimeter
+end
+
+to update-perimeter
+  set perimeter other (patch-set perimeter neighbors4 with [t-colonised = -1])
+end
+
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied?] [
+  ask patches with [t-colonised > -1] [
     set pcolor palette:scale-gradient [[227 26 28] [255 237 160]] t-colonised 0 (ticks * world-width)
   ]
 end
 
 ;; highlight the perimeter cells only
 to colour-edge
-  ;;ask patches [set pcolor black]
-  ask perimeter-set [set pcolor red]
+  ask perimeter [set pcolor violet]
 end
 
 to-report get-mean-height
-  report mean [hgt] of counters
+  report mean [height] of counters
 end
 
 to-report get-variance-height
-  report variance [hgt] of counters
+  report variance [height] of counters
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-986
-275
+207
+17
+1239
+410
 -1
 -1
-1.0
+2.0
 1
 10
 1
@@ -156,20 +127,20 @@ GRAPHICS-WINDOW
 0
 1
 0
-767
+511
 0
-255
-1
-1
+191
+0
+0
 1
 ticks
 100.0
 
 BUTTON
-72
-12
-139
-45
+127
+22
+194
+55
 setup
 setup
 NIL
@@ -183,10 +154,10 @@ NIL
 1
 
 BUTTON
-75
-51
-138
-84
+128
+61
+194
+94
 go
 go
 T
@@ -200,10 +171,10 @@ NIL
 1
 
 PLOT
-245
-284
-547
-456
+233
+429
+535
+601
 Height variance
 Time
 Length^2
@@ -218,10 +189,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plotxy (ticks * world-width) get-variance-height"
 
 BUTTON
-50
-100
-171
-133
+86
+108
+194
+141
 colour-by-time
 colour-by-time
 NIL
@@ -235,10 +206,10 @@ NIL
 1
 
 BUTTON
-59
-142
-167
-175
+86
+148
+194
+181
 colour-edge
 colour-edge
 NIL
@@ -277,10 +248,10 @@ If m = 0 then there is no 'noise-reduction'.
 1
 
 MONITOR
-845
-287
-938
-332
+838
+434
+931
+479
 mean-height
 get-mean-height
 2
@@ -288,10 +259,10 @@ get-mean-height
 11
 
 MONITOR
-845
-339
-937
-384
+838
+486
+930
+531
 var-height
 get-variance-height
 2
@@ -299,10 +270,10 @@ get-variance-height
 11
 
 PLOT
-551
-285
-838
-458
+541
+428
+828
+601
 Mean height
 Time
 Length

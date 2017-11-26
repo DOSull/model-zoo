@@ -24,92 +24,72 @@
 
 extensions [ palette ]
 
-globals
-[
-   perimeter-set
-   p-length
-   p-length-list
-   at-edge?
+globals [
+  perimeter
 ]
 
-patches-own
-[
-  occupied?    ;; tried to spread into and failed...
+patches-own [
   immune?      ;; member of cluster flag
   t-colonised  ;; tick added to cluster
-  r-num-code
 ]
 
 
 to setup
   clear-all
   ask patches [
-    set occupied? false
     set immune? false
     set t-colonised -1
   ]
-  let start-site nobody
-
-  ;; get the start loication - either centre of grid or random location
-  ifelse start-in-centre?
-  [ set start-site patch (max-pxcor / 2) (max-pycor / 2) ]
-  [ set start-site one-of patches ]
-
-  ask start-site [
-    set occupied? true
-    set t-colonised 0
-    set perimeter-set neighbors4
-    set pcolor white
-  ]
-  set at-edge? false
+  set perimeter patch-set nobody
   reset-ticks
 end
 
 to go
-  ifelse (not any? perimeter-set) or at-edge? [
+  if (not any? perimeter and ticks > 0) [
     user-message "Spread has stopped!"
+    colour-by-time
     stop
   ]
-  [
-    ask one-of perimeter-set [
-      ifelse random-float 1 <= p
-      [
-        set occupied? true
-        set pcolor white
-        set t-colonised ticks
-
-        let new-edge-cells neighbors4 with [occupied? = false and immune? = false]
-
-        ;; rebuilds the perimeter-list with the new candidates
-        ;; added and the newly colonised patch removed
-        set perimeter-set (patch-set (other perimeter-set) new-edge-cells)
-        test-edge
-      ]
-      [
-        set immune? true
-        set pcolor grey
-        ;; remove from the perimeter set
-        set perimeter-set other perimeter-set
-      ]
-    ]
-    set p-length count perimeter-set
-    tick
+  if (any? perimeter with [at-edge?]) [
+    colour-by-time
+    stop
   ]
+  ask get-next-occupied [
+    ifelse random-float 1 <= p or ticks = 0 [
+      set t-colonised ticks
+      set pcolor white
+    ]
+    [
+      set immune? true
+      set pcolor violet
+    ]
+    update-perimeter
+  ]
+  tick
+end
+
+to-report get-next-occupied
+  ifelse ticks = 0
+  [ report patch (min-pxcor + world-width / 2) (min-pycor + world-height / 2) ]
+  [ report one-of perimeter ]
+end
+
+to update-perimeter
+  ifelse immune?
+  [ set perimeter other perimeter ]
+  [ set perimeter other (patch-set perimeter neighbors4 with [t-colonised = -1 and not immune?]) ]
 end
 
 to colour-by-time
-  ask patches with [occupied?] [
+  ask patches with [t-colonised > -1] [
     set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
   ]
 
 end
 
-to test-edge
-  if pxcor = min-pxcor + 2 or pxcor = max-pxcor - 2
-  or pycor = min-pycor + 2 or pycor = max-pycor - 2
-  [
-    set at-edge? true
-  ]
+to-report at-edge?
+  report pxcor = min-pxcor + 2 or pxcor = max-pxcor - 2
+      or pycor = min-pycor + 2 or pycor = max-pycor - 2
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -137,7 +117,7 @@ GRAPHICS-WINDOW
 0
 1
 ticks
-100.0
+500.0
 
 SLIDER
 13
@@ -146,10 +126,10 @@ SLIDER
 120
 p
 p
-0
-1
-0.62
-.01
+0.5
+0.7
+0.595
+.001
 1
 NIL
 HORIZONTAL
@@ -205,17 +185,6 @@ NIL
 NIL
 1
 
-SWITCH
-26
-179
-176
-212
-start-in-centre?
-start-in-centre?
-0
-1
--1000
-
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -228,6 +197,7 @@ as discussed in Chapter 5 of
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
+
 ## HOW TO CITE
 
 If you mention this model in a publication, please include these citations for the model itself and for NetLogo
@@ -235,6 +205,20 @@ If you mention this model in a publication, please include these citations for t
 +   Alexandrowicz Z 1980 Critically branched chains and percolation clusters. _Physics Letters A_ **80** 284–286.
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 +   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+## THINGS TO NOTICE
+
+This model is essentially the same as the other Eden process models (5.7 etc.) with a `perimeter` patch-set maintained by the code to allow more rapid updating that would be possible with a line something like 
+
+    let next-occupied one-of patches with [any? neighbors4 with [t-colonised > -1]]
+
+The difference here is that when a site is selected for invasion it becomes `immune?` (and is removed from the `perimeter`) with probability `1 - p`.
+
+As a result this model shares a great deal in common with site percolation models.
+
+## THINGS TO TRY
+
+You might expect there to a _p_<sub>critical</sub> value for a model like this. See if yoy can find it by setting up and running an experiment in the BehaviorSpace tool.
 
 ## COPYRIGHT AND LICENSE
 
