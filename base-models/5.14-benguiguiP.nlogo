@@ -24,113 +24,90 @@
 
 extensions [ palette ]
 
-globals
-[
-  perimeter-set
-  p-length-list
-  at-edge?
-  n-occupied
+globals [
+  perimeter
 ]
 
-patches-own
-[
+patches-own [
   t-colonised
   attempts
-  occupied?
 ]
 
 to setup
   clear-all
 
-  ask patches
-  [ set occupied? false
+  ask patches [
     set t-colonised -1
     set attempts 0
-    ]
-
-  let start-site nobody
-
-  ;; get the start loication - either centre of grid or random location
-  ifelse start-in-centre?
-   [ set start-site patch (max-pxcor / 2) (max-pycor / 2) ]
-   [ set start-site one-of patches ]
-
-  ask start-site [
-    set occupied? true
-    set t-colonised 0
-    set perimeter-set neighbors4
-    set pcolor white
   ]
+  set perimeter patch-set nobody
 
-  set p-length-list []
-  set p-length-list lput (count perimeter-set) p-length-list
-
-  set n-occupied 1
   reset-ticks
 end
 
 to go
+  ;; test for completion
+  if ticks >= N [
+    colour-by-time
+    stop
+  ]
+
   ;; initiate the growth
   let site-filled? false   ;; flag: is new cell actually occupied this tick?
 
-  ask one-of perimeter-set [
-    ;; In Benguigui's model the difference to the classical Eden with NR is that sites *adjacent* to sites visited
-    ;; but below m (so unoccupied) also get added to the perimeter-set.  This allows 'islands' to form.
+  ask get-next-occupied [
+    ;; In Benguigui's model the difference to the classical Eden with NR
+    ;; is that sites *adjacent* to sites visited but below m
+    ;; (so unoccupied) also get added to the perimeter-set.
+    ;; This allows 'islands' to form.
     set attempts attempts + 1
 
-    if attempts = m [
-      set occupied? true
+    if attempts > m [
       set pcolor white
       set t-colonised ticks
       set site-filled? true
-      set n-occupied n-occupied + 1
-      test-edge
     ]
-
-    ;; Update lists:: need to use site-filled? to decide whether to add check cell or not
-    let new-edge-cells neighbors4 with [occupied? = false and attempts = 0]
-
-    if any? new-edge-cells [
-      ifelse site-filled?
-      [ set perimeter-set (patch-set (other perimeter-set) new-edge-cells) ]
-      [ set perimeter-set (patch-set perimeter-set new-edge-cells) ]
-    ]
+    update-perimeter site-filled?
   ]
-  ;; Increment the list storing perimeter size.
-  set p-length-list lput (count perimeter-set) p-length-list
-
   ;;  Benguigui scales the model so that a tick is a successful occupancy
   if site-filled? [tick]
-
-  ;; test for completion
-  if at-edge? = true or ticks > N [stop]
 end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied?] [
-    set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks
+  ask patches [
+    ifelse t-colonised > -1
+    [ set pcolor palette:scale-gradient [[244 109 67] [255 255 191] [116 173 209]] t-colonised 0 ticks ]
+    [ set pcolor black ]
   ]
 end
 
+
+to-report get-next-occupied
+  ifelse ticks = 0
+  [ report patch (min-pxcor + world-width / 2) (min-pycor + world-height / 2) ]
+  [ report one-of perimeter ]
+end
+
+
+to update-perimeter [new-occupation?]
+  set perimeter (patch-set perimeter neighbors4 with [t-colonised = -1 and attempts = 0])
+  if new-occupation? [ set perimeter other perimeter ]
+end
+
+
 to colour-by-visits
-  let max-a max [attempts] of perimeter-set
-  ask perimeter-set [
-    set pcolor palette:scale-scheme "Sequential" "YlOrRd" 9 attempts 0 max-a
+  let max-a max [attempts] of patches
+  ask patches [
+    ifelse attempts > 0
+    [ set pcolor palette:scale-scheme "Sequential" "YlOrRd" 9 attempts 0 max-a ]
+    [ set pcolor black ]
   ]
 end
 
 ;; highlight the perimeter cells only
 to colour-edge
-  ask perimeter-set with [attempts = 1] [set pcolor red]
-end
-
-;; send various graphics to R
-to test-edge
-  if pxcor = min-pxcor + 2 or pxcor = max-pxcor - 2
-  or pycor = min-pycor + 2 or pycor = max-pycor - 2 [
-    set at-edge? true
-  ]
+  ask perimeter with [attempts = 1] [set pcolor red]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -210,7 +187,7 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plotxy ticks last p-length-list"
+"default" 1.0 0 -16777216 true "" "plotxy ticks count perimeter"
 
 BUTTON
 51
@@ -255,7 +232,7 @@ m
 m
 0
 20
-20.0
+5.0
 1
 1
 NIL
@@ -270,17 +247,6 @@ If m = 0 then there is no 'noise-reduction'.
 11
 0.0
 1
-
-SWITCH
-37
-345
-187
-378
-start-in-centre?
-start-in-centre?
-0
-1
--1000
 
 BUTTON
 50
@@ -308,7 +274,7 @@ N
 N
 500
 5000
-2500.0
+5000.0
 50
 1
 NIL
