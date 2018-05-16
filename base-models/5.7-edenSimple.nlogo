@@ -69,7 +69,7 @@ end
 
 
 to-report get-next-occupied
-  ifelse ticks = 0
+  ifelse ticks <= m
   [ report patch (min-pxcor + world-width / 2) (min-pycor + world-height / 2) ]
   [ report one-of perimeter ]
 end
@@ -210,7 +210,7 @@ m
 m
 0
 10
-0.0
+2.0
 1
 1
 NIL
