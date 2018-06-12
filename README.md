@@ -1,5 +1,5 @@
 # model-zoo
-Model zoo (in Netlogo) for the book Pattern and Process
+Model zoo (in Netlogo) for the book _Spatial Simulation: Exploring Pattern and Process_.
 
 This is the collection of [Netlogo](http://github.com/NetLogo) models we built for our book [_Spatial Simulation: Exploring
 Pattern and Process_](http://www.wiley.com/WileyCDA/WileyTitle/productCd-1119970792.html). The models are also available at
