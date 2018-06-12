@@ -14,7 +14,9 @@ The models as originally released when the book appeared (and as used to generat
 ## Ongoing work
 Models are being slowly updated, to add more information about how they work and additional in-code comments, and more recently for compatibility with NetLogo 6.x.  The latest versions of the models are in the top level [`base-models`](/base-models) and [`using-R`](/using-R) folders which respectively require no complex extensions, and one of the NetLogo R extensions (you'll have to download them and try them to find out which).
 
-A 'frozen' final release of these folders compatible with NetLogo 5.3 was created on 18 November, 2017, and is found here.  
+A 'frozen' release of these folders compatible with NetLogo 5.3 was created on 18 November, 2017: [v0.5.3 release](https://github.com/DOSull/model-zoo/releases/tag/v0.5.3)
+
+A 'final for now' release of these folders compatible with NetLogo 6.0 was created on 11 June, 2018: [v0.6.0 release](https://github.com/DOSull/model-zoo/releases/tag/v0.6.0)
 
 The most current code in `base-models` and `using-R` aims to be compatible with the current version of NetLogo.
 
