@@ -21,6 +21,4 @@ A 'final for now' release of these folders compatible with NetLogo 6.0 was creat
 The most current code in `base-models` and `using-R` aims to be compatible with the current version of NetLogo.
 
 ## Current status
-Models in `base-models` should work with NetLogo 6.x.
-
-Models in `using-R` have not yet been updated from NetLogo 5.x. Hope to get to this soon!
+Models in `base-models` and `using-R` should all work with NetLogo 6.0.x. Models in `as-released` and `misc` will not. Note that the models now use only extensions that come standard with NetLogo (r and palette).
