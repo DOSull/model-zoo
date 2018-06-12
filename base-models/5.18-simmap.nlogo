@@ -327,7 +327,7 @@ You should consult that book for more information and details of the model.
 
 The desired number and relative proportions of habitat classes are specified in the associated file `5.18-classes.txt`.  The first line of that file specifies the number of classes required, and their relative (integer) proportions are given by the numbers (one to a line) in the remainder of the file.
 
-Note that this implementation provides the option via the `sequentially-assign-clusters?` switch of assigning percolation clusters to habitat classes in order from largest to smallest.  This can make a substantial difference to the resulting landscapes when their are large imbalances among the proportions required, or when the percolation threshold `p` is close to or greater than the critical value _p<sub>c</sub>_.
+Note that this implementation provides the option via the `sequentially-assign-clusters?` switch of assigning percolation clusters to habitat classes in order from largest to smallest.  This can make a substantial difference to the resulting landscapes when there are large imbalances among the proportions required, or when the percolation threshold `p` is close to or greater than the critical value _p<sub>c</sub>_.
 
 ## HOW TO CITE
 

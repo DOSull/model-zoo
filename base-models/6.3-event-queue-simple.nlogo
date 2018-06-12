@@ -67,7 +67,7 @@ to setup
 end
 
 to go
-  ;; model stops all of either resource has been exploited
+  ;; model stops if all of either resource has been exploited
   ;; the event-based half will always be exploited first
   if sum [resource] of e-patches = 0 or sum [resource] of t-patches = 0 [stop]
   ;; event-based

@@ -205,7 +205,7 @@ CHOOSER
 update-mode
 update-mode
 "synchronous" "async all random" "async random" "async ordered"
-0
+3
 
 SWITCH
 72
@@ -233,34 +233,6 @@ This model is referenced in Chapter 6 of
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 where the details of these different updating schemes are described in more detail.
-
-## HOW IT WORKS
-
-This section could explain what rules the agents use to create the overall behavior of the model.
-
-## HOW TO USE IT
-
-This section could explain how to use the model, including a description of each of the items in the interface tab.
-
-## THINGS TO NOTICE
-
-This section could give some ideas of things for the user to notice while running the model.
-
-## THINGS TO TRY
-
-This section could give some ideas of things for the user to try to do (move sliders, switches, etc.) with the model.
-
-## EXTENDING THE MODEL
-
-This section could give some ideas of things to add or change in the procedures tab to make the model more complicated, detailed, accurate, etc.
-
-## NETLOGO FEATURES
-
-This section could point out any especially interesting or unusual features of NetLogo that the model makes use of, particularly in the Procedures tab.  It might also point out places where workarounds were needed because of missing features.
-
-## RELATED MODELS
-
-This section could give the names of models in the NetLogo Models Library or elsewhere which are of related interest.
 
 ## HOW TO CITE
 

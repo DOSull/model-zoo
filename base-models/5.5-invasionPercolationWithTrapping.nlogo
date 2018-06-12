@@ -514,7 +514,7 @@ This will label all the patches in the 'queue' to be invaded next (from lowest v
 
 ## THINGS TO NOTICE
 
-The complicated part of this model is associated with detecting traps. The basic algorithm above is operated by maintaing a queue `next-to-invade`.  This is a list of patches next to already invaded patches (strictly north, south or east of invaded patches), that is kept ordered by the randomly generated `p` values assigned during model setup. Maintenance of the queue order is managed by the `insert-in-order` procedure.  By this mains the basic operation is
+The complicated part of this model is associated with detecting traps. The basic algorithm above is operated by maintaing a queue `next-to-invade`.  This is a list of patches next to already invaded patches (strictly north, south or east of invaded patches), that is kept ordered by the randomly generated `p` values assigned during model setup. Maintenance of the queue order is managed by the `insert-in-order` procedure.  By this means the basic operation is
 
     while not at right edge [
       invade first patch in next-to-invade-list

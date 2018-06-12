@@ -38,7 +38,7 @@ to setup
   ;; make a row of hex shaped turtles
   ask bottom-row [
     sprout-hexes 1 [
-      set size 0.95
+      set size 1.1
       set hex-row 0
       set hex-col pxcor
       set ycor ycor + 0.3
@@ -89,11 +89,11 @@ end
 GRAPHICS-WINDOW
 145
 10
-603
-469
+753
+619
 -1
 -1
-9.0
+12.0
 1
 8
 1
