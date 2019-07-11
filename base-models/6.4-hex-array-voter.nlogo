@@ -35,8 +35,6 @@ hexes-own [
 
 to setup
   clear-all
-  resize-world 0 (world-size - 1) 0 (world-size - 1)
-  set-patch-size floor (800 / world-width)
 
   set-default-shape hexes "hexagon"
   ask patches [set pcolor grey]
@@ -107,13 +105,13 @@ to-report z-diff [h]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-228
+112
 10
-1028
-811
+920
+819
 -1
 -1
-18.0
+16.0
 1
 15
 1
@@ -124,9 +122,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-43
+49
 0
-43
+49
 1
 1
 1
@@ -134,9 +132,9 @@ ticks
 100.0
 
 BUTTON
-141
+25
 23
-204
+88
 56
 NIL
 setup
@@ -151,9 +149,9 @@ NIL
 1
 
 BUTTON
-141
+25
 62
-204
+88
 95
 NIL
 go
@@ -168,9 +166,9 @@ NIL
 1
 
 BUTTON
-141
+25
 108
-205
+89
 141
 step
 go
@@ -183,21 +181,6 @@ NIL
 NIL
 NIL
 1
-
-SLIDER
-38
-161
-210
-194
-world-size
-world-size
-10
-150
-44.0
-1
-1
-NIL
-HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
