@@ -30,24 +30,30 @@ hexes-own [
   hex-row  ;; hex lattice 'y' coord
 ]
 
+globals [
+  y-correction
+  num-hex-rows
+]
+
 to setup
   clear-all
+  resize-world 0 (world-size - 1) 0 (world-size - 1)
+  set-patch-size floor (800 / world-width)
+
   set-default-shape hexes "hexagon"
   ask patches [set pcolor grey]
-  let bottom-row patches with [pycor = min-pycor and pxcor >= min-pxcor and pxcor < max-pxcor]
+  let bottom-row patches with [pycor = min-pycor]; and pxcor < max-pxcor]
   ;; make a row of hex shaped turtles
   ask bottom-row [
     sprout-hexes 1 [
-      set size 1.1
+      set size 1.1 ; a little bit > 1 looks better
       set hex-row 0
       set hex-col pxcor
-      set ycor ycor + 0.3
-      set xcor xcor + 0.7
     ]
   ]
+  set y-correction y-offset-correction
   ;; replicate the row up the screen, at cos 60, sin 60 offsets
-  let num-hex-rows floor ((max-pycor - min-pycor) / sin 60)
-  repeat num-hex-rows [
+  while [max [pycor] of hexes < max-pycor] [
     ask hexes with-max [hex-row] [
       hatch 1 [
         ifelse hex-row mod 2 = 0 [
@@ -57,11 +63,12 @@ to setup
         [
           set xcor xcor + cos 60
         ]
-        set ycor ycor + sin 60
+        set ycor ycor + sin 60 * y-correction
         set hex-row hex-row + 1
       ]
     ]
   ]
+  set num-hex-rows max [hex-row] of hexes + 1
   ask hexes [
     set hex-n (other hexes in-radius 1.1) with [lattice-distance myself = 1]
     set color one-of [black white]
@@ -85,23 +92,32 @@ to-report lattice-distance [h]
   [ report abs (d-row + d-col) ]
   [ report max (list abs d-row abs d-col) ]
 end
+
+to-report y-offset-correction
+  let hex-row-space world-height / sin 60
+  let number-of-rows floor hex-row-space
+  if not (number-of-rows mod 2 = 0) [
+   set number-of-rows number-of-rows + 1
+  ]
+  report hex-row-space / number-of-rows
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-145
+228
 10
-753
-619
+1036
+819
 -1
 -1
-12.0
+16.0
 1
 8
 1
 1
 1
 0
-0
-0
+1
+1
 1
 0
 49
@@ -114,10 +130,10 @@ ticks
 100.0
 
 BUTTON
-75
-16
-138
-49
+141
+23
+204
+56
 NIL
 setup
 NIL
@@ -131,10 +147,10 @@ NIL
 1
 
 BUTTON
-75
-55
-138
-88
+141
+62
+204
+95
 NIL
 go
 T
@@ -147,6 +163,60 @@ NIL
 NIL
 1
 
+BUTTON
+141
+108
+205
+141
+step
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+38
+161
+210
+194
+world-size
+world-size
+5
+150
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+104
+211
+210
+256
+NIL
+y-correction
+4
+1
+11
+
+MONITOR
+105
+264
+211
+309
+NIL
+num-hex-rows
+0
+1
+11
+
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -155,6 +225,14 @@ This model is an implementation of a simple voter model on a hexagonal lattice. 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
+
+## THINGS TO NOTICE
+
+For insight into how setup works switch to `continuous` update mode, when you can see that an initial row of `hex` turtles is created along the bottome edge of the model. This row then replicates and moves up the model space, at each step moving either 30 degrees east or west of north. At the same time the hex lattice coordinates are updated appropriately and then used to determined neighbours in the hex lattice.
+
+Because of the toroidal wrapping of space in NetLogo the height of the world in this model has been specifically chosen to allow a near exact number of rows of hexagons to fit in the integer number of rows of patches. The world height of 97 rows fits 97 / sin 60 = 112 rows of hexagons. Fortunately, this number is 
+
+If the world were not wrapped, then this restriction would not apply. 
 
 ## HOW TO CITE
 
@@ -461,7 +539,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
