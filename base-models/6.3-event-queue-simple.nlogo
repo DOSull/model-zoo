@@ -205,20 +205,20 @@ t-time
 11
 
 TEXTBOX
-21
-327
-162
-414
+15
+323
+172
+411
 The left hand side (violet) of the world is exploited following event-based model timing; the other half is exploited by elapsed-time
 11
 0.0
 1
 
 TEXTBOX
-26
-206
-100
-237
+22
+207
+102
+239
 event-based elapsed-time
 11
 0.0
@@ -545,7 +545,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

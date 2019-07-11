@@ -245,7 +245,6 @@ to-report get-candidate-spots
   ;; join to the current spots and remove duplicates
   report remove-duplicates sentence neighbouring-sites [lattice-site] of cells
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 98
@@ -409,9 +408,9 @@ NIL
 
 TEXTBOX
 546
-383
-641
-452
+385
+659
+455
 Panning while go button is pressed will probably cause model to restart.
 11
 0.0
@@ -789,7 +788,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
