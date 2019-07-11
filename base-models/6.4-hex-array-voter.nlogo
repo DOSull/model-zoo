@@ -26,13 +26,11 @@ breed [ hexes hex ]
 
 hexes-own [
   hex-n    ;; neighbours
-  hex-col  ;; hex lattice 'x' coord
-  hex-row  ;; hex lattice 'y' coord
-]
-
-globals [
-  y-correction
-  num-hex-rows
+  ; cube coordinates
+  ; see https://www.redblobgames.com/grids/hexagons/
+  hex-x  ;; hex lattice 'x' coord
+  hex-y  ;; hex lattice 'y' coord
+  hex-z  ;; hex lattice 'z' coord
 ]
 
 to setup
@@ -42,39 +40,42 @@ to setup
 
   set-default-shape hexes "hexagon"
   ask patches [set pcolor grey]
-  let bottom-row patches with [pycor = min-pycor]; and pxcor < max-pxcor]
+  let bottom-row patches with [pycor = min-pycor and pxcor < max-pxcor]
   ;; make a row of hex shaped turtles
   ask bottom-row [
     sprout-hexes 1 [
       set size 1.1 ; a little bit > 1 looks better
-      set hex-row 0
-      set hex-col pxcor
+      set hex-y 0
+      set hex-x pxcor
+      set xcor xcor + 0.7
+      set ycor ycor + 0.3
     ]
   ]
-  set y-correction y-offset-correction
   ;; replicate the row up the screen, at cos 60, sin 60 offsets
   while [max [pycor] of hexes < max-pycor] [
-    ask hexes with-max [hex-row] [
+    ask hexes with-max [hex-y] [
       hatch 1 [
-        ifelse hex-row mod 2 = 0 [
-          set xcor xcor - cos 60
-          set hex-col hex-col - 1
+        ifelse hex-y mod 2 = 0
+        [ set xcor xcor - cos 60
+          set hex-x hex-x - 1
         ]
-        [
-          set xcor xcor + cos 60
-        ]
-        set ycor ycor + sin 60 * y-correction
-        set hex-row hex-row + 1
+        [ set xcor xcor + cos 60 ]
+        if hex-x > pxcor [ set hex-x hex-x - world-width ]
+        set ycor ycor + sin 60
+        set hex-y hex-y + 1
       ]
     ]
   ]
-  set num-hex-rows max [hex-row] of hexes + 1
+  ask hexes [
+    set hex-z 0 - hex-x - hex-y
+  ]
   ask hexes [
     set hex-n (other hexes in-radius 1.1) with [lattice-distance myself = 1]
     set color one-of [black white]
   ]
   reset-ticks
 end
+
 
 to go
   repeat count hexes [
@@ -85,44 +86,47 @@ to go
   tick
 end
 
+
 to-report lattice-distance [h]
-  let d-row hex-row - [hex-row] of h
-  let d-col hex-col - [hex-col] of h
-  ifelse d-row * d-col > 0
-  [ report abs (d-row + d-col) ]
-  [ report max (list abs d-row abs d-col) ]
+  report max (list x-diff h y-diff h z-diff h)
 end
 
-to-report y-offset-correction
-  let hex-row-space world-height / sin 60
-  let number-of-rows floor hex-row-space
-  if not (number-of-rows mod 2 = 0) [
-   set number-of-rows number-of-rows + 1
-  ]
-  report hex-row-space / number-of-rows
+
+to-report x-diff [h]
+  report abs (hex-x - [hex-x] of h)
+end
+
+
+to-report y-diff [h]
+  report abs (hex-y - [hex-y] of h)
+end
+
+
+to-report z-diff [h]
+  report abs (hex-z - [hex-z] of h)
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 228
 10
-1036
-819
+1028
+811
 -1
 -1
-16.0
+18.0
 1
-8
-1
-1
-1
-0
+15
 1
 1
 1
 0
-49
 0
-49
+0
+1
+0
+43
+0
+43
 1
 1
 1
@@ -187,35 +191,13 @@ SLIDER
 194
 world-size
 world-size
-5
+10
 150
-50.0
+44.0
 1
 1
 NIL
 HORIZONTAL
-
-MONITOR
-104
-211
-210
-256
-NIL
-y-correction
-4
-1
-11
-
-MONITOR
-105
-264
-211
-309
-NIL
-num-hex-rows
-0
-1
-11
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -228,11 +210,13 @@ You should consult that book for more information and details of the model.
 
 ## THINGS TO NOTICE
 
-For insight into how setup works switch to `continuous` update mode, when you can see that an initial row of `hex` turtles is created along the bottome edge of the model. This row then replicates and moves up the model space, at each step moving either 30 degrees east or west of north. At the same time the hex lattice coordinates are updated appropriately and then used to determined neighbours in the hex lattice.
+For insight into how setup works switch to `continuous` update mode, when you can see that an initial row of `hex` turtles is created along the bottom edge of the model. This row then replicates and moves up the model space, at each step moving either 30 degrees east or west of north. At the same time the hex lattice coordinates are updated appropriately and then used to determined neighbours in the hex lattice.
 
-Because of the toroidal wrapping of space in NetLogo the height of the world in this model has been specifically chosen to allow a near exact number of rows of hexagons to fit in the integer number of rows of patches. The world height of 97 rows fits 97 / sin 60 = 112 rows of hexagons. Fortunately, this number is 
+The hex lattice uses cube coordinates. Excellent information concerning hex lattices is available at https://www.redblobgames.com/grids/hexagons/
 
-If the world were not wrapped, then this restriction would not apply. 
+## THINGS TO TRY
+
+A challenging extension of this model is to extend it to work in a toroidal space. Such an extension might require an entirely different approach, and is especially tricky when it comes to assigning the hex lattice coordinates.
 
 ## HOW TO CITE
 
