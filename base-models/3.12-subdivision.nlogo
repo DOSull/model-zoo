@@ -164,7 +164,7 @@ to allocate-patches-to [c]
   ;; note that this awkward formulation is required because
   ;; 'ask domain' encounters the 'only observer can ask all patches'
   ;; error at depth 0
-  ask patches with [my-node = myself] [
+  ask domain with [my-node = myself] [
     set my-node min-one-of c [distance myself]
   ]
   let dom domain
@@ -328,7 +328,7 @@ n-subdivisions
 n-subdivisions
 100
 count patches / 4
-2382.0
+4041.0
 1
 1
 NIL
@@ -353,7 +353,7 @@ p-state-change
 p-state-change
 0
 1
-0.0
+0.5
 0.01
 1
 NIL
@@ -816,7 +816,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

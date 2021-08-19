@@ -141,13 +141,13 @@ to-report mle-exponent [size-list xmin]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-260
-13
-728
-482
+240
+11
+760
+531
 -1
 -1
-1.8
+2.0
 1
 10
 1
@@ -217,10 +217,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-167
-24
-240
-69
+159
+25
+232
+70
 Year
 elapsed-time
 0
@@ -261,10 +261,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-816
-13
-887
-58
+840
+15
+911
+60
 Largest Fire
 max fire-size-list
 0
@@ -272,10 +272,10 @@ max fire-size-list
 11
 
 MONITOR
-894
-14
-971
-59
+917
+15
+994
+60
 Ave. Fire Size
 mean fire-size-list
 1
@@ -283,10 +283,10 @@ mean fire-size-list
 11
 
 PLOT
-743
-62
-970
-208
+766
+64
+993
+210
 Age structure
 Vegetation age
 Frequency
@@ -301,10 +301,10 @@ PENS
 "default" 1.0 1 -16777216 true "" "set-plot-x-range 0 (max [age] of patches + 1)\nset-histogram-num-bars 20\nhistogram [age] of patches"
 
 PLOT
-743
-210
-969
-365
+766
+211
+992
+366
 Fire size-frequency
 ln (Size)
 ln (Prop. rank)
@@ -319,20 +319,20 @@ PENS
 "default" 250.0 2 -16777216 true "" ""
 
 TEXTBOX
-266
-496
-691
-524
+303
+540
+728
+568
 Colour represents vegetation age from light (young) to dark (old).
 11
 0.0
 0
 
 MONITOR
-742
-12
-810
-57
+765
+14
+833
+59
 No. of fires
 length fire-size-list
 0
@@ -358,10 +358,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plotxy elapsed-time ((count patches with [age > 300]) / world-size)"
 
 PLOT
-743
-368
-967
-518
+766
+370
+990
+520
 Average fire size
 Time
 Ave size
@@ -386,9 +386,9 @@ flamm-model
 0
 
 MONITOR
-997
+999
 15
-1088
+1090
 60
 mle exponent
 mle-exponent fire-size-list min-size
@@ -397,10 +397,10 @@ mle-exponent fire-size-list min-size
 11
 
 SLIDER
-982
-162
-1104
-195
+999
+67
+1101
+101
 min-size
 min-size
 1
@@ -433,38 +433,41 @@ Succession is modelled very simply as the 'time since a patch was last disturbed
 2. Fire spread
 Occasionally a fire starts in the landscape.  This occurs at a frequency that the user sets (via the fireFrequency slider).  Patches of vegetation neighbouring those currently on fire have a certain risk of burning too.  Fires continue to spread until no new patches of vegetation are set alight.
 
-In the 'real' world flammability varies between different vegetation types.  In this model there are two alternatives: (i) the flammability of all vegetation types is the same (i.e. it's constant), and (ii) the flammability of the vegetation increases with age (due to the increasing amounts of litter of dead wood on the forest floor).  You can set these options via the constantFlammability? switch button.
+In the 'real' world flammability varies between different vegetation types.  In this model there are two alternatives: (i) the flammability of all vegetation types is the same (i.e. it's constant), and (ii) the flammability of the vegetation increases with age (due to the increasing amounts of litter of dead wood on the forest floor).  You can set these options via the `constantFlammability?` switch button.
 
 ## HOW TO USE IT
 
 You can manipulate the fire regime in three ways in this model:
-1. Fire frequency (fireFrequency slider)
+
+### 1. Fire frequency `fireFrequency` slider
 The frequency component of the disturbance regime describes how often an event happens.  In this case you can set the average time between disturbance events; thus, if you set the slide to twenty you can expect on average there to be a fire every 20 years. Note these are average values so you can  get periods of time with more fires than you'd expect and periods of time with fewer fires that the average predicts.
 
-2. Fire size (largestFireSize slider)
+### 2. Fire size `largestFireSize` slider
 The size component of the disturbance regime describes the magnitude of events.  This slider lets you set the maximum proportion of the landscaope that can be burned in a single fire.  Note that this does not mean that fires can go out at much smaller sizes. A proportion of zero (0.0) means that there will never be any fires, and a proportion of one  (1.0) means that a single fire might burn the entire landscape.
 
-3. Flammability (constantFlammability? switch)
+### 3. Flammability `constantFlammability?` switch
 This switch lets you set how flammability is calculated.  If the switch is set to 'on' then all vegetation irrespective of age has the same risk of burning.  If the switch is set to 'off' the the likelihood of fire spreading from a burning cell into a unburned neighbouring cell is a function of that neighbouring cells age; flammability increases with age.
 
 You are provided with other information in the form of graphs:
-1. Landscape age - this is a graph of the average age of patches in the landscape plotted vs. time.
-2. Landscape diversity - this is a graph of the diversity the landscape plotted vs. time. Diversity values range from 0 to 1; if diversity is low (cloes to one) this means that the landscape is dominated by a single age class, whereas if diversity is high (cloes to 1) each of the five vegetation age classes are present in roughly equal amounts.
-3. Age structure - this is a bar plot of the abundance of each of the five vegetation age classes in the landscape.
-4. Fire size-frequency - this is a histogram showing the frequency with which fires of different sizes occur.
+
+1. **Landscape age** this is a graph of the average age of patches in the landscape plotted vs. time.
+2. **Landscape diversity** this is a graph of the diversity the landscape plotted vs. time. Diversity values range from 0 to 1; if diversity is low (cloes to one) this means that the landscape is dominated by a single age class, whereas if diversity is high (cloes to 1) each of the five vegetation age classes are present in roughly equal amounts.
+3. **Age structure** this is a bar plot of the abundance of each of the five vegetation age classes in the landscape.
+4. **Fire size-frequency** this is a histogram showing the frequency with which fires of different sizes occur.
 
 and 'monitors':
-1. Largest fire size - largest recorded fire size.
-2. Average fire size - average size of fires.
-3. Number of fires - numebr of fire events that have occured.
+
+1. **Largest fire size** largest recorded fire size.
+2. **Average fire size** average size of fires.
+3. **Number of fires** numebr of fire events that have occured.
 
 ## HOW TO CITE
 
 If you mention this model in a publication, please include these citations for the model itself and for NetLogo
 
-+   Kitzberger T, Ar´aoz E, Gowda JN, Mermoz M and Morales J 2012 Decreases in fire spread probability with forest age promotes alternative community states, reduced resilience to climate variability and large fire regime shifts. _Ecosystems_ **15** 97-112.
-+   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-+   Peterson GD 2002 Contagious disturbance, ecological memory, and the emergence of landscape pattern. _Ecosystems_ **5** 329-338.
++   Kitzberger T, Ar´aoz E, Gowda JN, Mermoz M and Morales J 2012 Decreases in fire spread probability with forest age promotes alternative community states, reduced resilience to climate variability and large fire regime shifts. *Ecosystems* **15** 97-112.
++   O'Sullivan D and Perry GLW 2013 *Spatial Simulation: Exploring Pattern and Process*. Wiley, Chichester, England.
++   Peterson GD 2002 Contagious disturbance, ecological memory, and the emergence of landscape pattern. *Ecosystems* **5** 329-338.
 +   Wilensky U 1999 NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 ## COPYRIGHT AND LICENSE
@@ -772,7 +775,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.1.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
