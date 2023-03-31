@@ -428,7 +428,7 @@ This model is substantially revised from the originally released version, see be
 
 This is a pretty complicated model! There are many connections between percolation theory and the implementation of various kinds of search algorithms in graph and tree data structures, and some of those connections become apparent here.
 
-The cluster identification code in the `identify-clusters` procedure is similar to that in model 5.1, which you should consult for more information.  The real interest here is in finding the percolation backbone (the `shortest-paths` and `augment-elastic-backbone` procedures.
+The cluster identification code in the `identify-clusters` procedure is similar to that in model 5.1, which you should consult for more information.  The real interest here is in finding the percolation backbone by the `shortest-paths` and `augment-elastic-backbone` procedures.
 
 This version of this model is a substantial revision of that originally released with the book _Spatial Simulation_. The simple Hermann et al. 1986 algorithm of 'burning' to identify the elastic backbone of a percolation cluster was later found to be flawed in
 
@@ -761,7 +761,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

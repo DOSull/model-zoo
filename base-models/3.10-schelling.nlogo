@@ -38,23 +38,23 @@ patches-own [
 to setup
   clear-all
 
-  set color-1 yellow
+  set color-1 orange + 1
   set color-2 sky
 
   ask patches [
-    set pcolor grey + 1
+;    set pcolor grey + 1
     set color-1-neighbours 0
     set color-2-neighbours 0
   ]
 
   if use-seeds? [ random-seed setup-seed ]
 
-  set-default-shape turtles "circle"
+  set-default-shape turtles "square"
 
   ;; create a number of turtles dictated by honouring the vacancy rate setting
   ask n-of ((1 - vacancy-rate) * count patches) patches [
     sprout 1 [
-      set size 0.85
+      set size 0.95
       ;; make them either color-1 or color-2 depending on the slider setting
       ifelse random-float 1 < proportion-color-1
       [
@@ -202,11 +202,11 @@ end
 GRAPHICS-WINDOW
 185
 10
-673
-499
+693
+519
 -1
 -1
-8.0
+5.0
 1
 10
 1
@@ -217,9 +217,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-59
+99
 0
-59
+99
 0
 0
 1
@@ -316,7 +316,7 @@ required-like-me
 required-like-me
 0
 1
-0.3
+0.5
 0.01
 1
 NIL
@@ -375,9 +375,9 @@ count turtles with [unhappy?]
 11
 
 CHOOSER
-691
+705
 13
-855
+869
 58
 choice-mode
 choice-mode
@@ -385,9 +385,9 @@ choice-mode
 2
 
 MONITOR
-718
+732
 133
-813
+827
 178
 mean-prop-like
 mean [proportion-like-me patch-here self] of turtles
@@ -396,9 +396,9 @@ mean [proportion-like-me patch-here self] of turtles
 11
 
 SLIDER
-689
+703
 357
-876
+890
 390
 background-movement-rate
 background-movement-rate
@@ -411,9 +411,9 @@ NIL
 HORIZONTAL
 
 SLIDER
-704
+718
 394
-876
+890
 427
 time-limit
 time-limit
@@ -426,9 +426,9 @@ NIL
 HORIZONTAL
 
 SWITCH
-690
+704
 69
-865
+879
 102
 consider-distance?
 consider-distance?
@@ -814,7 +814,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

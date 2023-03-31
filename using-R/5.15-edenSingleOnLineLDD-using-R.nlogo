@@ -201,14 +201,12 @@ end
 to-report get-variance-height
   report variance [hgt] of counters
 end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-670
-491
+668
+469
 -1
 -1
 2.0
@@ -326,7 +324,7 @@ m
 m
 0
 10
-0
+0.0
 1
 1
 NIL
@@ -430,7 +428,7 @@ long-jump-scale
 long-jump-scale
 1
 10
-5
+5.0
 0.5
 1
 NIL
@@ -482,7 +480,7 @@ n-slices
 n-slices
 0
 12
-6
+6.0
 1
 1
 NIL
@@ -514,7 +512,7 @@ max-time-slice
 max-time-slice
 0
 20000
-5427
+5427.0
 100
 1
 NIL
@@ -852,9 +850,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -908,7 +905,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

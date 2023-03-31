@@ -481,6 +481,10 @@ The concept underlying this model is a _binary space partition_ or _binary tree_
 
 +   Morgan FJ 2011 _Residential Property Developers in Urban Agent-Based Models: Competition, Behaviour and the Resulting Spatial Landscape_ Unpublished Ph.D. thesis University of Auckland, New Zealand.
 
+and also described in this paper
+
++   Etherington TR, FJ Morgan and D O’Sullivan. 2022. Binary space partitioning generates hierarchical and rectilinear neutral landscape models suitable for human-dominated landscapes. _Landscape Ecology_ **37**(7): 1761–1769.
+
 This model is discussed in Chapter 3 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
@@ -816,7 +820,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

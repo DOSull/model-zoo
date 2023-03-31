@@ -138,11 +138,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-618
-419
+722
+523
 -1
 -1
-2.0
+2.52
 1
 10
 1
@@ -197,10 +197,10 @@ NIL
 1
 
 PLOT
-633
-10
-895
-247
+733
+11
+995
+248
 Number of active interfaces
 Time
 Length
@@ -291,7 +291,7 @@ This is an example model referenced in Chapter 5 of
 
 You should consult that book for more information and details of the model.
 
-##
+## THINGS TO NOTICE
 
 The Ferreira paper noted above clarifies that the basis for selection of new sites of infection or recovery is the interface between infected and uninfected sites.  Each such interface has equal chance of being the next location where model updating occurs.  This requires a different approach than the previous examples of Eden processes, because a patch-set stores only one instance of each patch, whereas a potential 'target' patch might have more than one infected neighbor, and hence be involved in more than one interface.
 
@@ -616,7 +616,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.2.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
