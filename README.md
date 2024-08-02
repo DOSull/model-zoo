@@ -15,7 +15,7 @@ Models are being slowly updated, to add more information about how they work and
 
 A 'frozen' release of these folders compatible with NetLogo 5.3 was created on 18 November, 2017: [v0.5.3 release](https://github.com/DOSull/model-zoo/releases/tag/v0.5.3)
 
-A 'final for now' release of these folders compatible with NetLogo 6.2.x was created on 31 March, 2023: [v0.6.2 release](https://github.com/DOSull/model-zoo/releases/tag/v0.6.2).
+A 'final for now' release of these folders compatible with NetLogo 6.4.x was created on 2 August, 2024: [v0.6.4 release](https://github.com/DOSull/model-zoo/releases/tag/v0.6.4).
 
 The most current code in `base-models` and `using-R` folders aims to be compatible with current recent versions of NetLogo.
 
