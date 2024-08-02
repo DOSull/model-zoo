@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,95 +22,39 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [palette r]
+__includes [
+  "pp-utils.nls"
+  "pp-r-utils.nls"
+]
+
+breed [ points point ]
+
+extensions [palette sr]
 
 patches-own [
   lambda
 ]
 
-turtles-own [
-  x
-  y
-]
-
 to setup
   clear-all
-  set-patch-size  ( 100 / resolution ) * 4
-  resize-world 0 (resolution - 1) 0 (resolution - 1)
+  clear-pattern
+  sr:setup
+  set-default-shape turtles "circle"
   reset-ticks
 end
 
 to go
-  setup
-  create-turtles n [
+  clear-pattern
+  create-points n [
     setxy random-xcor random-ycor
-
-    set x xcor / resolution
-    set y ycor / resolution
-
-    set color white
-    set shape "circle"
-    set size 1 * ( resolution / 100)
+    set color black
   ]
-end
-
-to plot-intensity
- ask patches [
-   set lambda count turtles-here
- ]
- repeat smooth [ diffuse lambda 0.9 ]
-
- let max-lambda max [lambda] of patches
-
- ask turtles [ set color black ]
-
- ask patches [
-   set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207] ] lambda max-lambda 0
- ]
-end
-
-
-
-to plot-K
-;; modified from the example R extension code
-
-  r:eval "library(spatstat)"
-
-  ;; send agent variables into an R data-frame
-  (r:putagentdf "agentset" turtles "who" "x" "y")
-
-  ;; create point pattern with vectors of x- and y-coordinates of turtles and the dimension of the window/world
-  let revalstring (word "agppp <- ppp(agentset$x, agentset$y)")  ; don't need a window on the unit square
-  r:eval revalstring
-
-  ;; calculate K
-  r:eval "k <- Kest(agppp, method = 'c')"
-
-  ;; get results from R
-  let k r:get "k$iso"
-  let r r:get "k$r"
-  let theo r:get "k$theo"
-
-
-;  ;; combine results into a multidimensional list for plotting
-  let ripley (map [ [rx ky theoretical] -> (list rx ky theoretical) ] r k theo)
-;
-;  ;; plot the results
-  clear-plot
-  foreach ripley [ tuple ->
-    set-current-plot "Ripley's K"
-    set-current-plot-pen "K(r)"
-    plotxy (item 0 tuple) (item 1 tuple)
-    set-current-plot-pen "theo"
-    plotxy (item 0 tuple) (item 2 tuple)
-  ]
-
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+201
 10
-618
+609
 419
 -1
 -1
@@ -121,8 +65,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 0
 99
@@ -135,10 +79,10 @@ ticks
 100.0
 
 SLIDER
-16
-56
-188
-89
+12
+135
+184
+168
 n
 n
 1
@@ -150,10 +94,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-38
-17
-173
-51
+33
+76
+168
+110
 generate pattern
 go
 NIL
@@ -164,40 +108,15 @@ NIL
 NIL
 NIL
 NIL
-1
-
-SLIDER
-17
-118
-189
-151
-resolution
-resolution
-1
-200
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-TEXTBOX
-28
-158
-188
-202
-Controls grain of underlying grid
-11
-0.0
-1
+0
 
 BUTTON
-49
-242
-159
-275
-plot intensity
-plot-intensity
+38
+260
+154
+293
+plot-density
+calculate-point-intensity\nplot-surface [p -> [lambda] of p]
 NIL
 1
 T
@@ -206,23 +125,13 @@ NIL
 NIL
 NIL
 NIL
-1
-
-TEXTBOX
-631
-14
-781
-62
-Note this model uses the gradient extension and also the R library spatstat
-12
-0.0
-1
+0
 
 BUTTON
-795
-23
-873
-56
+703
+350
+781
+383
 Plot K
 plot-k
 NIL
@@ -233,7 +142,7 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 PLOT
 630
@@ -263,19 +172,63 @@ smooth
 smooth
 1
 20
-11.0
+15.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-47
-282
-161
-315
+36
+177
+153
+210
+NIL
 toggle-points
-ask turtles [set hidden? not hidden?]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+78
+25
+144
+58
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+789
+352
+939
+380
+Uses Simple R extension and the spatstat library
+11
+0.0
+1
+
+BUTTON
+39
+301
+156
+334
+clear-density
+clear-background
 NIL
 1
 T
@@ -306,7 +259,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -605,7 +558,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

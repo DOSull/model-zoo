@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -21,76 +21,65 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
 
+__includes [ "pp-utils.nls" ]
+
 extensions [ palette ]
 
-patches-own [ lambda ]
+breed [ points point ]
+
+globals [ smooth ]
+
+patches-own [
+  lambda
+  point-dists
+]
 
 to setup
   clear-all
-  ;; resize world so that it has a patch-grid at the
-  ;; required resolution and is approx 500 x 500 pixels
-  set-patch-size floor ( 500 / resolution )
-  resize-world 0 (resolution - 1) 0 (resolution - 1)
+  clear-background
   reset-ticks
 end
 
 to go
   setup
   ;; turtles are point events
-  create-turtles n [
+  create-points n [
     ;; events are randomly located
     ;; and do not interact with one another
     setxy random-xcor random-ycor
-
-    set color white
+    set color black
     set shape "circle"
-
-    ;; note that because pixel size of patches changes
-    ;; with resolution the size of events does not appear
-    ;; to change much
-    set size 1 * ( resolution / 100)
   ]
 end
 
 ;; use smoothing of even count per patch as estimate
-to plot-intensity
- let bw bandwidth * resolution
- ask patches [ set lambda 0 ]
-
- if density-method = "quartic-kernel" [
-   ask turtles [
-     let w-in-r []
-     foreach (sort patches in-radius bw) [ p ->
-       ask p [
-         set w-in-r lput get-quartic bw distance myself w-in-r
-       ]
-     ]
-     let sum-w sum w-in-r
-     (foreach (sort patches in-radius bw) w-in-r [ [p w] ->
-         ask p [
-           set lambda lambda + w / sum-w
-         ]
-     ])
-   ]
- ]
- if density-method = "smoothing" [
-   ask patches [ set lambda count turtles-here ]
-   let steps ceiling (bw)
-   show steps
-   repeat steps [
-     diffuse lambda 0.95
-   ]
- ]
-
- let max-lambda max [lambda] of patches
- ask turtles [ set color black ]
-  ask patches [ set pcolor palette:scale-gradient [[255 0 0] [255 255 0]] lambda (1.2 * max-lambda) 0 ]
+to calculate-intensity
+  ifelse density-method = "quartic-kernel" [
+    ask patches [
+      set point-dists []
+    ]
+    let bw rescale bandwidth 0 1 0 world-width
+    ask points [
+      ask patches in-radius bw [
+        set point-dists lput (distance myself) point-dists
+      ]
+    ]
+    ;; normalising factor for a quartic kernel in 2D is 3 / (pi * bw^2)
+    let k 3 / (pi * bw ^ 2)
+    ask patches [
+      set lambda sum map [x -> k * get-quartic bw x] point-dists
+    ]
+  ]
+  [
+    set smooth bandwidth * world-width
+    calculate-point-intensity
+  ]
 end
 
-
 to-report get-quartic [h r]
+  if r > h [ report 0 ]
   let u r / h
-  report 15 / 16 * (1 - u ^ 2) ^ 2
+  report (1 - u ^ 2) ^ 2
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -107,8 +96,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 0
 99
@@ -121,10 +110,10 @@ ticks
 100.0
 
 SLIDER
-16
-56
-188
-89
+17
+135
+189
+168
 n
 n
 1
@@ -136,10 +125,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-38
-17
-173
-51
+39
+96
+174
+130
 generate pattern
 go
 NIL
@@ -152,38 +141,13 @@ NIL
 NIL
 1
 
-SLIDER
-17
-118
-189
-151
-resolution
-resolution
-10
-200
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-TEXTBOX
-28
-158
-188
-198
-Controls grain of underlying grid
-11
-0.0
-1
-
 BUTTON
 49
 229
 159
 262
 plot intensity
-plot-intensity
+calculate-intensity\nplot-surface [p -> [lambda] of p]
 NIL
 1
 T
@@ -220,7 +184,7 @@ bandwidth
 bandwidth
 0.01
 0.5
-0.25
+0.05
 0.01
 1
 NIL
@@ -228,13 +192,30 @@ HORIZONTAL
 
 CHOOSER
 52
-389
+391
 190
-434
+436
 density-method
 density-method
 "smoothing" "quartic-kernel"
-0
+1
+
+BUTTON
+108
+23
+174
+56
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -256,7 +237,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -555,7 +536,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

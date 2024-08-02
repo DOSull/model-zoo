@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,219 +22,117 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [palette r]
+extensions [palette sr]
 
-patches-own
-[
+breed [parents parent]
+breed [children child]
+
+patches-own [
   lambda
-  nn-distance
-  xP
-  yP
 ]
-
-turtles-own
-[
-  x
-  y
-  component
-]
-
 
 ; Note that the sims are assumed to take place on the unit square
 ; the resolution is purely graphical (to display intensity)
 to setup
   clear-all
-  resize-world 0 (resolution - 1) 0 (resolution - 1)
-
-  if n-clusters > n [set n-clusters n]
-
+  sr:setup
+  ask patches [ set pcolor white ]
+  set-default-shape turtles "circle"
+  if n-clusters > overall-intensity [set n-clusters overall-intensity]
   reset-ticks
-
 end
 
 to go
-
-  setup
-
+  clear-plot
+  ask patches [ set pcolor white ]
+  ask turtles [ die ]
   build-cluster
-
-
-  ask turtles
-  [
-    set nn-distance (distance min-one-of other turtles [distance myself])
-    set x xcor / resolution
-    set y ycor / resolution
-  ]
-
 end
 
 to plot-intensity
-
  ask patches [
    set lambda count turtles-here
  ]
-
  repeat smooth [ diffuse lambda 0.9 ]
-
  let max-lambda max [lambda] of patches
- ask turtles [
-   set color black
- ]
-
  ask patches [
    set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207]] lambda max-lambda 0
  ]
-
 end
 
 
 to build-cluster
-
-  ;; 1. Generate the parent clusters (homog Poisson process)
-  create-turtles n-clusters
-  [
+  create-parents n-clusters [
     setxy random-xcor random-ycor
-    format-turtle "parent"
   ]
-
-  let mean-offspring n / n-clusters
-
-  ;; 2. Disperse 'offspring' around the parent clusters
-  ask turtles with [component = "parent"]
-  [
-    let offspring random-poisson mean-offspring
-    let sd-px sd-displacement * resolution
-
-
-    hatch offspring
-    [
-      ifelse cluster-type = "thomas"
-       [
-
-         let xy-check false
-         let cand-x [xcor] of myself
-         let cand-y [ycor] of myself
-
-         ;; bounds checking to stop points being placed outside the world
-         while [xy-check = false]
-         [
-           set cand-x random-normal [xcor] of myself sd-px
-           set cand-y random-normal [ycor] of myself sd-px
-
-           if xy-bounds-check cand-x cand-y [ set xy-check true]
-         ]
-
-         setxy cand-x cand-y
-       ]
-       [
-
-         let xy-check false
-         let cand-x [xcor] of myself
-         let cand-y [ycor] of myself
-
-         while [xy-check = false]
-         [
-           let h random 360
-           let d random-float disc-distance * resolution
-
-           set cand-x [xcor] of myself + (d * cos(h))
-           set cand-y [ycor] of myself + (d * sin(h))
-
-           if xy-bounds-check cand-x cand-y [ set xy-check true]
-         ]
-
-         setxy  cand-x cand-y
-       ]
-
-      format-turtle "offspring-1"
+  let mean-offspring overall-intensity / n-clusters
+  let c-scale rescale cluster-scale 0 1 0 world-width
+  ask turtles [
+    let n-offspring random-poisson mean-offspring
+    hatch-children n-offspring [
+      set color black
+      ifelse cluster-type = "thomas" [
+        set heading random-float 360
+        let d abs random-normal 0 c-scale
+        ifelse patch-at-heading-and-distance heading d = nobody
+        [ die ]
+        [ jump d ]
+      ]
+      [
+        let diff-x (random-float-between -1 1) * c-scale
+        let diff-y (random-float-between -1 1) * c-scale
+        ifelse patch-at diff-x diff-y = nobody or dist diff-x diff-y > c-scale
+        [ die ]
+        [ setxy xcor + diff-x ycor + diff-y ]
+      ]
     ]
   ]
-
-  ;; 3. Thin the pattern to ensure the exact number of points specified is produced
-  let excess count turtles - n
-
-  if excess > 0
-  [
-    ask n-of excess turtles [die]
-  ]
-
+  ask parents [ die ]
 end
 
-to format-turtle [comp]
-
-  set color white
-  set shape "circle"
-  set size 1.0
-  set component comp
-  set x xcor / resolution
-  set y ycor / resolution
-
+to-report random-float-between [mn mx]
+  report rescale random-float 1 0 1 mn mx
 end
 
-to colour-by-type
-
-  ask turtles
-  [
-    ifelse component = "parent"
-    [ set color red
-	  set size 2	]
-    [ set color yellow ]
-  ]
-
+to-report dist [a b]
+  report sqrt (a ^ 2 + b ^ 2)
 end
 
+to-report rescale [x xmin xmax newmin newmax]
+  report newmin + (newmax - newmin) * (x - xmin) / (xmax - xmin)
+end
 
 to plot-K
-;; modified from the example R extension code
+  sr:run "library(spatstat)"
+  sr:set "x" map [t -> [rescale xcor -0.5 99.5 0 1] of t] sort turtles
+  sr:set "y" map [t -> [rescale ycor -0.5 99.5 0 1] of t] sort turtles
+  sr:run "pp <- ppp(x = x, y = y)"
 
-  r:eval "library(spatstat)"
+  ;; calculate and retrieve K function
+  sr:run "k <- Kest(pp)"
+  let r sr:runresult "k$r"
+  let iso sr:runresult "k$iso"
+  let theo sr:runresult "k$theo"
 
-  ;; send agent variables into an R data-frame
-  (r:putagentdf "agentset" turtles "who" "x" "y")
-
-  ;; create point pattern with vectors of x- and y-coordinates of turtles and the dimension of the window/world
-  let revalstring (word "agppp <- ppp(agentset$x, agentset$y)")  ; don't need a window on the unit square
-  r:eval revalstring
-
-  ;; calculate K
-  r:eval "k <- Kest(agppp, method = 'c')"
-
-  ;; get results from R
-  let k r:get "k$iso"
-  let r r:get "k$r"
-  let theo r:get "k$theo"
-
-
-;  ;; combine results into a multidimensional list for plotting
-  let ripley (map [ [ri ki theoretical] -> (list ri ki theoretical) ] r k theo)
-;
-;  ;; plot the results
+  ;; plot the results
   clear-plot
-  foreach ripley
-  [ rkt ->
-    set-current-plot "Ripley's K"
-    set-current-plot-pen "K(r)"
-    plotxy (item 0 rkt) (item 1 rkt)
-    set-current-plot-pen "theo"
-    plotxy (item 0 rkt) (item 2 rkt)
-  ]
-
-end
-
-to-report xy-bounds-check [cx cy]
-
-  report cx > 0 and cx <= max-pxcor and cy > 0 and cy <= max-pycor
-
+  set-plot-x-range 0 precision last r 3
+  set-plot-y-range 0 precision max sentence iso theo 3
+  set-current-plot "Ripley's K"
+  set-current-plot-pen "K(r)"
+  (foreach r iso [ [x y] -> plotxy x y ])
+  set-current-plot-pen "theo"
+  (foreach r theo [ [x y] -> plotxy x y ])
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-718
-519
+618
+419
 -1
 -1
-5.0
+4.0
 1
 10
 1
@@ -255,25 +153,25 @@ ticks
 30.0
 
 SLIDER
-18
-17
-190
-50
-n
-n
+16
+92
+188
+125
+overall-intensity
+overall-intensity
 1
 1000
-301.0
+500.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-34
-354
-169
-388
+51
+51
+186
+85
 generate pattern
 go
 NIL
@@ -284,38 +182,13 @@ NIL
 NIL
 NIL
 NIL
-1
-
-SLIDER
-19
-247
-191
-280
-resolution
-resolution
-1
-200
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-TEXTBOX
-27
-283
-177
-343
-Controls grain of underlying grid - pixel size will need to be manually  adjusted in the World View options.
-11
-0.0
-1
+0
 
 BUTTON
-45
-394
-155
-427
+72
+296
+187
+329
 plot intensity
 plot-intensity
 NIL
@@ -326,38 +199,38 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 TEXTBOX
-759
-97
-909
-145
+771
+396
+983
+432
 Note this model uses the gradient extension and the R library spatstat
 12
 0.0
 1
 
 SLIDER
-18
-171
-190
-204
-sd-displacement
-sd-displacement
+16
+218
+188
+251
+cluster-scale
+cluster-scale
 0
 1.0
 0.1
-.01
+.001
 1
 NIL
 HORIZONTAL
 
 PLOT
-752
-154
-1071
-386
+640
+68
+985
+385
 Ripley's K
 r
 K(r)
@@ -373,10 +246,10 @@ PENS
 "theo" 1.0 0 -2674135 true "" ""
 
 BUTTON
-928
-103
-1049
-136
+640
+391
+761
+424
 Plot K
 plot-k
 NIL
@@ -387,40 +260,40 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 SLIDER
-19
-104
-191
-137
+17
+179
+189
+212
 n-clusters
 n-clusters
 0
-100
-10.0
+ceiling (overall-intensity / 2)
+20.0
 1
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-33
-213
-183
-241
+31
+260
+181
+288
 Scaled to the unit square not Netlogo world dimensions
 11
 0.0
 1
 
 BUTTON
-26
-432
-172
-465
-identify components
-colour-by-type
+71
+338
+188
+371
+toggle-points
+ask turtles [set hidden? not hidden?]
 NIL
 1
 T
@@ -429,47 +302,13 @@ NIL
 NIL
 NIL
 NIL
-1
-
-BUTTON
-4
-472
-96
-505
-hide points
-ask turtles [set hidden? true]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-104
-470
-201
-503
-show points
-ask turtles [set hidden? false]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
+0
 
 SLIDER
 17
-524
+380
 189
-557
+413
 smooth
 smooth
 1
@@ -481,37 +320,22 @@ NIL
 HORIZONTAL
 
 CHOOSER
-37
-54
-175
-99
+51
+129
+189
+174
 cluster-type
 cluster-type
 "matern" "thomas"
 1
 
-SLIDER
-18
-137
-190
-170
-disc-distance
-disc-distance
-0
-1.0
-0.1
-.01
-1
-NIL
-HORIZONTAL
-
 BUTTON
-758
-21
-882
-54
-remove 'parents'
-ask turtles with [component != \"offspring-1\"]\n [die]
+119
+13
+185
+46
+NIL
+setup
 NIL
 1
 T
@@ -525,11 +349,16 @@ NIL
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model is an implementation of complete spatial randomness (CSR) or the _independent random process_ for a spatial point pattern and is discussed in Chapter 2 of
+This model is an implementation of two clustered spatial point processes, the _Thomas process_ and _Matern's cluster process_ as discussed in Chapter 2 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
 You should consult that book for more information and details of the model.
+
+See also:
+
++ Matern B. 1960. _Spatial Variation_. Meddelanden fraan Statens Skogsforskningsinstitut, **59**(5). Statens Skogsforskningsinstitut, Sweden.
++ Thomas M. 1949. A generalisation of Poisson's binomial limit for use in ecology. _Biometrika_ **36** 18–25.
 
 ## HOW TO CITE
 
@@ -542,7 +371,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -841,7 +670,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

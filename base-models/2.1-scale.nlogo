@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -333,7 +333,7 @@ CHOOSER
 method
 method
 "random" "mrc" "voter"
-2
+0
 
 INPUTBOX
 710
@@ -450,7 +450,7 @@ The **reset** button restores the world to the state when it was first initializ
 
 The code here uses the `n-values` operation to create lists of coordinates for the aggregated block centres, in the `change-grain` procedure. The line
 
-    let center-coords n-values n-blocks [? * new-grain + offset]
+    let center-coords n-values n-blocks [i -> i * new-grain + offset]
 
 is an example. This is a useful NetLogo function worth getting to know. Here is makes a list with `n-blocks` elements, each of them a multiple (by a factor of `new-grain`) of its index postion in the list, with an `offset` added. For example, with `offset` 5 and `new-grain` set to 9, this would produce a list `[5 14 23 32 ...]` and so on, up to the requested number of elements. We then use nested `foreach` loops to step through this list and set patch centres for the aggregated blocks.
 
@@ -481,7 +481,7 @@ See also
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -780,7 +780,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,7 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [r]
+extensions [sr table]
 
 breed [flockers flocker]  ;; the flocking individuals
 breed [tails tail]        ;; turtles to form a tail showing recent locations
@@ -53,9 +53,8 @@ patches-own [
 to setup
   clear-all
 
-  r:setPlotDevice
-  r:eval("library(spatstat)")
-  r:eval("library(deldir)")
+  sr:setup
+  sr:run "library(deldir)"
 
   ask patches [
     set pcolor white
@@ -254,16 +253,18 @@ end
 
 ;; sends a snapshot to R of the current flock
 to snapshot-R
-  r:put "mx" map [ f -> [xcor] of f ] sort flockers
-  r:put "my" map [ f -> [ycor] of f ] sort flockers
-  r:put "x_min" min-pxcor
-  r:put "x_max" max-pxcor
-  r:put "y_min" min-pycor
-  r:put "y_max" max-pycor
+  sr:set "mx" map [ f -> [xcor] of f ] sort flockers
+  sr:set "my" map [ f -> [ycor] of f ] sort flockers
+  sr:set "x_min" min-pxcor
+  sr:set "x_max" max-pxcor
+  sr:set "y_min" min-pycor
+  sr:set "y_max" max-pycor
 
-  r:eval("par(mar=c(1,1,1,1))")
-  r:eval("plot(mx, my, asp=1,pch=20, cex=2, lwd=0.5,axes=F, xlab='',ylab='', xlim=c(x_min,x_max), ylim=c(y_min,y_max))")
-  r:eval("box()")
+  sr:set-plot-device
+  sr:run "par(mar = rep(1, 4))"
+  (sr:run "plot(mx, my, asp = 1,pch = 20, cex = 2, lwd = 0.5, axes = F, "
+               "xlab = '', ylab = '', xlim = c(x_min, x_max), ylim = c(y_min, y_max))")
+  sr:run "box()"
 
   ask flockers [
     let memory-x (list xcor)
@@ -274,57 +275,69 @@ to snapshot-R
       set memory-x lput (last memory-x - x-inc) memory-x
       set memory-y lput (last memory-y - y-inc) memory-y
     ]
-    r:put "x" memory-x
-    r:put "y" memory-y
-    r:eval("lines(x, y)")
+    sr:set "x" memory-x
+    sr:set "y" memory-y
+    sr:run "lines(x, y)"
   ]
+  user-message "Plot will close when you close this dialog." 
+  sr:run "dev.off()"  
 end
 
 ;; delegates construction of a delaunay triangulation
-;; to R - assumes spatstat is installed
+;; to R - assumes deldir is installed
+;;
+;; NOTE: the wonder of this is not that it works well, but that it works at all
 to triangulate
-  ask links [die]
-  ;; commented out chunks can implement a
-  ;; guardzone to handle the toroidal space
-;  let guardzone-x1 sort flockers with [xcor < min-pxcor]
-;  let guardzone-x2 sort flockers with [xcor > max-pxcor]
-;  let guardzone-y1 sort flockers with [ycor < min-pycor]
-;  let guardzone-y2 sort flockers with [ycor > max-pycor]
-  let ids (sentence (map [ f -> [who] of f ] sort flockers))
-;                    (map [[who] of ?] guardzone-x1)
-;                    (map [[who] of ?] guardzone-x2)
-;                    (map [[who] of ?] guardzone-y1)
-;                    (map [[who] of ?] guardzone-y2))
-  let x (sentence (map [ f -> [xcor] of f ] sort flockers))
-;                  (map [[xcor] of ? + world-width] guardzone-x1)
-;                  (map [[xcor] of ? - world-width] guardzone-x2)
-;                  (map [[xcor] of ?] guardzone-y1)
-;                  (map [[xcor] of ?] guardzone-y2))
-  let y (sentence (map [ f -> [ycor] of f ] sort flockers))
-;                  (map [[ycor] of ?] guardzone-x1)
-;                  (map [[ycor] of ?] guardzone-x2)
-;                  (map [[ycor] of ? + world-height] guardzone-y1)
-;                  (map [[ycor] of ? - world-height] guardzone-y2))
-  r:put "x" x
-  r:put "y" y
-  r:put "min_x" min x
-  r:put "max_x" max x
-  r:put "min_y" min y
-  r:put "max_y" max y
-  r:eval("pp <- ppp(x,y,window=owin(c(min_x,max_x),c(min_y,max_y)))")
-  r:eval("dt <- deldir(pp)")
+  let sorted-flockers sort flockers
+  ;; make up sets of flockers in each N/S/E/W 'guard' area of the space
+  ;; to allow triangulation to handle the toroidal wrapping
+  let north filter [f -> [in-wrapped-zone? "N"] of f] sorted-flockers
+  let south filter [f -> [in-wrapped-zone? "S"] of f] sorted-flockers
+  let east  filter [f -> [in-wrapped-zone? "E"] of f] sorted-flockers
+  let west  filter [f -> [in-wrapped-zone? "W"] of f] sorted-flockers
+  let wrapped-flockers (sentence sorted-flockers north south east west)
+  ;; apply offsets to the x and y coords of each group to make up x y lists
+  let x (sentence map [f -> [xcor] of f] sorted-flockers
+                  map [f -> [xcor] of f] north
+                  map [f -> [xcor] of f] south
+                  map [f -> [xcor] of f + world-width] east
+                  map [f -> [xcor] of f - world-width] west)
+  let y (sentence map [f -> [ycor] of f] sorted-flockers
+                  map [f -> [ycor] of f + world-height] north
+                  map [f -> [ycor] of f - world-height] south
+                  map [f -> [ycor] of f] east
+                  map [f -> [ycor] of f] west)
+  sr:set "x" x
+  sr:set "y" y
+  let deldir table:from-list sr:runresult "deldir(x = x, y = y)$delsgs"
+  ; note R results are 1-indexed so have to get i-1th entries in wrapped-flockers
+  let froms map [i -> item (i - 1) wrapped-flockers] table:get deldir "ind1"
+  let tos map [i -> item (i - 1) wrapped-flockers] table:get deldir "ind2"
   ask flockers [ set flock-mates (turtle-set nobody) ]
-  let froms map [ f -> f - 1 ] r:get "dt$delsgs[,5]"
-  let tos map [ t -> t - 1 ] r:get "dt$delsgs[,6]"
   (foreach froms tos [ [f t] ->
-      if f != t [
-        ask flocker item f ids [
-          if distance flocker item t ids < near-range [
-            set flock-mates (turtle-set flock-mates (flocker item t ids))
-          ]
+    if f != t [
+      ask f [
+        if distance t < near-range [
+          set flock-mates (turtle-set flock-mates t)
+          ask t [ set flock-mates (turtle-set flock-mates f) ]
         ]
       ]
+    ]
   ])
+end
+
+;; reports true if turtle is in a zone such that it can be considered as a
+;; potential near neighbour due to toroidal wrapping of the netlogo world
+;; note that 'N' zone is turtles near the bottom of the world - which when
+;; wrapped, are at top...
+to-report in-wrapped-zone? [zone]
+  (ifelse
+    zone = "N" [ report ycor < min-pycor + near-range ]
+    zone = "S" [ report ycor > max-pycor - near-range ]
+    zone = "E" [ report xcor < min-pxcor + near-range ]
+    zone = "W" [ report xcor > max-pxcor - near-range ]
+    [ print "***WARNING*** Invalid zone identifier in in-wrapped-zone? reporter"
+      report false ])
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -363,7 +376,7 @@ density
 density
 0.1
 2
-0.5
+0.55
 0.05
 1
 NIL
@@ -601,7 +614,7 @@ show-density-map?
 PLOT
 630
 263
-902
+879
 464
 flocker speeds
 NIL
@@ -657,7 +670,7 @@ TEXTBOX
 77
 975
 167
-\"near\" uses local 'pie slice' method\n\"lattice\" uses the patch 'locale'\n\"delaunay\" uses delaunay triangulation (requires R-spatstat)\n
+\"near\" uses local 'pie slice' method\n\"lattice\" uses the patch 'locale'\n\"delaunay\" uses delaunay triangulation (requires R-deldir)\n
 11
 0.0
 1
@@ -671,7 +684,7 @@ near-range
 near-range
 preferred-distance
 5
-1.0
+1.5
 0.1
 1
 NIL
@@ -709,7 +722,7 @@ which are discussed in detail in Chapters 4 and 6 of
 
 You should consult that book for more information and details of the model.
 
-This version requires the R-netlogo extension including the spatstat library, if you wish to use `delaunay` as the `flock-mates-method` option, although it is important to note that this option may be unreliable, and will run _slowly_.
+This version requires the Simple R extension including the `deldir` library, if you wish to use `delaunay` as the `flock-mates-method` option, although it is important to note that this option may be unreliable, and will run _slowly_.
 
 An alternative version of the model that does not require the R-netlogo extension is available.
 
@@ -724,7 +737,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -1023,7 +1036,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -24,7 +24,7 @@
 
 __includes ["4.1-r-snapshots.nls"]
 
-extensions [r]
+extensions [sr]
 
 turtles-own [
   real_x     ; the real x coord dist from origin ie ignoring wrapping around world
@@ -49,7 +49,7 @@ globals [
 to setup
   clear-all
 
-  r:setPlotDevice
+  sr:setup
 
   set max-x 0
   set min-x 0
@@ -58,8 +58,8 @@ to setup
 
   if use-random-seed? [
     random-seed seed-value
-    r:put "rngseed" seed-value
-    r:eval("set.seed(rngseed)")
+    sr:set "rngseed" seed-value
+    sr:run "set.seed(rngseed)"
   ]
 
   ; make the world white
@@ -153,7 +153,7 @@ to step
     ]
     if type-of-walk = "Cauchy distributed step lengths" [
       set heading random-float 360
-      let step-length r:get "rcauchy(1)"
+      let step-length sr:runresult "rcauchy(1)"
       set real_x real_x + (dx * step-length)
       set real_y real_y + (dy * step-length)
       fd step-length
@@ -216,7 +216,7 @@ num-of-walkers
 num-of-walkers
 1
 500
-20.0
+500.0
 1
 1
 NIL
@@ -302,9 +302,9 @@ NIL
 
 PLOT
 631
-10
+13
 943
-207
+235
 Distance from origin
 Steps
 Distance
@@ -321,10 +321,10 @@ PENS
 "expected" 1.0 0 -2674135 true "" "if ticks mod update-plot-every-x-ticks = 0 [\n  ifelse type-of-walk = \"correlated directions\" [\n    ;; These alternative lines use an adjustment for the RMS dist for\n    ;; correlated walks from\n    ;; Bovet & Benhamou, J. theor. Biol. (1988) 131, 419-433\n    ;; itself derived from\n    ;; Random Flight with Multiple Partial Correlations, C. M. Tchen\n    ;; J. Chem. Phys. 20, 214 (1952); doi:10.1063/1.1700381\n    ;; which shows that for large #ticks RMS-D = sqrt[(1+r)/(1-r)ticks]\n    ;; where r is a correlation angle between walk steps\n    ;; ONLY RELEVANT to the correlated case, so not used in general\n    let r 1 / exp (((stdev-angle * pi / 180) ^ 2) / 2)\n    ;plotxy ticks sqrt ((1 + r) / (1 - r) * ticks)\n    ;; Note that this is approximate: there is an additional correction\n    ;; required for low turn angles\n    ;; It is unclear whether the second term is in r^2 or r; see\n    ;; Hsin-i Wu, Bai-Lian Li, Timothy A. Springer, William H. Neill,\n    ;; Modelling animal movement as a persistent random walk in two dimensions: expected magnitude of net displacement\n    ;; Ecol Mod, 132(1-2), 115-124 DOI: 10.1016/S0304-3800(00)00309-4.\n    plotxy ticks sqrt (((1 + r) / (1 - r) * ticks) - ((2 * r * r * (1 - (r ^ ticks))) / (1 - r) / (1 - r)))\n  ]\n  [\n    plotxy ticks sqrt ticks\n  ]\n]"
 
 MONITOR
-749
-249
-806
-294
+799
+283
+870
+328
 NIL
 max-d
 3
@@ -332,10 +332,10 @@ max-d
 11
 
 MONITOR
-690
-249
-747
-294
+717
+283
+791
+328
 NIL
 mean-d
 3
@@ -343,10 +343,10 @@ mean-d
 11
 
 MONITOR
-630
-249
-687
-294
+632
+282
+707
+327
 NIL
 min-d
 3
@@ -354,10 +354,10 @@ min-d
 11
 
 MONITOR
-888
-249
-942
-294
+875
+283
+944
+328
 NIL
 rms-d
 3
@@ -391,46 +391,12 @@ use-random-seed?
 -1000
 
 BUTTON
-732
-371
-827
-404
+676
+357
+791
+390
 NIL
 r-snapshot-tracks
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-832
-371
-931
-404
-NIL
-r-snapshot-points
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-831
-408
-931
-441
-NIL
-r-density-plot
 NIL
 1
 T
@@ -491,11 +457,11 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-634
-313
-941
-358
-These buttons only work if you have R extension installed.  You will also need the javaGD package, and in some cases, the spatstat package.  See http://netlogo-r-ext.berlios.de/
+639
+436
+944
+465
+These buttons only work if you have Simple R extension installed and the spatstat and dplyr R libraries.
 11
 15.0
 1
@@ -516,27 +482,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-640
-443
-713
-476
-rows, cols
-r:put \"nr\" nrows\nr:put \"nc\" ncols\nr:eval(\"par(mfrow=c(nr,nc))\")
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-732
-408
-826
-441
+740
+397
+825
+430
 NIL
 r-rms-d-plot
 NIL
@@ -558,64 +507,17 @@ mean-step-length
 mean-step-length
 0.1
 5
-1.0
+2.5
 0.1
 1
 NIL
 HORIZONTAL
 
-SLIDER
-632
-372
-724
-405
-nrows
-nrows
-1
-3
-1.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-632
-407
-724
-440
-ncols
-ncols
-1
-5
-2.0
-1
-1
-NIL
-HORIZONTAL
-
-BUTTON
-732
-445
-825
-478
-NIL
-r-rms-d-log-plot
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 TEXTBOX
-636
-294
-940
-312
+638
+327
+942
+345
 __________________________________________________
 11
 0.0
@@ -623,9 +525,9 @@ __________________________________________________
 
 SLIDER
 631
-210
+241
 787
-243
+274
 update-plot-every-x-ticks
 update-plot-every-x-ticks
 1
@@ -650,6 +552,57 @@ p-lazy
 1
 NIL
 HORIZONTAL
+
+BUTTON
+795
+357
+906
+390
+NIL
+r-snapshot-points
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+646
+397
+735
+430
+NIL
+r-density-plot
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+829
+397
+940
+430
+NIL
+r-rms-d-log-plot
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -708,7 +661,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -1007,7 +960,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

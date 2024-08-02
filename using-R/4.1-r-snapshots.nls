@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person 
 ;; obtaining a copy of this software and associated documentation 
@@ -22,85 +22,118 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 to r-snapshot-tracks
-  r:put "xl" list (min-x - 1) (max-x + 1)
-  r:put "yl" list (min-y - 1) (max-y + 1)
+  update-stats
+  sr:set-plot-device
+  sr:set "xl" list (min-x - 1) (max-x + 1)
+  sr:set "yl" list (min-y - 1) (max-y + 1)
   ask one-of turtles [
-    r:put "x" history-x
-    r:put "y" history-y
-    r:eval("plot(x, y, type='l', asp=1, xlim=xl, ylim=yl, col='gray')")
+    sr:set "x" history-x
+    sr:set "y" history-y
+    sr:run "plot(x, y, type = 'l', asp = 1, xlim = xl, ylim = yl, col = 'gray')"
     ask other turtles [
-      r:put "x" history-x
-      r:put "y" history-y
-      r:eval("lines(x, y, col='gray')")
+      sr:set "x" history-x
+      sr:set "y" history-y
+      sr:run "lines(x, y, col='gray')"
     ]
   ]
-  r:eval("points(0, 0)")
+  sr:run "points(0, 0)"
   ask turtles [
-    r:put "x" history-x
-    r:put "y" history-y
-    r:eval("points(x[length(x)], y[length(y)], pch=19, cex=0.5)") 
+    sr:set "x" history-x
+    sr:set "y" history-y
+    sr:run "points(x[length(x)], y[length(y)], pch = 19, cex = 0.5)" 
   ]
-end
-
-to r-snapshot-points
-  r:put "xl" list (min-x - 1) (max-x + 1)
-  r:put "yl" list (min-y - 1) (max-y + 1)
-  r:put "x" [xcor] of turtles
-  r:put "y" [ycor] of turtles
-  r:eval("plot(x, y, asp=1, xlim=xl, ylim=yl)")
-end
-
-to r-density-plot
-  r:eval("require(spatstat)")
-  r:put "xl" list (min-x - 1) (max-x + 1)
-  r:put "yl" list (min-y - 1) (max-y + 1)
-  r:put "x" [xcor] of turtles
-  r:put "y" [ycor] of turtles
-  r:eval("pp <- ppp(x, y, window=owin(xrange=xl, yrange=yl))")
-  r:eval("plot(density(pp), col=grey(50:100/100), main='')")
-  r:eval("plot(pp, pch=19, cex=0.5, add=T)")
+  user-message "Close plot by closing this dialog."
+  sr:run "dev.off()"
 end
 
 to r-rms-d-plot
+  update-stats
+  sr:set-plot-device
   let tick-vals range (ticks + 1) 
-  r:put "tickvals" tick-vals
-  r:eval("t <- tickvals")
+  sr:set "tickvals" tick-vals
+  sr:run "t <- tickvals"
   ask one-of turtles [
-    r:put "x" history-x
-    r:put "y" history-y
+    sr:set "x" history-x
+    sr:set "y" history-y
     ask other turtles [
-      r:put "xn" history-x
-      r:put "yn" history-y
-      r:eval("t <- c(t, tickvals)")
-      r:eval("x <- c(x, xn)")
-      r:eval("y <- c(y, yn)")
+      sr:set "xn" history-x
+      sr:set "yn" history-y
+      sr:run "t <- c(t, tickvals)"
+      sr:run "x <- c(x, xn)"
+      sr:run "y <- c(y, yn)"
     ]
   ]
-  r:eval("df <- data.frame(t, d=sqrt(x^2 + y^2), d2=(x^2 + y^2))")
-  r:eval("plot(df$t, df$d, col='grey', pch=19, cex=0.4, xlab='t', ylab='Distance', bty='n')")
-  ; r:eval("lines(unique(df$t), tapply(df$d, df$t, mean))")
-  r:eval("lines(unique(df$t), sqrt(tapply(df$d2, df$t, mean)))")
-  r:eval("lines(unique(df$t), sqrt(unique(df$t)), lty='dashed')")
+  sr:run "df <- data.frame(t = t, d = sqrt(x^2 + y^2), d2 = (x^2 + y^2))"
+  sr:run "plot(df$t, df$d, col = 'grey', pch = 19, cex = 0.4, xlab = 't', ylab = 'Distance', bty = 'n')"
+  sr:run "lines(unique(df$t), sqrt(tapply(df$d2, df$t, mean)))"
+  sr:run "lines(unique(df$t), sqrt(unique(df$t)), lty = 'dashed')"
+  user-message "Close plot by closing this dialog."
+  sr:run "dev.off()"
+end
+
+to r-snapshot-points
+  update-stats
+  sr:set-plot-device
+  sr:set "xl" list (min-x - 1) (max-x + 1)
+  sr:set "yl" list (min-y - 1) (max-y + 1)
+  sr:set "x" [real_x] of turtles
+  sr:set "y" [real_y] of turtles
+  sr:run "plot(x, y, asp = 1, xlim = xl, ylim = yl)"
+  user-message "Close plot by closing this dialog."   
+  sr:run "dev.off()"   
+end
+
+to r-density-plot
+  update-stats
+  sr:set-plot-device
+  sr:run "require(spatstat)"
+  sr:set "xmin" min-x - 1
+  sr:set "xmax" max-x + 1
+  sr:set "ymin" min-y - 1
+  sr:set "ymax" max-y + 1
+  sr:set "x" [real_x] of turtles
+  sr:set "y" [real_y] of turtles
+  sr:run "pp <- ppp(x = x, y = y, window = owin(c(xmin, xmax), c(ymin, ymax)))"
+  sr:run "plot(density(pp), col = grey(50:100 / 100), main = '')"
+  sr:run "plot(pp, pch = 19, cex = 0.5, add = T)"
+  user-message "Close plot by closing this dialog."   
+  sr:run "dev.off()"   
 end
 
 to r-rms-d-log-plot
+  update-stats
+  sr:run "require(dplyr)"
+  sr:set-plot-device
   let tick-vals but-first range (ticks + 1) 
-  r:put "tickvals" tick-vals
-  r:put "dmax" max [sqrt (real_x ^ 2 + real_y ^ 2)] of turtles
-  r:eval("t <- tickvals")
+  sr:set "tickvals" tick-vals
+  sr:set "dmax" max [sqrt (real_x ^ 2 + real_y ^ 2)] of turtles
+  sr:run "t <- tickvals"
   ask one-of turtles [
-    r:put "x" but-first history-x
-    r:put "y" but-first history-y
-    r:eval("plot(tickvals, sqrt(x^2 + y^2), col='grey', type='l', ylim=c(1,dmax), xlab='t', ylab='Distance', bty='n', log='xy')")
+    sr:set "x" but-first history-x
+    sr:set "y" but-first history-y
+    sr:run "df <- data.frame(x = x, y = y, t = t) |> filter(x !=0, y != 0, t != 0)"
+    (sr:run "plot(df$t, sqrt(df$x^2 + df$y^2), log = 'xy', col = 'grey', type = 'l', "
+                 "ylim = c(1, dmax), xlab = 't', ylab = 'Distance', bty = 'n')")
     ask other turtles [
-      r:put "xn" but-first history-x
-      r:put "yn" but-first history-y
-      r:eval("t <- c(t, tickvals)")
-      r:eval("x <- c(x, xn)")
-      r:eval("y <- c(y, yn)")
-      r:eval("lines(tickvals, sqrt(xn^2 + yn^2), col='grey', log='xy')")
-    ]
+      sr:set "xn" but-first history-x
+      sr:set "yn" but-first history-y
+      sr:run "t <- c(t, tickvals)"
+      sr:run "x <- c(x, xn)"
+      sr:run "y <- c(y, yn)"
+      sr:run "df <- data.frame(x = x, y = y, t = t) |> filter(x !=0, y != 0, t != 0)"
+      sr:run "lines(tickvals, sqrt(xn^2 + yn^2), col = 'grey')"
+    ] 
   ]
-  r:eval("df <- data.frame(t, d=sqrt(x^2 + y^2), d2=(x^2 + y^2))")
-  r:eval("lines(unique(df$t), sqrt(tapply(df$d2, df$t, mean)))")
+  sr:run "df <- data.frame(t, d = sqrt(x^2 + y^2), d2 = (x^2 + y^2))"
+  sr:run "lines(unique(df$t), sqrt(tapply(df$d2, df$t, mean)))"
+  user-message "Close plot by closing this dialog."   
+  sr:run "dev.off()"   
+end
+
+to-report triple [L1 L2 L3]
+  report (map [[a b c] -> (list a b c)] L1 L2 L3)
+end
+
+to-report remove-zeros [z]
+  report filter [t -> item 0 t != 0 and item 1 t != 0 and item 2 t != 0] z
 end

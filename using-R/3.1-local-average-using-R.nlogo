@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,7 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 
-extensions [ r ]
+extensions [ sr ]
 
 
 patches-own [
@@ -32,7 +32,7 @@ patches-own [
 
 to setup
   clear-all
-  r:setPlotDevice
+  sr:setup
 
   if use-seed? [ ; initialize the RNG seed to guarantee repeatability
     random-seed seed-value
@@ -81,51 +81,60 @@ end
 
 ;;; R plotting code
 to r-plot-world
+  sr:set-plot-device
   ;; make a list of patches in x-y order
-  r:put "z" map [ p -> [z] of p ] sort patches
+  sr:set "z" map [ p -> [z] of p ] sort patches
   ;; world width and height required to setup matrix
-  r:put "nr" world-height
-  r:put "nc" world-width
+  sr:set "nr" world-height
+  sr:set "nc" world-width
   ;; make matrix of the z values
-  r:eval("z <-matrix(z, nrow=nr, ncol=nc)")
+  sr:run "z <- matrix(z, nrow = nr, ncol = nc)"
   ;; plot as an image
-  r:eval("image(z, asp=1, axes=F, col=gray(1-41:61/100))")
+  sr:run "image(z, asp = 1, axes = F, col = gray(1-41:61/100))"
+  if with-contours? [
+    sr:run "contour(z, add = T, asp = 1, axes = F, levels = seq(0, 1, 0.05))"
+  ]
 end
-
-;; as for r-plot-world, but with addition of contours
-to r-plot-contours
-  r-plot-world
-  r:eval("contour(z, add=T, asp=1, axes=F, levels=seq(0,1,0.05))")
-end
-
 
 ;; makes three sequences of box plots showing the
 ;; distribution of z-values over time, as the
 ;; weight parameter is varied
 to r-plot-fig-5.1
+  sr:run "require(dplyr)"
   ;; need to NOT rescale values to demonstrate the effect
   set rescale-values? false
-  r:eval("par(mfrow=c(1,3))")
   ;; the series of weights
   let w [ 0.05 0.1 0.5 ]
   ;; the time steps of interest
   let t-plot [ 0 10 20 30 40 50 ]
+  let titles []
+  let ts [] ;; store all the ticks of interest
+  let zs []
+  let wts []
+  let n count patches
   foreach w [ wt ->
     setup
-    let t [] ;; store all the ticks of interest
-    let x []
+    set weight-w wt
     while [ticks <= last t-plot] [
       if member? ticks t-plot [
-        set t (sentence t (n-values count patches [ticks]))
-        set x (sentence x ([z] of patches))
+        set ts (sentence ts (n-values n [i -> ticks]))
+        set zs (sentence zs ([z] of patches))
+        set wts (sentence wts (n-values n [i -> wt]))
       ]
       go
     ]
-    r:put "x" x
-    r:put "t" t
-    r:put "label" (word "w = " wt)
-    r:eval("boxplot(x~t, ylim=c(0,1), xlab='Time', ylab='Grid values', main=label, las=1)")
   ]
+  sr:set "z" zs
+  sr:set "t" ts
+  sr:set "w" wts
+  sr:run "df <- data.frame(z = z, t = t, w = w)"
+  sr:set-plot-device
+  sr:run "par(mfrow = c(1, 3))"
+  sr:run "boxplot(z ~ t, data = df |> filter(w == 0.05), xlab = 'Time', main = 'w = 0.05')"
+  sr:run "boxplot(z ~ t, data = df |> filter(w == 0.1), xlab = 'Time', main = 'w = 0.1')"
+  sr:run "boxplot(z ~ t, data = df |> filter(w == 0.5), xlab = 'Time', main = 'w = 0.5')"
+  user-message "Plot will close when you close this dialog."
+  sr:run "dev.off()"
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -311,23 +320,6 @@ NIL
 
 BUTTON
 67
-347
-199
-380
-r-plot-contours
-r-plot-contours
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-67
 386
 198
 419
@@ -342,6 +334,17 @@ NIL
 NIL
 NIL
 1
+
+SWITCH
+49
+345
+200
+378
+with-contours?
+with-contours?
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -375,7 +378,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -674,7 +677,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

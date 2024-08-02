@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,191 +22,73 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [palette r]
-
-patches-own
-[
-  theo-lambda
-  obs-lambda
-  xP
-  yP
+__includes [
+  "pp-utils.nls"
+  "pp-r-utils.nls"
 ]
 
-turtles-own
-[
-  x
-  y
+extensions [palette sr]
+
+breed [ points point ]
+
+patches-own [
+  theo-lambda
+  lambda
+  px
+  py
 ]
 
 to setup
   clear-all
-  resize-world 0 (resolution - 1) 0 (resolution - 1)
-  set-patch-size  ( 100 / resolution ) * 4
-
-  ask patches
-  [
-    set xP pxcor / resolution
-    set yP pycor / resolution
-  ]
-
-  build-intensity
-
-  reset-ticks
-
-end
-
-
-to simulate-pattern
-
-  setup
-  simulate-inhom
+  clear-pattern
+  set-default-shape turtles "circle"
+  sr:setup
   ask patches [
-    set obs-lambda count turtles-here
+    set px rescale-x pxcor
+    set py rescale-y pycor
   ]
+  reset-ticks
 end
 
-
-to simulate-inhom
-
-  let max-lambda [theo-lambda] of max-one-of patches [theo-lambda]
-
-  create-turtles max-lambda
-  [
-     set hidden? true
-     setxy random-xcor random-ycor
-  ]
-
-  ask turtles
-  [
-      let p-retain theo-lambda / max-lambda
-      if random-float 1 > p-retain [die]
-   ]
-
-  ;; ask n-of (count turtles - n) turtles [die]
-
-  ask turtles
-  [
-    set color white
-    set shape "circle"
-    set size 1 * ( resolution / 100)
-    set hidden? false
-
-    set x pxcor / world-width
-    set y pycor / world-height
-  ]
-
+to go
+  clear-pattern
+  build-intensity
+  plot-surface [p -> [theo-lambda] of p]
+  simulate-inhomogeneous
+  calculate-point-intensity
 end
 
 to build-intensity
-
   ask patches [
     set theo-lambda runresult function
   ]
-
-  ;; If you enter (e.g.) -1000 * Xp then you get negative lambdas
+  ;; If you enter (e.g.) -1000 * px then you get negative lambdas
   ;; This 'flips' this over...
-  let mx-flip 0
-  if max [theo-lambda] of patches <= 0
-  [
-    set mx-flip abs (min[theo-lambda] of patches)
+  let max-flip max [theo-lambda] of patches
+  if max-flip <= 0 [
+    ask patches [
+      set theo-lambda theo-lambda - max-flip
+    ]
   ]
-
-  ask patches [
-    set theo-lambda mx-flip + theo-lambda
-  ]
-
 end
 
-
-
-to plot-surface
-
- ;; repeat each time in case has been previously smoothed
- ask patches [
-    set obs-lambda count turtles-here
+to simulate-inhomogeneous
+  let max-lambda [theo-lambda] of max-one-of patches [theo-lambda]
+  create-points max-lambda [
+    setxy random-xcor random-ycor
+    set color black
   ]
-
- let max-lambda max [theo-lambda] of patches
-
-ask turtles [
-   set color black
- ]
-
- ask patches [
-   set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207]] theo-lambda max-lambda 0
- ]
-
-
-end
-
-
-
-
-to plot-intensity
-
- ask patches [
-   set obs-lambda count turtles-here
- ]
-
- repeat smooth [ diffuse obs-lambda 0.9 ]
-
- let max-lambda max [obs-lambda] of patches
-
- ask turtles [
-   set color black
- ]
-
- ask patches [
-   set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207]] obs-lambda max-lambda 0
- ]
-
-
-end
-
-
-to plot-K
-;; modified from the example R extension code
-
-  r:eval "library(spatstat)"
-
-  ;; send agent variables into an R data-frame
-  (r:putagentdf "agentset" turtles "who" "x" "y")
-
-  ;; create point pattern with vectors of x- and y-coordinates of turtles and the dimension of the window/world
-  let revalstring (word "agppp <- ppp(agentset$x, agentset$y)")  ; don't need a window on the unit square
-  r:eval revalstring
-
-  ;; calculate PCF
-  r:eval "k <- Kest(agppp, method = 'c')"
-
-  ;; get results from R
-  let k r:get "k$iso"
-  let r r:get "k$r"
-  let theo r:get "k$theo"
-
-
-;  ;; combine results into a multidimensional list for plotting
-  let pcf (map [ [ri ki theoretical] -> (list ri ki theoretical) ] r k theo)
-;
-;  ;; plot the results
-  clear-plot
-  foreach pcf
-  [ rkt ->
-    set-current-plot "Ripley's K"
-    set-current-plot-pen "K(r)"
-    plotxy (item 0 rkt) (item 1 rkt)
-    set-current-plot-pen "theo"
-    plotxy (item 0 rkt) (item 2 rkt)
+  ask points [
+    let p-retain theo-lambda / max-lambda
+    if random-float 1 > p-retain [ die ]
   ]
-
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-12
-618
-421
+277
+10
+685
+419
 -1
 -1
 4.0
@@ -216,26 +98,26 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 0
 99
 0
 99
-0
-0
+1
+1
 1
 ticks
 30.0
 
 BUTTON
-40
-13
-175
-47
+125
+73
+260
+107
 generate pattern
-simulate-pattern
+go
 NIL
 1
 T
@@ -244,40 +126,15 @@ NIL
 NIL
 NIL
 NIL
-1
-
-SLIDER
-28
-70
-200
-103
-resolution
-resolution
-1
-200
-100.0
-1
-1
-NIL
-HORIZONTAL
-
-TEXTBOX
-39
-110
-189
-170
-Controls grain of underlying grid - pixel size will need to be manually  adjusted in the World View options.
-11
-0.0
-1
+0
 
 BUTTON
-99
-327
-209
-360
-plot intensity
-plot-intensity
+140
+291
+256
+324
+plot-density
+calculate-point-intensity\nplot-surface [p -> [lambda] of p]
 NIL
 1
 T
@@ -286,57 +143,40 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 TEXTBOX
-652
-115
-802
-163
-Note this model uses the palette extensions and also the R library spatstat
+793
+403
+1037
+440
+Note this requires the Simple R extension and the R library spatstat
 12
 0.0
 1
 
 BUTTON
-7
-366
-104
+16
+291
+133
+324
+toggle-points
+ask turtles [set hidden? not hidden?]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+700
 399
-show points
-ask turtles [set hidden? false]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-107
-368
-199
-401
-hide points
-ask turtles [set hidden? true]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-817
-136
-895
-169
+778
+432
 Plot K
 plot-K
 NIL
@@ -347,13 +187,13 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 PLOT
-641
-174
-988
-444
+699
+120
+1046
+390
 Ripley's K
 r
 K(r)
@@ -362,19 +202,125 @@ K(r)
 0.0
 0.25
 true
-false
+true
 "" ""
 PENS
 "K(r)" 1.0 0 -16777216 true "" ""
 "theo" 1.0 0 -2674135 true "" ""
 
 BUTTON
--1
-327
-96
-360
+158
+203
+255
+236
 plot surface
-plot-surface
+plot-surface [p -> [theo-lambda] of p] 
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+MONITOR
+698
+15
+831
+60
+mean-theo-lambda
+mean [theo-lambda] of patches
+4
+1
+11
+
+MONITOR
+774
+65
+831
+110
+n
+count turtles
+0
+1
+11
+
+TEXTBOX
+843
+14
+999
+67
+theo-lambda is the intensity, that is, the expected number of points per unit area. 
+11
+0.0
+1
+
+MONITOR
+699
+65
+765
+110
+lambda
+count turtles
+4
+1
+11
+
+INPUTBOX
+15
+136
+259
+196
+function
+1000 * sqrt (px ^ 2 + py ^ 2)
+1
+0
+String
+
+SLIDER
+56
+332
+228
+365
+smooth
+smooth
+1
+50
+41.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+13
+206
+155
+276
+Enter a function here: use  px and py to reference x and y coordinates (normalised from 0 to 1)
+11
+0.0
+1
+
+TEXTBOX
+31
+373
+256
+416
+smooth controls how often the 'diffuse' command is repeated to generate an approximate kernel density
+11
+0.0
+1
+
+BUTTON
+194
+32
+260
+65
+NIL
+setup
 NIL
 1
 T
@@ -385,99 +331,27 @@ NIL
 NIL
 1
 
-MONITOR
-577
-455
-657
-500
-pua  lambda
-mean [theo-lambda] of patches
-5
-1
-11
-
-MONITOR
-730
-452
-787
-497
-n
-count turtles
-0
-1
-11
-
-TEXTBOX
-217
-451
-542
-549
-Note that lambda is the intensity, that is, the expected number of points per unit area. \n\nThe total number of points in the simulated pattern will be random with expected value mu = lambda * area (area = the unit square here).\n
-11
-0.0
-1
-
-MONITOR
-659
-453
-725
-498
-lambda
-count turtles / (count patches)
-17
-1
-11
-
-INPUTBOX
-19
-192
-211
-252
-function
-(1000 * xP) / (2 * (yP + 1))
-1
-0
-String
-
-SLIDER
-18
-416
-190
-449
-smooth
-smooth
-0
-20
-20.0
-1
-1
+BUTTON
+165
+246
+256
+279
+clear-density
+clear-background
 NIL
-HORIZONTAL
-
-TEXTBOX
-48
-267
-198
-309
-Enter function here - use xP and yP to refer to the x and y coordinates
-11
-0.0
 1
-
-TEXTBOX
-34
-456
-184
-512
-smooth controls how often the 'diffuse' command is repeated to generate an approximate kernel density
-11
-0.0
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
 1
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-This model is an implementation of complete spatial randomness (CSR) or the _independent random process_ for a spatial point pattern and is discussed in Chapter 2 of
+This model is an implementation of an _inhomogenous Poisson point process_ and is discussed in Chapter 2 of
 
 +   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
 
@@ -494,7 +368,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -793,7 +667,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

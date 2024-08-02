@@ -1,4 +1,4 @@
-; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ; Licensed under the Creative Commons 
 ; Attribution-NonCommercial-ShareAlike 3.0 License 
 ; See Info tab for full copyright and license information

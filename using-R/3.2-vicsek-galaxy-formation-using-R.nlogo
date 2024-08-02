@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,7 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 
 
-extensions [ r ]
+extensions [ sr ]
 
 globals [
   random-choices ;; +1 or -1 for convenience
@@ -37,7 +37,7 @@ patches-own [
 
 to setup
   clear-all
-  r:setPlotDevice
+  sr:setup
 
   ;; this is a neat way to do the random assignment
   set random-choices [1 -1]
@@ -90,12 +90,14 @@ end
 
 ;; R plotting code
 to r-plot-world
+  sr:setup
+  sr:set-plot-device
   let z map [ p -> [get-value] of p ] sort patches
-  r:put "z" z
-  r:put "nc" world-width
-  r:put "nr" world-height
-  r:eval("map <- matrix(z, nrow=nr, ncol=nc)")
-  r:eval("image(map, col=c('white','black'), asp=1, axes=F)")
+  sr:set "z" z
+  sr:set "nc" world-width
+  sr:set "nr" world-height
+  sr:run("map <- matrix(z, nrow = nr, ncol = nc)")
+  sr:run("image(map, col = c('white', 'black'), asp = 1, axes = F)")
 end
 
 ;; for use by the R plotting
@@ -308,7 +310,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -607,7 +609,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

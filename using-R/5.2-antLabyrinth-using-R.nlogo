@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,58 +22,48 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions[r]
+extensions[sr]
 
-turtles-own
-[
+turtles-own [
   startCell
   currCell
   Rhistory
   Rnow
 ]
 
-patches-own
-[
+patches-own [
   occupied?
 ]
 
 to setup
   clear-all
+  sr:setup
 
-  ask patches
-  [
+  ask patches [
     set occupied? false
     set pcolor black
-
     if random-float 1 <= p [
       set occupied? true
       set pcolor white
     ]
-
   ]
-
   place-ant
-
-  r:setPlotDevice
-
   reset-ticks
 end
 
 to place-ant
   ;; place the ant
-  ask n-of ants patches with [occupied? = true]
-    [ sprout 1
-      [
-        set size 2
-        set shape "circle"
-        set color red
-        set currCell patch-here
-
-       set startCell patch-here
-       set Rhistory []
-       set Rnow 0
+  ask n-of ants patches with [occupied? = true] [
+    sprout 1 [
+      set size 2
+      set shape "circle"
+      set color red
+      set currCell patch-here
+      set startCell patch-here
+      set Rhistory []
+      set Rnow 0
     ]
-    ]
+  ]
 end
 
 to go
@@ -82,120 +72,103 @@ to go
 end
 
 to move
-  ask turtles
-    [
-      ; if blind -> select one of N4 and move if occupied
-      ; if myopic -> select one of occupied N4
+  ask turtles [
+    ; if blind -> select one of N4 and move if occupied
+    ; if myopic -> select one of occupied N4
 
-      let new-loc currCell
+    let new-loc currCell
 
-      if antBehaviour = "blind"
-      [
-        let n one-of neighbors4
-        if [occupied?] of n = true [set new-loc n]
-      ]
-
-      if antBehaviour = "myopic"
-      [
-        if any? neighbors4 with [occupied? = true]
-        [
-          set new-loc one-of neighbors4 with [occupied? = true]
-        ]
-      ]
-
-      if new-loc != currCell
-      [
-        move-to new-loc
-        ask new-loc [ set pcolor blue ]
-        set currCell new-loc
-      ]
-
-      let newR eucl-distance-on-torus startCell [pxcor] of currCell [pycor] of currCell
-      set RNow newR
-      set Rhistory lput newR Rhistory
+    if antBehaviour = "blind" [
+      let n one-of neighbors4
+      if [occupied?] of n = true [set new-loc n]
     ]
+    if antBehaviour = "myopic" [
+      if any? neighbors4 with [occupied? = true] [
+        set new-loc one-of neighbors4 with [occupied? = true]
+      ]
+    ]
+    if new-loc != currCell [
+      move-to new-loc
+      ask new-loc [ set pcolor blue ]
+      set currCell new-loc
+    ]
+    let newR eucl-distance-on-torus startCell [pxcor] of currCell [pycor] of currCell
+    set RNow newR
+    set Rhistory lput newR Rhistory
+  ]
 end
 
 ;; Euclidean distance **on a torus**  between patch p1 and point (x2,y2)
 to-report eucl-distance-on-torus[p1 x2 y2]
-;; See: http://www.swarm.org/pipermail/modelling/2005-October/003828.html
-    let x1 [pxcor] of p1
-    let y1 [pycor] of p1
-
-    let xDist min list (abs (x1 - x2)) (max-pxcor - abs (x1 - x2))
-    let yDist min list (abs (y1 - y2)) (max-pycor - abs (y1 - y2))
-
-    report sqrt ( xDist ^ 2 + yDist ^ 2)
+  ;; See: http://www.swarm.org/pipermail/modelling/2005-October/003828.html
+  let x1 [pxcor] of p1
+  let y1 [pycor] of p1
+  let xDist min list (abs (x1 - x2)) (max-pxcor - abs (x1 - x2))
+  let yDist min list (abs (y1 - y2)) (max-pycor - abs (y1 - y2))
+  report sqrt ( xDist ^ 2 + yDist ^ 2)
 end
 
 ;; This plots (in R) a histogram of the current displacements
 to r-displ-hist
-
-(r:putagent "agentlist1" turtles "Rnow")
- r:eval("hist(agentlist1$R, main = '', xlab = 'Distance travelled', las = 1)")
-
+  sr:set-agent-data-frame "agentlist1" turtles "Rnow"
+  sr:set-plot-device
+  sr:run "hist(agentlist1$R, main = '', xlab = 'Distance travelled', las = 1)"
+  user-message "Plot will close when you close this dialog."
+  sr:run "dev.off()"
 end
 
 ;; This plots (in R) a time sequence of histograms of the displacements
+;; Simple R extension seems to struggle with adjusting plot parameters in base R
+;; so commenting this out for now
 to r-displ-hist-ts
-
- let slice 1
- let t ticks
- let idx 0
- let interval t / 10
- let r-at-slice []
-
- r:eval("old.par <- par()")
- r:eval("par(mfrow=c(2,5))")
-
- while [slice <= 10]
- [
-   set idx (slice * interval) - 1
-   if idx > t   [set idx t ]  ;; make sure don't have list bounds error
-
-   ask turtles
-   [
-      let r item idx Rhistory
-      set r-at-slice lput r r-at-slice
-   ]
-
-   r:put "r" r-at-slice
-   r:put "title" (word "Time = " round (idx + 1))
-   r:eval("hist(r, main = title)")
-
-   set slice slice + 1
-
- ]
-  r:eval("par(old.par)")
+  let slice 1
+  let t ticks
+  let idx 0
+  let interval t / 10
+  let r-at-slice []
+  sr:set-plot-device
+  sr:run "old.par <- par()"
+  sr:run "par(mfrow = c(2, 5))"
+  while [slice <= 10] [
+    set idx (slice * interval) - 1
+    if idx > t [ set idx t ]  ;; make sure don't have list bounds error
+    ask turtles [
+       let r item idx Rhistory
+       set r-at-slice lput r r-at-slice
+    ]
+    sr:set "r" r-at-slice
+    sr:set "title" (word "Time = " round (idx + 1))
+    sr:run "hist(r, main = title)"
+    set slice slice + 1
+  ]
+  user-message "Plot will close when you close this dialog."
+  sr:run "dev.off()"
 end
 
 ;; This plots all of the individual R traces and overlays mean, median, ...
 to r-displ-trace
-
-  r:put "n" count turtles
-  r:put "t" ticks
-  r:eval("x <- 1:t")
-  r:eval("traces <- matrix(0,  ncol = n, nrow = t)")
-
-  let ttl 1
+  sr:set "n" count turtles
+  sr:set "t" ticks
+  sr:run "x <- 1:t"
+  sr:run "traces <- matrix(0,  ncol = n, nrow = t)"
   ;; build a matrix in R with all of the traces in it (for matplot)
-  ask turtles
-   [
-      r:put "r" Rhistory
-      r:put "col" who
-      r:eval("traces[,col] <- r")
-   ]
-
-  r:eval("matplot(x = x, y = traces[,-n], col = 'grey', type = 'l', lty = 1, las = 1, xlab = 'Time', ylab = 'Distance travelled')")
+  ask turtles[
+    sr:set "r" Rhistory
+    sr:set "col" who
+    sr:run "traces[,col] <- r"
+  ]
+  sr:set-plot-device
+  sr:run "matplot(x = x, y = traces[,-n], col = 'grey', type = 'l', lty = 1, las = 1, xlab = 'Time', ylab = 'Distance travelled')"
   ;; the -n is to deal with indexing issues (min who = 1, but R is zero-indexed)
-  r:eval("mn.disp <- apply(traces, 1, mean)")
-  r:eval("md.disp <- apply(traces, 1, median)")
-  r:eval("sd.disp <- apply(traces, 1, sd)")
-
-  r:eval("lines(mn.disp ~ x, col = 'black', lwd = 2)")
-  r:eval("lines(md.disp ~ x, col = 'red', lwd = 2)")
-  r:eval("lines(mn.disp + sd.disp ~ x, col = 'black', lwd = 1)")
-  r:eval("lines(mn.disp - sd.disp ~ x, col = 'black', lwd = 1)")
+  sr:run "mn.disp <- apply(traces, 1, mean)"
+  sr:run "md.disp <- apply(traces, 1, median)"
+  sr:run "sd.disp <- apply(traces, 1, sd)"
+  sr:run "lines(mn.disp ~ x, col = 'black', lwd = 2)"
+  sr:run "lines(md.disp ~ x, col = 'red', lwd = 2)"
+  sr:run "lines(mn.disp + sd.disp ~ x, col = 'black', lwd = 1)"
+  sr:run "lines(mn.disp - sd.disp ~ x, col = 'black', lwd = 1)"
+  user-message "Plot will close when you close this dialog."
+  sr:run "dev.off()"
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -242,9 +215,9 @@ HORIZONTAL
 
 BUTTON
 60
-13
+17
 133
-46
+50
 NIL
 setup
 NIL
@@ -446,7 +419,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -745,7 +718,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

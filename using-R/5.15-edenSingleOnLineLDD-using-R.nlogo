@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,11 +22,10 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [r palette]
+extensions [sr palette]
 __includes["5.x-r-clusters.nls"]
 
-globals
-[
+globals [
   perimeter-set
   p-length-list
   n-occupied
@@ -38,52 +37,45 @@ globals
 breed [counters counter]
 counters-own [hgt]
 
-patches-own
-[
+patches-own [
   t-colonised
   attempts
   occupied?
 ]
 
 to setup
-    clear-all
+  clear-all
+  sr:setup
+  sr:run "library(matlab)"
 
-    ask patches with [pycor = 0]
-    [sprout-counters 1 [set hgt 0 ht]]
+  ask patches with [pycor = 0] [
+    sprout-counters 1 [set hgt 0 ht]
+  ]
 
-    set n-occupied 0
-
-    ask patches
-    [ set occupied? false
-      set t-colonised -1
-    ]
-
-    let start-sites patches with [pycor = 0]
-
-    set perimeter-set nobody
-
-    ask start-sites [
-      let f-site self
-      set occupied? true
-      set t-colonised 0
-      set perimeter-set (patch-set perimeter-set neighbors4)
-      set pcolor white
-      set n-occupied n-occupied + 1
-      ask counters with [xcor = ([pxcor] of f-site)] [set hgt hgt + 1]   ;; f-site = myself
-    ]
-
-    set max-height 1
-
-    set mean-height-list []
-    set var-height-list []
-
-    set mean-height-list lput 1 mean-height-list
-    set var-height-list lput 0 var-height-list
-    set p-length-list []
-    set p-length-list lput (count perimeter-set) p-length-list
-
-    r:setPlotDevice
-    reset-ticks
+  set n-occupied 0
+  ask patches [
+    set occupied? false
+    set t-colonised -1
+  ]
+  let start-sites patches with [pycor = 0]
+  set perimeter-set nobody
+  ask start-sites [
+    let f-site self
+    set occupied? true
+    set t-colonised 0
+    set perimeter-set (patch-set perimeter-set neighbors4)
+    set pcolor white
+    set n-occupied n-occupied + 1
+    ask counters with [xcor = ([pxcor] of f-site)] [set hgt hgt + 1]   ;; f-site = myself
+  ]
+  set max-height 1
+  set mean-height-list []
+  set var-height-list []
+  set mean-height-list lput 1 mean-height-list
+  set var-height-list lput 0 var-height-list
+  set p-length-list []
+  set p-length-list lput (count perimeter-set) p-length-list
+  reset-ticks
 end
 
 to go
@@ -123,8 +115,8 @@ to go
          [ set jump-y [pycor] of new-site  + random-exponential long-jump-scale ]
         if ldd-distribution = "cauchy"
          [
-           r:put "ljs" long-jump-scale
-           set jump-y [pycor] of new-site  + r:get "abs(rcauchy(1,0,ljs))" ]
+           sr:set "ljs" long-jump-scale
+           set jump-y [pycor] of new-site  + sr:runresult "abs(rcauchy(1,0,ljs))" ]
         if ldd-distribution = "normal"
          [ set jump-y [pycor] of new-site  + abs (random-normal 0 long-jump-scale) ]
 
@@ -169,8 +161,7 @@ end
 
 ;; colour patches by the time they were colonised (dark [old] to light [young])
 to colour-by-time
-  ask patches with [occupied?]
-  [
+  ask patches with [occupied?] [
     set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207] ]  t-colonised 0 ticks
   ]
 end
@@ -183,15 +174,21 @@ end
 
 ;; send various graphics to R
 to variance-to-r
-  r:put "v" var-height-list
-  r:eval("t <- seq(1, length(v))")
-  r:eval("plot(v ~ t, type = 'l', las = 1, xlab = 'Time', ylab = 'Variance height')")
+  sr:set "v" var-height-list
+  sr:run "t <- seq(1, length(v))"
+  sr:set-plot-device
+  sr:run "plot(v ~ t, type = 'l', las = 1, xlab = 'Time', ylab = 'Variance height')"
+  user-message "Plot will close when you close this dialog."
+  sr:run "dev.off()"
 end
 
 to mean-to-r
-  r:put "m" mean-height-list
-  r:eval("t <- seq(1, length(m))")
-  r:eval("plot(m ~ t, type = 'l', las = 1, xlab = 'Time', ylab = 'Mean height')")
+  sr:set "m" mean-height-list
+  sr:set-plot-device
+  sr:run "t <- seq(1, length(m))"
+  sr:run "plot(m ~ t, type = 'l', las = 1, xlab = 'Time', ylab = 'Mean height')"
+  user-message "Plot will close when you close this dialog."
+  sr:run "dev.off()"
 end
 
 to-report get-mean-height
@@ -512,7 +509,7 @@ max-time-slice
 max-time-slice
 0
 20000
-5427.0
+3084.0
 100
 1
 NIL
@@ -552,7 +549,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -851,7 +848,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

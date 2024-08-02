@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2016 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -111,7 +111,7 @@ GRAPHICS-WINDOW
 819
 -1
 -1
-16.0
+10.0
 1
 15
 1
@@ -122,9 +122,9 @@ GRAPHICS-WINDOW
 0
 1
 0
-49
+79
 0
-49
+79
 1
 1
 1
@@ -201,6 +201,8 @@ The hex lattice uses cube coordinates. Excellent information concerning hex latt
 
 A challenging extension of this model is to extend it to work in a toroidal space. Such an extension might require an entirely different approach, and is especially tricky when it comes to assigning the hex lattice coordinates.
 
+A good option might be to use NetLogo's `links` breed to make the neighbourhoods and then update the model update process accordingly. Surprisingly the model does not seem to run any faster using this approach... 
+
 ## HOW TO CITE
 
 If you mention this model in a publication, please include these citations for the model itself and for NetLogo
@@ -212,7 +214,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -506,7 +508,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

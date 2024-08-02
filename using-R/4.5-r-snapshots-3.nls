@@ -1,5 +1,5 @@
 ;; The MIT License (MIT)
-;; Copyright (c) 2011-13 David O'Sullivan and George L. W. Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George L. W. Perry
 ;; 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy of 
 ;; this software and associated documentation files (the "Software"), to deal in 
@@ -20,6 +20,7 @@
 ;;
 
 to r-snapshot-tracks
+  sr:set-plot-device
   ask one-of foragers [
     ;; need to tile the forest in case there has been a wrapping move...
     ;; determine the min and max tile offsets needed
@@ -35,8 +36,8 @@ to r-snapshot-tracks
     let tile-max-y ceiling (max-y / world-height)
 
     ;; make lists of the tile x- and y- offsets required
-    let tiles-x (range tile-min-x tile-max-x) ;;n-values (tile-max-x - tile-min-x) [tile-min-x + ?]
-    let tiles-y (range tile-min-y tile-max-y) ;;n-values (tile-max-y - tile-min-y) [tile-min-y + ?]
+    let tiles-x range-from-to tile-min-x tile-max-x
+    let tiles-y range-from-to tile-min-y tile-max-y
     
     ;; make same-ordered lists of tree x, y, size 
     let trees-x map [ t -> [xcor] of t ] sort trees
@@ -66,21 +67,28 @@ to r-snapshot-tracks
       ]
     ]
     ;; now get all this into R, first the plot bounds
-    r:put "xl" list min all-x max all-x
-    r:put "yl" list min all-y max all-y
+    sr:set "xl" list min all-x max all-x
+    sr:set "yl" list min all-y max all-y
     ;; then the tree coordinates and sizes
-    r:put "x_trees" all-x
-    r:put "y_trees" all-y
-    r:put "size_trees" all-sizes
+    sr:set "x_trees" all-x
+    sr:set "y_trees" all-y
+    sr:set "size_trees" all-sizes
     ;; plot the trees
-    r:eval("plot(x_trees, y_trees, xlim=xl, ylim=yl, asp=1, col='gray', cex=size_trees/2, xlab='', ylab='')")
-    r:put "x" history-x
-    r:put "y" history-y
+    (sr:run "plot(x_trees, y_trees, xlim = xl, ylim = yl, asp = 1, col = 'gray', "
+                 "cex=size_trees/2, xlab='', ylab='')")
+    sr:set "x" history-x
+    sr:set "y" history-y
     ;; finally plot the walk
-    r:eval("lines(x, y, type='l', asp=1, add=T, lw=1.75)")
+    sr:run "lines(x, y, type = 'l', asp = 1, lw = 1.75)"
   ]
-  r:eval("points(x[1], y[1])")
-  r:eval("points(x[length(x)], y[length(y)], pch=20)")
+  sr:run "points(x[1], y[1])"
+  sr:run "points(x[length(x)], y[length(y)], pch = 20)"
+  user-message "Plot will close when you close this dialog."   
+  sr:run "dev.off()"   
+end
+
+to-report range-from-to [x0 x1]
+  report map [y -> y + x0] range (x1 - x0)
 end
 
 ;; reports true if x y lie inside box defined by NSEW limits
@@ -101,33 +109,36 @@ to-report filter-by-boolean-list [x fltr]
 end
 
 to r-hist-step-lengths
-  r:put "d" [link-length] of links
-  r:eval("hist(d)")
+  sr:set "d" [link-length] of links
+  sr:set-plot-device
+  sr:run "hist(d)"
+  user-message "Plot will close when you close this dialog."   
+  sr:run "dev.off()"   
 end
 
+;; Doesn't quite work exactly - the par adjustment to the right margin seems to
+;; have no effect -so you can't read that axis label
 to r-rank-size-plot
-  r:put "d" [link-length] of links
-  r:put "s" yields
+  sr:set "d" [link-length] of links
+  sr:set "s" yields
   ; create a set of ranks for the yields
-  r:eval("r <- seq(length(s), 1, -1)")
+  sr:run "r <- seq(length(s), 1, -1)"
   ;; make space for the right axis and its label
-  r:eval("par(mar=c(5,4,4,5) + .1)")
-  
   ;; plot rank-size of the tree yields
-  r:eval("plot(r / length(r) * 100, sort(s), axes=F, log='x', xlab='', ylab='', type='l', lty=1)")
-  r:eval("axis(2)")
-  r:eval("mtext('Tree yield', side=2, line=3)")
-  
-  r:eval("r <- seq(length(d), 1, -1)")
-  r:eval("par(new=TRUE)")
-  r:eval("plot(r / length(r) * 100, sort(d), axes=F, log='x', xlab='', ylab='', type='l', lty=2)")
-  
-  r:eval("axis(4)")
-  r:eval("mtext('Step length', side=4, line=3)")
-  
-  r:eval("axis(1, log='x')")
-  r:eval("mtext('Log percentile', side=1, line=3)")
-
-  r:eval("legend('bottomleft', lty=c(1,2), legend=c('Tree yield','Step length'), box.lty=0)")
+  sr:set-plot-device
+  sr:run "par(mar = c(5, 4, 4, 5) + .1)"
+  sr:run "plot(r / length(r) * 100, sort(s), axes = F, log = 'x', xlab = '', ylab = '', type = 'l', lty = 1)"
+  sr:run "par(new = TRUE)"
+  sr:run "r <- seq(length(d), 1, -1)"
+  sr:run "plot(r / length(r) * 100, sort(d), axes = F, log = 'x', xlab = '', ylab = '', type = 'l', lty = 2)"
+  sr:run "axis(1)"
+  sr:run "mtext('Percentile', side = 1, line = 3)"
+  sr:run "axis(2)"
+  sr:run "mtext('Tree yield', side = 2, line = 3)"
+  sr:run "axis(4)"
+  sr:run "mtext('Step length', side = 4, line = 3)"
+  sr:run "legend('bottomleft', lty=c(1,2), legend=c('Tree yield','Step length'), box.lty=0)"
+  user-message "Plot will close when you close this dialog."   
+  sr:run "dev.off()"   
 end
 

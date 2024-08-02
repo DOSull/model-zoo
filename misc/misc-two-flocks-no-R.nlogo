@@ -1,4 +1,4 @@
-; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ; Licensed under the Creative Commons 
 ; Attribution-NonCommercial-ShareAlike 3.0 License 
 ; See Info tab for full copyright and license information
@@ -589,7 +589,7 @@ HORIZONTAL
 
 This model is an implementation of Conway's game of life.  See:
 
-+    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway’s new solitaire game ‘life’. _Scientific American_ **223**, 120–123.
++    Gardner M 1970 Mathematical games: the fantastic combinations of John Conwayï¿½s new solitaire game ï¿½lifeï¿½. _Scientific American_ **223**, 120ï¿½123.
 
 This is an example model referenced in Chapter 1 of
 
@@ -636,7 +636,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2016 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

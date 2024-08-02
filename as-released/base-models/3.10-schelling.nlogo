@@ -1,4 +1,4 @@
-; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ; Licensed under the Creative Commons 
 ; Attribution-NonCommercial-ShareAlike 3.0 License 
 ; See Info tab for full copyright and license information
@@ -393,7 +393,7 @@ You should also cite appropriate examples of the Schelling model, although it is
 
 ## COPYRIGHT AND LICENSE
 
-Copyright 2011-13 David O'Sullivan and George L. W. Perry
+Copyright 2011-24 David O'Sullivan and George L. W. Perry
 
 ![CC BY-NC-SA 3.0](http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png)
 

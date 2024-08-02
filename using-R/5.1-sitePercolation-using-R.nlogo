@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,7 +22,7 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions[r]
+extensions[sr]
 
 globals [
   cluster-size        ;; list of size of each occupied cluster, length is cluster-count - 1
@@ -44,7 +44,7 @@ patches-own [
 ;; initialise the lattice based on percolation threshold
 to setup
   clear-all
-  r:setPlotDevice
+  sr:setup
 
   ask patches [
     set occupied? false
@@ -167,13 +167,16 @@ end
 ;; send data to R to make log-log size rank plot
 to r-hist-cs
   let s reverse sort cluster-size
-  r:put "s" s
+  sr:set "s" s
 
   let cs map [ x -> count-gte s x ] remove-duplicates s
-  r:put "cs" cs
+  sr:set "cs" cs
 
-  r:eval("s <- unique(s)")
-  r:eval("plot(x = s, y = cs, log = 'xy', las = 1, bty = 'n', xlab = 'Clusters of size s', ylab = 'No. clusters size > s')")
+  sr:run "s <- unique(s)"
+  sr:set-plot-device
+  sr:run "plot(x = s, y = cs, log = 'xy', las = 1, bty = 'n', xlab = 'Clusters of size s', ylab = 'No. clusters size > s')"
+  user-message "Plot will close when you close this dialog." 
+  sr:run "dev.off()"  
 end
 
 ;; reports the number of items in list lst that are >= x
@@ -183,24 +186,30 @@ end
 
 ;; plot lattice in R
 to lattice-to-R
-  r:put "nr" world-height
-  r:put "nc" world-width
+  sr:set "nr" world-height
+  sr:set "nc" world-width
 
-  r:put "z" map [ ptch -> [occupied?] of ptch ] sort patches
-  r:eval("z <-matrix(z, nrow=nr, ncol=nc)")
-  r:eval("image(z, col = c('black', 'white'), asp = 1)")
+  sr:set "z" map [ ptch -> [occupied?] of ptch ] sort patches
+  sr:run "z <- matrix(z, nrow = nr, ncol = nc, byrow = TRUE) |> apply(2, rev) |> t()"
+  sr:set-plot-device
+  sr:run "image(z, col = c('black', 'white'), asp = 1)"
+  user-message "Plot will close when you close this dialog." 
+  sr:run "dev.off()"  
 end
 
 ;; send the largest cluster to R
 to largest-to-r
   code-for-r
 
-  r:put "nr" world-height
-  r:put "nc" world-width
+  sr:set "nr" world-height
+  sr:set "nc" world-width
 
-  r:put "z" map [ ptch -> [r-num-code] of ptch ] sort patches
-  r:eval("z <-matrix(z, nrow=nr, ncol=nc)")
-  r:eval("image(z, col = c('black', 'white', 'red'), asp = 1)")
+  sr:set "z" map [ ptch -> [r-num-code] of ptch ] sort patches
+  sr:run "z <- matrix(z, nrow = nr, ncol = nc, byrow = TRUE) |> apply(2, rev) |> t()"
+  sr:set-plot-device
+  sr:run "image(z, col = c('black', 'white', 'red'), asp = 1)"
+  user-message "Plot will close when you close this dialog." 
+  sr:run "dev.off()"  
 end
 
 ;; set the r-num-code
@@ -213,9 +222,9 @@ to code-for-r
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+216
 10
-668
+674
 469
 -1
 -1
@@ -272,10 +281,10 @@ NIL
 1
 
 TEXTBOX
-211
-446
-434
-466
+219
+476
+398
+496
 Occupied patches in white
 12
 0.0
@@ -499,7 +508,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -798,7 +807,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

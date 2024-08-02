@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -28,7 +28,7 @@
 ;; Retrieved from http://www.ncbi.nlm.nih.gov/pubmed/13310708
 
 
-extensions [ r ]
+extensions [ sr ]
 
 globals [
   area-per-step
@@ -49,8 +49,6 @@ patches-own [
 
 to setup
   clear-all
-
-  r:setPlotDevice
 
   set area-per-step []
   set search-durations []
@@ -155,14 +153,18 @@ end
 
 ;; R plotting code
 to r-plot-search-area
-  r:put "s" map [ p -> [searched] of p ] sort patches
-  r:put "v" map [ p -> [visited] of p ] sort patches
-  r:put "p" p-direction-change
-  r:put "nr" world-height
-  r:put "nc" world-width
-  r:eval("map <- matrix(s+v, ncol=nc, nrow=nr)")
-  r:eval("cols <- colorRampPalette(c('white', 'black'))")
-  r:eval("image(map, asp=1, col=cols(3), axes=F)")
+  sr:setup
+  sr:set "s" map [ p -> [searched] of p ] sort patches
+  sr:set "v" map [ p -> [visited] of p ] sort patches
+  sr:set "p" p-direction-change
+  sr:set "nr" world-height
+  sr:set "nc" world-width
+  sr:run "map <- matrix(s + v, ncol = nc, nrow = nr)"
+  sr:run "cols <- colorRampPalette(c('white', 'black'))"
+  sr:set-plot-device
+  sr:run "image(map, asp = 1, col = cols(3), axes = F)"
+  user-message "Plot will close when you close this dialog." 
+  sr:run "dev.off()"  
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -186,8 +188,8 @@ GRAPHICS-WINDOW
 99
 0
 99
-1
-1
+0
+0
 1
 ticks
 100.0
@@ -267,7 +269,7 @@ walk-duration
 walk-duration
 0
 1000
-200.0
+300.0
 10
 1
 NIL
@@ -299,6 +301,16 @@ self-avoiding?
 1
 -1000
 
+TEXTBOX
+9
+339
+134
+367
+Only self-avoiding until it can't be!
+11
+15.0
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
@@ -319,7 +331,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -624,7 +636,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

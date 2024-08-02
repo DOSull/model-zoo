@@ -1,4 +1,4 @@
-; Copyright (c) 2011-13 David O'Sullivan and George Perry
+; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ; Licensed under the Creative Commons 
 ; Attribution-NonCommercial-ShareAlike 3.0 License 
 ; See Info tab for full copyright and license information
@@ -126,7 +126,7 @@ NIL
 
 This model is an implementation of Conway's game of life.  See:
 
-+    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway’s new solitaire game ‘life’. _Scientific American_ **223**, 120–123.
++    Gardner M 1970 Mathematical games: the fantastic combinations of John Conwayï¿½s new solitaire game ï¿½lifeï¿½. _Scientific American_ **223**, 120ï¿½123.
 
 This is an example model referenced in Chapter 1 of
 
@@ -172,7 +172,7 @@ If you mention this model in a publication, please include these citations for t
 
 ## COPYRIGHT AND LICENSE
 
-Copyright 2011-13 David O'Sullivan and George L. W. Perry
+Copyright 2011-24 David O'Sullivan and George L. W. Perry
 
 ![CC BY-NC-SA 3.0](http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png)
 

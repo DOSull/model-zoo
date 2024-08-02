@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -21,8 +21,6 @@
 ;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;; DEALINGS IN THE SOFTWARE.
 ;;
-
-extensions [matrix]
 
 globals [
   neighbor-offsets ;; a list of the x-y coord offsets of a Moore neighbourhood
@@ -115,13 +113,10 @@ to-report mean-centre [list-of-coords]
   report map [ x -> mean x ] transpose list-of-coords
 end
 
-;; converts a list of coord pair lists
-;; to a list of lists of each coord
-;; uses the matrix extension
-to-report transpose [list-of-lists]
-  let IJ matrix:from-row-list list-of-lists
-  let JI matrix:transpose IJ
-  report matrix:to-row-list JI
+;; converts a list of coord pair lists to a list of lists of each coord
+to-report transpose [lists]
+  let indexes range length first lists
+  report map [i -> map [lst -> item i lst] lists] indexes
 end
 
 ;; runs each generation
@@ -435,7 +430,7 @@ The Game of Life CA is implemented using turtles ('cells') to represent live cel
 
 This model uses some tricky methods to provide the world extensibility feature, and these should repay close study.
 
-This model demonstrates how a model space can be extended effectively by recording only the locations of interest.  In Life, only locations that are currently alive or are adjacent to locations that are currently alive can possible be alive in the next time step.  This means that most of the space in a typical Life model where the density of live cells is likely to be less than 25% is being used to store information that is not useful (i.e., lots of dead cells).
+This model demonstrates how a model space can be extended effectively by recording only the locations of interest.  In Life, only locations that are currently alive or are adjacent to locations that are currently alive can possibly be alive in the next time step.  This means that most of the space in a typical Life model where the density of live cells is likely to be less than 25% is being used to store information that is not useful (i.e., lots of dead cells).
 
 Here, by storing the live cells (as `cell` turtles) we avoid this problem, and also enable the model scale to vary as required.
 
@@ -449,7 +444,7 @@ Conversion from Netlogo world coordinates to lattice coordinates is done by the 
 
 where the `map` function applies the scaling operation to each item in the supplied `xy` coord pair list after subtracting the current `centre-xy` coord pair global.  A convenience procedure `set-world-xy` is provided to allow a turtle's location to be set according to its current `lattice-site` and `current scale` of the model.
 
-Rescaling happens when required in the `rescale` procedure which runs at the start of each model tick.  In determining the mean lattice coordinates of the current `cells` use is made of the matrix extension transpose operation.
+Rescaling happens when required in the `rescale` procedure which runs at the start of each model tick.
 
 Because cell locations are stored as the `lattice-site` list it is necessary to have special code to retrieve the Moore neighbourhood lattice coordinates.  This is done in the `neighbouring-lattice-sites` reporter which, by applying a map function between the `lattice-site` coordinate pair and the global `neighbor-offsets` list:
 
@@ -489,7 +484,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -788,7 +783,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.2.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

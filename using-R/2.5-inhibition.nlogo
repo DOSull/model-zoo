@@ -1,6 +1,6 @@
 ;; The MIT License (MIT)
 ;;
-;; Copyright (c) 2011-2018 David O'Sullivan and George Perry
+;; Copyright (c) 2011-24 David O'Sullivan and George Perry
 ;;
 ;; Permission is hereby granted, free of charge, to any person
 ;; obtaining a copy of this software and associated documentation
@@ -22,154 +22,71 @@
 ;; DEALINGS IN THE SOFTWARE.
 ;;
 
-extensions [palette r]
-
-patches-own
-[
-  lambda
-  nn-distance
+__includes [
+  "pp-utils.nls"
+  "pp-r-utils.nls"
 ]
 
-turtles-own
-[
-  x
-  y
+breed [ exclusion-zones exclusion-zone ]
+breed [ points point ]
+
+extensions [palette sr]
+
+patches-own [
+  lambda
 ]
 
 ; Note that the sims are assumed to take place on the unit square
 ; the resolution is purely graphical (to display intensity)
 to setup
-
   clear-all
-  resize-world 0 (resolution - 1) 0 (resolution - 1)
-  set-patch-size  ( 100 / resolution ) * 4
-
+  clear-pattern
+  set-default-shape turtles "circle"
+  sr:setup
   reset-ticks
-
 end
 
 to go
-
-  setup
-  if check-packing = true
-  [
-
-    create-turtles 1
-    [
-      setxy random-xcor random-ycor
-      set shape "circle"
-      set color white
-      set size 1 * ( resolution / 100)
-    ]
-
-    while [count turtles < n]
-    [
-       ; unit square...
-       create-turtles 1
-       [
-         setxy random-xcor random-ycor
-         set size 0
-
-         ;; distance to nn scaled to unit square -> DO'S TO CHECK!
-         let nearest-nhb-dist distance min-one-of other turtles [distance myself]
-         set nearest-nhb-dist (nearest-nhb-dist / resolution)
-
-
-         ifelse nearest-nhb-dist >= min-distance or random-float 1 >= inhibit-strength
-         [
-           set color white
-           set shape "circle"
-           set size 1 * ( resolution / 100)
-         ]
-         [
-           die
-         ]
-       ]
-    ]
-    ask turtles
-    [
-      set nn-distance (distance min-one-of other turtles [distance myself])
-      set x xcor / resolution
-      set y ycor / resolution
+  clear-pattern
+  if packing-is-possible? [
+    while [count points < n] [
+      create-points 1 [
+        set color black
+        setxy random-xcor random-ycor
+        if any? other points [
+          let nearest-nhb-dist rescale min [distance myself] of (other points) 0 world-width 0 1
+          if nearest-nhb-dist < min-distance and random-float 1 < inhibit-strength
+          [ die ]
+        ]
+        hatch-exclusion-zones 1 [
+          set color [ 255 0 0 20 ]
+          set size rescale (min-distance * 2) 0 1 0 world-width
+        ]
+      ]
     ]
   ]
 end
 
 to plot-intensity
-
  ask patches [
-   set lambda count turtles-here
+   set lambda count points-here
  ]
-
-
- repeat smooth [diffuse lambda 0.9]
-
+ repeat smooth [diffuse lambda (8 / 9)]
  let max-lambda max [lambda] of patches
-
- ask turtles [
-   set color black
- ]
-
  ask patches [
    set pcolor palette:scale-gradient [[239 138 98] [247 247 247] [103 169 207]] lambda max-lambda 0
  ]
-
-
 end
 
-;Test whether pattern can be generated (based on packing intensity: limit ~ 0.567)
-; See Diggle 2003
-to-report check-packing
-  let packing 0
-  let pack-test true
-  set packing (n * Pi * min-distance ^ 2) / (4 * 1)
-
-
-  if packing > 0.65 [
-    user-message  (word "Packing intensity (= " precision packing 4 ") too high - event set can not be generated")
-    set pack-test false
+to-report packing-is-possible?
+  let packing-intensity n * pi * (min-distance ^ 2) / 4
+  if packing-intensity > 0.5 and inhibit-strength = 1 [
+    user-message  (word "It will be time consuming to generate the requested number of points at a packing intensity of "
+                        precision packing-intensity 4 ". Consider setting the inhibit-strength to less than 1, or reducing "
+                        "the min-distance to around " precision sqrt (2 / n / pi) 3 " or less")
+    report false
   ]
-
-  report pack-test
-end
-
-
-
-to plot-K
-;; modified from the example R extension code
-
-  r:eval "library(spatstat)"
-
-  ;; send agent variables into an R data-frame
-  (r:putagentdf "agentset" turtles "who" "x" "y")
-
-  ;; create point pattern with vectors of x- and y-coordinates of turtles and the dimension of the window/world
-  let revalstring (word "agppp <- ppp(agentset$x, agentset$y)")  ; don't need a window on the unit square
-  r:eval revalstring
-
-  ;; calculate K
-  r:eval "k <- Kest(agppp, method = 'c')"
-
-  ;; get results from R
-  let k r:get "k$iso"
-  let r r:get "k$r"
-  let theo r:get "k$theo"
-
-
-;  ;; combine results into a multidimensional list for plotting
-  let ripley (map [ [ri ki theoretical] -> (list ri ki theoretical) ] r k theo)
-;
-;  ;; plot the results
-  clear-plot
-  foreach ripley
-  [ rkt ->
-    set-current-plot "Ripley's K"
-    set-current-plot-pen "K(r)"
-    plotxy (item 0 rkt) (item 1 rkt)
-    set-current-plot-pen "theo"
-    plotxy (item 0 rkt) (item 2 rkt)
-  ]
-
+  report true
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -179,7 +96,7 @@ GRAPHICS-WINDOW
 426
 -1
 -1
-8.88888888888889
+4.0
 1
 10
 1
@@ -190,35 +107,35 @@ GRAPHICS-WINDOW
 1
 1
 0
-44
+99
 0
-44
-1
-1
+99
+0
+0
 1
 ticks
 30.0
 
 SLIDER
-18
-17
-190
-50
+22
+112
+194
+145
 n
 n
 1
 1000
-217.0
+160.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-31
-150
-166
-184
+60
+62
+195
+96
 generate pattern
 go
 NIL
@@ -229,40 +146,15 @@ NIL
 NIL
 NIL
 NIL
-1
-
-SLIDER
-19
-207
-191
-240
-resolution
-resolution
-1
-200
-45.0
-1
-1
-NIL
-HORIZONTAL
-
-TEXTBOX
-30
-247
-180
-307
-Controls grain of underlying grid - pixel size will need to be manually  adjusted in the World View options.
-11
-0.0
-1
+0
 
 BUTTON
-42
-315
-152
-348
-plot intensity
-plot-intensity
+17
+334
+95
+367
+plot density
+calculate-point-intensity\nplot-surface [p -> [lambda] of p]
 NIL
 1
 T
@@ -271,53 +163,53 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 TEXTBOX
 733
-199
-913
-247
-Note this model uses the gradient extension and the R library spatstat
+387
+958
+421
+Note this model uses the Simple R extension and the R library spatstat
 12
 0.0
 1
 
 SLIDER
-18
-61
-190
-94
+22
+156
+194
+189
 min-distance
 min-distance
 0
-.2
-0.04
-.01
+0.1
+0.063
+.001
 1
 NIL
 HORIZONTAL
 
 SLIDER
-18
-100
-190
-133
+22
+195
+194
+228
 inhibit-strength
 inhibit-strength
 0
 1.0
-0.57
+1.0
 .01
 1
 NIL
 HORIZONTAL
 
 PLOT
-730
-254
-1049
-486
+634
+20
+953
+373
 Ripley's K
 r
 K(r)
@@ -333,12 +225,12 @@ PENS
 "theo" 1.0 0 -2674135 true "" ""
 
 BUTTON
-921
-209
-1042
-242
+652
+383
+725
+416
 Plot K
-plot-k
+plot-K
 NIL
 1
 T
@@ -347,15 +239,15 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 BUTTON
-9
-360
-103
-393
-hide turtles
-ask turtles [set hidden? true]
+26
+283
+196
+316
+toggle-points
+ask turtles [set hidden? not hidden?]
 NIL
 1
 T
@@ -364,39 +256,73 @@ NIL
 NIL
 NIL
 NIL
-1
-
-BUTTON
-105
-360
-205
-393
-show turtles
-ask turtles [set hidden? false]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
+0
 
 SLIDER
-15
-403
-187
-436
+19
+374
+191
+407
 smooth
 smooth
 1
 20
-5.0
+20.0
 1
 1
 NIL
 HORIZONTAL
+
+BUTTON
+129
+23
+195
+56
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+26
+242
+195
+275
+toggle-exclusion-zones
+ask exclusion-zones [ set hidden? not hidden? ]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+101
+334
+192
+367
+clear density
+clear-background
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -418,7 +344,7 @@ If you mention this model in a publication, please include these citations for t
 
 The MIT License (MIT)
 
-Copyright &copy; 2011-2018 David O'Sullivan and George Perry
+Copyright &copy; 2011-24 David O'Sullivan and George Perry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to  permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -717,7 +643,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.0.2
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
