@@ -1,6 +1,6 @@
 ; Copyright (c) 2011-24 David O'Sullivan and George Perry
-; Licensed under the Creative Commons 
-; Attribution-NonCommercial-ShareAlike 3.0 License 
+; Licensed under the Creative Commons
+; Attribution-NonCommercial-ShareAlike 3.0 License
 ; See Info tab for full copyright and license information
 ;;
 
@@ -14,11 +14,11 @@ patches-own [
 
 to setup
   clear-all
-  let offset-coords-x (list -1 0 0 0 0 0 0 0 0 1) 
+  let offset-coords-x (list -1 0 0 0 0 0 0 0 0 1)
   let offset-coords-y (list 0 -2 -1 1 2 3 4 5 6 0)
-  let offset-coord-pairs (map [list ?1 ?2] offset-coords-x offset-coords-y)
+  let offset-coord-pairs (map [ [?1 ?2] -> list ?1 ?2 ] offset-coords-x offset-coords-y)
   ask patches [
-    set neighbourhood-list (map [patch-at ?1 ?2] offset-coords-x offset-coords-y)
+    set neighbourhood-list (map [ [?1 ?2] -> patch-at ?1 ?2 ] offset-coords-x offset-coords-y)
     set neighbourhood-weights (list b 1 3 (- a) (- a) (- a) (- a) (- a) (- a) b)
     set state random-float 4
   ]
@@ -27,7 +27,7 @@ to setup
 end
 
 
-to update-patch-colours 
+to update-patch-colours
   ask patches [
     set pcolor scale-color green state 3 0
   ]
@@ -36,7 +36,7 @@ end
 
 to go
   ask patches [
-    let state-change c * sum (map [[state] of ?1 * ?2] neighbourhood-list neighbourhood-weights)
+    let state-change c * sum (map [ [?1 ?2] -> [state] of ?1 * ?2 ] neighbourhood-list neighbourhood-weights)
     set state-change clamp-between state-change -1 1
     set next-state clamp-between (state + state-change) 0 3
   ]
@@ -55,8 +55,8 @@ end
 GRAPHICS-WINDOW
 210
 10
-624
-445
+622
+423
 -1
 -1
 4.0
@@ -88,7 +88,7 @@ b
 b
 1
 8
-4
+4.0
 1
 1
 NIL
@@ -103,7 +103,7 @@ a
 a
 1
 8
-8
+8.0
 1
 1
 NIL
@@ -177,17 +177,6 @@ HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
-
-This model is an implementation of Conway's game of life.  See:
-
-+    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway�s new solitaire game �life�. _Scientific American_ **223**, 120�123.
-
-This is an example model referenced in Chapter 1 of
-
-+   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-
-You should consult that book for more information and details of the model.
-
 
 ## HOW IT WORKS
 
@@ -524,9 +513,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.0beta4
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -534,16 +522,14 @@ NetLogo 5.0beta4
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
-

@@ -140,15 +140,6 @@ to-report glider-patterns
           [-1 -1] [0 -1] [1 -1])
   )
 end
-
-;; R plotting code
-;;to r-plot-world
-;;  r:put "s" map [[state] of ?] sort patches
-;;  r:put "nr" world-height
-;;  r:put "nc" world-width
-;;  r:eval("map <- matrix(s, ncol=nc, nrow=nr)")
-;;  r:eval("image(map, asp=1, col=c('white','black'), axes=F)")
-;;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 205

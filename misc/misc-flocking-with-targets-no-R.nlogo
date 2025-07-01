@@ -1,6 +1,6 @@
 ; Copyright (c) 2011-24 David O'Sullivan and George Perry
-; Licensed under the Creative Commons 
-; Attribution-NonCommercial-ShareAlike 3.0 License 
+; Licensed under the Creative Commons
+; Attribution-NonCommercial-ShareAlike 3.0 License
 ; See Info tab for full copyright and license information
 ;;
 
@@ -37,12 +37,12 @@ patches-own [
 
 to setup
   clear-all
-  
+
   ask patches [
     set pcolor white
-    set locale (patch-set self (patches in-radius range))
+    set locale (patch-set self (patches in-radius vision-range))
   ]
-  set-default-shape turtles "default"  
+  set-default-shape turtles "default"
   set-default-shape tails "line"
   create-flockers ceiling (density * count patches) [
     setxy random-xcor random-ycor
@@ -61,7 +61,7 @@ to setup
   reset-ticks
 end
 
-;; initialise the tail turtles 
+;; initialise the tail turtles
 ;; do this by moving the flocker the required number of times
 ;; and calling update-tail
 to create-initial-tail
@@ -84,26 +84,26 @@ to update-tail
     ]
     set my-tail fput latest my-tail
     ;; now kill any tail turtles surplus to the current tail-length requirement
-    foreach sublist my-tail (min list tail-length length my-tail) (length my-tail) [
-      ask ? [ die ]
+    foreach sublist my-tail (min list tail-length length my-tail) (length my-tail) [ t ->
+      ask t [ die ]
     ]
     ;; finally update my-tail
     ;; this avoids it filling up with dead tail turtles
     set my-tail sublist my-tail 0 (min list tail-length length my-tail)
-end  
+end
 
 ;; updates stored set of local flockers for each patch
 to update-local-flockers
   ask patches [
     set local-flockers flockers-on locale
   ]
-  let max-density max [count local-flockers] of patches  
+  let max-density max [count local-flockers] of patches
   ask patches [
-    ifelse show-density-map? 
+    ifelse show-density-map?
     [ set pcolor scale-color grey count local-flockers (-2 *  max-density) (max-density) ]
     [ set pcolor white ]
   ]
-end 
+end
 
 to go
   ask flockers [
@@ -139,7 +139,7 @@ to go
     jump speed ;speed
   ]
   ask targets [
-    ifelse any? flockers-here 
+    ifelse any? flockers-here
     [ set yield max (list 0 (yield - count flockers-here)) ]
     [ set yield min (list 20 (yield + 1)) ]
   ]
@@ -152,7 +152,7 @@ to set-flock-mates
     set flock-mates reference-flockers with [color = [color] of myself]
   ]
   if flock-mates-method = "lattice" [
-    set flock-mates other local-flockers with [color = [color] of myself] 
+    set flock-mates other local-flockers with [color = [color] of myself]
   ]
 end
 
@@ -170,13 +170,13 @@ end
 
 ;; finalises any change in heading by updating from new-v-x, new-v-y
 ;; and adding any random perturbation
-to update-movement-variables 
+to update-movement-variables
   ifelse any? (targets-on locale) with [yield > 0] [
     face max-one-of targets-on locale [yield]
   ]
   [
     set new-heading heading
-    if new-v-x != 0 or new-v-y != 0 [ 
+    if new-v-x != 0 or new-v-y != 0 [
       set new-heading atan new-v-x new-v-y
     ]
     set heading new-heading + ((random-float 2 - 1) * directional-noise)
@@ -199,13 +199,13 @@ to-report inner-ring
   let ring []
   let pie-angle 360 / sectors-to-check
   let range-headings list 0 pie-angle
-  let in-cone-candidates other local-flockers with [in-field-of-view? myself self range (view-angle / 2)]
+  let in-cone-candidates other local-flockers with [in-field-of-view? myself self vision-range (view-angle / 2)]
   repeat sectors-to-check [
     let candidates in-cone-candidates with [between? range-headings norm-heading (180 + (pie-angle / 2) + towards myself)]
     if any? candidates [
       set ring fput (first sort-on [distance myself] candidates) ring
     ]
-    set range-headings map [? + pie-angle] range-headings
+    set range-headings map [h -> h + pie-angle] range-headings
   ]
   report ring
 end
@@ -214,18 +214,18 @@ to-report between? [min-max x]
   report x >= first min-max and x < last min-max
 end
 
-;; this appears a quicker way to emulate a cone-angle 
+;; this appears a quicker way to emulate a cone-angle
 ;; than the built-in in-cone reporter
 to-report in-field-of-view? [t1 t2 d dh]
   let dist 0
   ask t1 [ set dist distance t2 ]
-  report (dist < d) and (in-cone-angle? t1 t2 dh) 
+  report (dist < d) and (in-cone-angle? t1 t2 dh)
 end
 
-;; uses the heading-difference reporter and towards to 
+;; uses the heading-difference reporter and towards to
 ;; determine if t2 is in the forward-facing cone of angle dh of t1
-to-report in-cone-angle? [t1 t2 dh] 
-  report heading-difference ([towards t2] of t1) [heading] of t1 < dh 
+to-report in-cone-angle? [t1 t2 dh]
+  report heading-difference ([towards t2] of t1) [heading] of t1 < dh
 end
 
 ;; calculates a difference in two headings as the absolute
@@ -247,13 +247,12 @@ to-report norm-heading [x]
   report x mod 360
 end
 
-  
 @#$#@#$#@
 GRAPHICS-WINDOW
 185
 10
-620
-466
+618
+444
 -1
 -1
 8.5
@@ -381,7 +380,7 @@ tail-length
 tail-length
 0
 10
-5
+5.0
 1
 1
 NIL
@@ -396,7 +395,7 @@ view-angle
 view-angle
 5
 360
-270
+270.0
 5
 1
 NIL
@@ -411,7 +410,7 @@ sectors-to-check
 sectors-to-check
 2
 12
-6
+6.0
 1
 1
 NIL
@@ -436,7 +435,7 @@ rel-body-force
 rel-body-force
 0
 2
-1
+1.0
 0.01
 1
 NIL
@@ -571,11 +570,11 @@ SLIDER
 106
 802
 139
-range
-range
+vision-range
+vision-range
 preferred-distance
 5
-1.5
+5.0
 0.1
 1
 NIL
@@ -931,9 +930,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -941,16 +939,14 @@ NetLogo 5.0
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
-

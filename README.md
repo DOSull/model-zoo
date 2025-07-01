@@ -8,10 +8,10 @@ Pattern and Process_](http://www.wiley.com/WileyCDA/WileyTitle/productCd-1119970
 The purpose of putting the models here, is to speed up the process of adequately commenting them, and also to make it
 easier to make minor tweaks and corrections to the code.  
 
-The models as originally released when the book appeared (and as used to generate the figures in the book) are in the folder [`as-released`](/as-released). **These will not change**, and **will not be updated** to remain compatible with later versions of NetLogo. There were written for NetLogo 5.0.x. They will likely work with other NetLogo 5.x versions, but you will need to have the necessary extensions installed. If opened in later versions of NetLogo, the automated translation provided may work, but it might not. This folder is split into a `base-models` folder which should not need any extensions and a `using-R` folder which requires the `r` extension.
+The models as originally released when the book appeared (and as used to generate the figures in the book) are in the folder [`as-released`](/as-released). **These will not change**, and **will not be updated** to remain compatible with later versions of NetLogo. They were written for NetLogo 5.0.x. They will likely work with other NetLogo 5.x versions, but you will need to have the necessary extensions installed. If opened in later versions of NetLogo, the automated translation provided may work, but it might not. This folder is split into a `base-models` folder which should not need any extensions and a `using-R` folder which requires the `r` extension.
 
 ## Ongoing work
-Models are being slowly updated, to add more information about how they work and additional in-code comments, and more recently for compatibility with NetLogo 6.x.  The latest versions of the models are in the top level [`base-models`](/base-models) folder. Some models require the NetLogo R extension to be installed.
+Models are being slowly updated, to add more information about how they work and additional in-code comments, and more recently for compatibility with NetLogo 6.x.  The latest versions of the models are in the top level [`base-models`](/base-models) folder. Some models require the NetLogo R extension to be installed or the more recent [SimpleR extension](https://github.com/NetLogo/SimpleR-Extension).
 
 A 'frozen' release of these folders compatible with NetLogo 5.3 was created on 18 November, 2017: [v0.5.3 release](https://github.com/DOSull/model-zoo/releases/tag/v0.5.3)
 
@@ -20,4 +20,4 @@ A 'final for now' release of these folders compatible with NetLogo 6.4.x was cre
 The most current code in `base-models` and `using-R` folders aims to be compatible with current recent versions of NetLogo.
 
 ## Current status
-Models in `base-models` and `using-R` should all work with NetLogo 6.2.x. Models in `as-released` and `misc` will not. Note that the models now use only extensions that come standard with NetLogo (r and palette).
+Models in `base-models` and `using-R` should all work with NetLogo 6.4.x. Models in `as-released` and `misc` will not. The models now use only extensions that come standard with NetLogo (r and palette).

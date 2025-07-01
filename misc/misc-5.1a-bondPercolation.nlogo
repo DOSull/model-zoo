@@ -1,6 +1,6 @@
-; Copyright (c) 2011-24 David O'Sullivan and George Perry
-; Licensed under the Creative Commons 
-; Attribution-NonCommercial-ShareAlike 3.0 License 
+; Copyright (c) 2011-25 David O'Sullivan and George Perry
+; Licensed under the Creative Commons
+; Attribution-NonCommercial-ShareAlike 3.0 License
 ; See Info tab for full copyright and license information
 ;;
 
@@ -14,10 +14,10 @@ to setup
      set size 0.4
      set color white
      ]
-   ] 
+   ]
    ask turtles  [ create-links-with other (turtles-on neighbors4) ]
    ask links [set color black]
-   
+
    reset-ticks
 end
 
@@ -26,13 +26,13 @@ to go
   ask links [set color yellow
     set thickness 0.125
     ]
-end  
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-748
-569
+746
+547
 -1
 -1
 16.0
@@ -123,17 +123,6 @@ NIL
 
 @#$#@#$#@
 ## WHAT IS IT?
-
-This model is an implementation of Conway's game of life.  See:
-
-+    Gardner M 1970 Mathematical games: the fantastic combinations of John Conway�s new solitaire game �life�. _Scientific American_ **223**, 120�123.
-
-This is an example model referenced in Chapter 1 of
-
-+   O'Sullivan D and Perry GLW 2013 _Spatial Simulation: Exploring Pattern and Process_. Wiley, Chichester, England.
-
-You should consult that book for more information and details of the model.
-
 
 ## HOW IT WORKS
 
@@ -470,9 +459,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.0
+NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -480,16 +468,14 @@ NetLogo 5.0
 @#$#@#$#@
 default
 0.0
--0.2 0 1.0 0.0
+-0.2 0 0.0 1.0
 0.0 1 1.0 0.0
-0.2 0 1.0 0.0
+0.2 0 0.0 1.0
 link direction
 true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
-
