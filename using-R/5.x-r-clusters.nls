@@ -1,27 +1,3 @@
-;; The MIT License (MIT)
-;;
-;; Copyright (c) 2011-24 David O'Sullivan and George Perry
-;;
-;; Permission is hereby granted, free of charge, to any person 
-;; obtaining a copy of this software and associated documentation 
-;; files (the "Software"), to deal in the Software without restriction, 
-;; including without limitation the rights to use, copy, modify, merge,
-;; publish, distribute, sublicense, and/or sell copies of the Software,
-;; and to  permit persons to whom the Software is furnished to do so,
-;; subject to the following conditions:
-;;
-;; The above copyright notice and this permission notice shall be included
-;; in all copies or substantial portions of the Software.
-;;
-;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-;; OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-;; THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-;; DEALINGS IN THE SOFTWARE.
-;;
-
 ;; Various routines to enable screen snaps to be exported into R for display
 ;; including time-series of model conditions.
 ;; require: r extension and matlab in R
@@ -37,8 +13,6 @@ to cluster-to-r [grey-levels]
   sr:run "z <- ifelse(z < 0, NA, z)"
   sr:set-plot-device
   sr:run "image(z, col = grey.ramp, asp = 1, xaxt = 'n', yaxt = 'n')"
-  user-message "Plot will close when you close this dialog."
-  sr:run "dev.off()"
 end
 
 to cluster-to-r-bw
@@ -50,8 +24,6 @@ to cluster-to-r-bw
   sr:run "z <- ifelse(z < 0, 0, 1)"
   sr:set-plot-device
   sr:run "image(z, col = c('white','black'), asp = 1, xaxt = 'n', yaxt = 'n')"
-  user-message "Plot will close when you close this dialog."
-  sr:run "dev.off()"
 end
 
 to cluster-ts-to-r
@@ -73,26 +45,45 @@ to cluster-ts-to-r
     sr:run "z <- ifelse(z.raw < 0 | z.raw > t, NA, z.raw)"
     sr:run "image(z, col = grey.ramp, asp = 1, xaxt = 'n', yaxt = 'n', main = paste('Time = ', t))"
   ]
-  user-message "Plot will close when you close this dialog."
-  sr:run "dev.off()"
 end
 
 to edge-to-r
   sr:set "nr" world-height
   sr:set "nc" world-width
-  sr:set "z" map [ p -> [member? p perimeter-set] of p ] reverse sort patches
+  sr:set "z" map [ p -> [member? p perimeter] of p ] reverse sort patches
   sr:run "z <- matrix(z, nrow = nr, ncol = nc)"
   sr:set-plot-device
   sr:run "image(z, col = c('white', 'black'), asp = 1, xaxt = 'n', yaxt = 'n')"
-  user-message "Plot will close when you close this dialog."
-  sr:run "dev.off()"
 end      
 
 to perimeter-ts-to-r
   sr:set "p" p-length-list
   sr:set-plot-device
-  sr:run "plot(p, type = 'l', las = 1, bty = 'n', xlab = 'Time', ylab = 'Perimeter length', xlim = c(0,20000), ylim = c(0,1500))"
-  user-message "Plot will close when you close this dialog."
-  sr:run "dev.off()"
+  sr:set "xr" (list 0 ticks)
+  sr:set "yr" (list 0 (max p-length-list))
+  sr:run "plot(p, type = 'l', las = 1, bty = 'n', xlab = 'Time', ylab = 'Perimeter length', xlim = xr, ylim = yr)"
 end
 
+;; The MIT License (MIT)
+;;
+;; Copyright (c) 2011-25 David O'Sullivan and George Perry
+;;
+;; Permission is hereby granted, free of charge, to any person
+;; obtaining a copy of this software and associated documentation
+;; files (the "Software"), to deal in the Software without restriction,
+;; including without limitation the rights to use, copy, modify, merge,
+;; publish, distribute, sublicense, and/or sell copies of the Software,
+;; and to  permit persons to whom the Software is furnished to do so,
+;; subject to the following conditions:
+;;
+;; The above copyright notice and this permission notice shall be included
+;; in all copies or substantial portions of the Software.
+;;
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+;; OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+;; THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+;; FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+;; DEALINGS IN THE SOFTWARE.
+;;

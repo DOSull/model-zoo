@@ -16,6 +16,5 @@ end
 to-report r-cauchy [loc scl]
   let X (pi * (random-float 1)) ;; Netlogo tan takes degrees not radians
   report loc + scl * tan(X * (180 / pi))
-
 end
 
